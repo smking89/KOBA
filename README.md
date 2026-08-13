@@ -6,8 +6,10 @@ all on one KOBAID.
 
 ## Status
 
-**Phase 0 — UI / GUI / UX (design-first)** is complete. Everything else in
-the build plan below comes after.
+**Phase 0 — UI / GUI / UX (design-first)** is complete. The monorepo is
+scaffolded (see [FILE_STRUCTURE.md](FILE_STRUCTURE.md)) — nothing is
+bootstrapped or running yet. See [ROADMAP.md](ROADMAP.md) for the full
+phase-by-phase build plan.
 
 ## Design system
 
