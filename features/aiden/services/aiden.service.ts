@@ -8,7 +8,7 @@ import type { CreateAidenJobInput } from "@/features/aiden/schemas/aiden.schemas
 import { WalletError } from "@/features/wallet/lib/errors";
 import {
   releaseReservation,
-  reserveCoinsForGeneration,
+  reserveCoins,
 } from "@/features/wallet/services/ledger.service";
 
 const ASSET_COST: Record<AidenAssetType, number> = {
@@ -93,14 +93,15 @@ export async function createJob(
   const coinCostPreview = coinCostForAssetType(input.assetType);
   const publicRef = generateAidenJobRef();
 
-  let reservation: Awaited<ReturnType<typeof reserveCoinsForGeneration>>;
+  let reservation: Awaited<ReturnType<typeof reserveCoins>>;
   try {
-    reservation = await reserveCoinsForGeneration(
+    reservation = await reserveCoins({
       userId,
-      coinCostPreview,
-      `Reserved for Aiden job ${publicRef}`,
-      ipAddress,
-    );
+      amount: coinCostPreview,
+      purpose: `Aiden job ${publicRef}`,
+      idempotencyKey: `aiden-job-reserve:${publicRef}`,
+      ...(ipAddress !== undefined ? { ipAddress } : {}),
+    });
   } catch (error) {
     if (error instanceof WalletError && error.code === "INSUFFICIENT") {
       throw new AidenError("Insufficient KOBA Coins for this generation.", "INSUFFICIENT");
@@ -118,7 +119,7 @@ export async function createJob(
       assetType: input.assetType,
       state: "QUEUED",
       coinCostPreview,
-      reservationTxId: reservation.transactionId,
+      reservationTxId: reservation.publicRef,
     },
   });
 
@@ -149,12 +150,12 @@ export async function cancelJob(
   }
 
   if (job.reservationTxId) {
-    await releaseReservation(
+    await releaseReservation({
       userId,
-      job.coinCostPreview,
-      `Released reservation for cancelled Aiden job ${publicRef}`,
-      ipAddress,
-    );
+      reservationPublicRef: job.reservationTxId,
+      idempotencyKey: `aiden-cancel-release:${publicRef}`,
+      ...(ipAddress !== undefined ? { ipAddress } : {}),
+    });
   }
 
   const updated = await prisma.aidenJob.update({
@@ -188,12 +189,12 @@ export async function processJobStub(
   }
 
   if (job.reservationTxId) {
-    await releaseReservation(
+    await releaseReservation({
       userId,
-      job.coinCostPreview,
-      `Released reservation for failed Aiden job ${publicRef}`,
-      ipAddress,
-    );
+      reservationPublicRef: job.reservationTxId,
+      idempotencyKey: `aiden-fail-release:${publicRef}`,
+      ...(ipAddress !== undefined ? { ipAddress } : {}),
+    });
   }
 
   const updated = await prisma.aidenJob.update({

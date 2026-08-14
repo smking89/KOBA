@@ -14,3 +14,9 @@ export function generateLedgerRef(
 ): string {
   return hexRef("KOBA-LDG-", bytesFn);
 }
+
+export function generateReservationRef(
+  bytesFn: (size: number) => Uint8Array = (size) => randomBytes(size),
+): string {
+  return hexRef("KOBA-RSV-", bytesFn);
+}
