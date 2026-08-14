@@ -16,6 +16,8 @@ describe("isSensitivePath", () => {
     expect(isSensitivePath("/api/business/products")).toBe(true);
     expect(isSensitivePath("/api/auctions/oxide/bids")).toBe(true);
     expect(isSensitivePath("/api/checkout")).toBe(true);
+    expect(isSensitivePath("/api/groups/rust-legacy-raiders/join")).toBe(true);
+    expect(isSensitivePath("/api/lfg/KOBA-LFG-CAFEBABE/join")).toBe(true);
   });
 
   it("allows public routes", () => {
