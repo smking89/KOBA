@@ -13,7 +13,12 @@
   --color-destructive: #ff4d5e;
   --color-warning: #ffb020;
   --color-success: #35ff52;
-  --color-ring: #b8ff00;
+  --color-rarity-common: #8b8a9c;
+  --color-rarity-uncommon: #1fbf6c;
+  --color-rarity-rare: #33c1f0;
+  --color-rarity-epic: #b451f0;
+  --color-rarity-legendary: #ffb648;
+  --color-rarity-relic: #ff2469;
 
   --font-sans: var(--font-sora), "Sora", ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-plex-mono), "IBM Plex Mono", ui-monospace, monospace;
