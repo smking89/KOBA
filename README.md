@@ -6,7 +6,7 @@ squads; all on one KOBAID.
 
 ## Status
 
-**Phase 7 — Auctions** is in progress on `feat/auctions`.
+**Phase 8 — Payments** is in progress on `feat/payments`.
 
 The HTML prototype remains the information-architecture reference:
 
@@ -138,8 +138,9 @@ Public catalog at `/market` and `/market/[slug]`. Listings are visible only when
 `moderationStatus` is `APPROVED` and `publishedAt` is set.
 
 Filters: `q`, `game`, `category`, `rarity`, `platform`, `listing`, `sort`, `page`.
-Signed-in users can save listings (`POST /api/market/favorites`). Buy-now checkout
-is Phase 8. Live auctions accept bids now.
+Signed-in users can save listings (`POST /api/market/favorites`). Buy-now listings
+check out through Stripe (test mode). Live auctions accept bids, then the winner
+pays the reserved amount.
 
 ### Shops (Phase 6)
 
@@ -155,8 +156,8 @@ Staff (SA/AD) verify shops at `POST /api/admin/shops/[slug]/verify`. Follows and
 reviews require a signed-in user who is not the shop owner.
 
 Business dashboard analytics count live listings, drafts, followers, reviews,
-and inventory. Order inbox is empty until checkout (Phase 8) — no estimated
-revenue.
+inventory, and orders. Connect payouts at `/business/payouts` before buyers can
+check out.
 
 ### Auctions (Phase 7)
 
@@ -166,10 +167,41 @@ history on `/market/[slug]`. `POST /api/auctions/[slug]/bids` is transactional
 Sellers and shop members cannot bid on their own listings. Bids in the last two
 minutes extend the clock by two minutes.
 
-When time expires the highest bid is reserved for checkout (Phase 8). No charge
-is taken here. Updates stream over `GET /api/auctions/[slug]/stream` (SSE).
+When time expires the highest bid is reserved for checkout. The winner pays via
+Stripe Checkout (`Pay now` on the listing). No charge is taken at bid time.
+Updates stream over `GET /api/auctions/[slug]/stream` (SSE).
 Idempotency keys prevent duplicate submissions. Bid APIs are never cached by the
 service worker.
+
+### Payments (Phase 8)
+
+Stripe Connect **test mode** only. Destination charges take a platform fee
+(`KOBA_COMMISSION_BPS`, default 1000 = 10%, cap 2500). Hosted Checkout is the
+payment UI. **Paid status comes only from signed webhooks** — the browser cannot
+mark an order paid (`?checkout=success` is ignored).
+
+| Path                                      | Purpose                                |
+| ----------------------------------------- | -------------------------------------- |
+| `POST /api/checkout`                      | Create a Checkout Session (idempotent) |
+| `POST /api/stripe/webhook`                | Signed Stripe events                   |
+| `GET`/`POST /api/business/connect`        | Express onboarding                     |
+| `POST /api/business/orders/[ref]/fulfill` | Shop owner fulfill                     |
+| `POST /api/business/orders/[ref]/refund`  | Shop owner refund                      |
+| `POST /api/admin/orders/[ref]/refund`     | Staff (SA/AD) refund                   |
+| `/orders` · `/orders/[ref]`               | Buyer history and receipts             |
+| `/business/payouts`                       | Connect charges/payouts status         |
+
+Sellers and shop members cannot buy their own listings. Auction checkout requires
+`RESERVED`, the winning bidder, and a future `reservedUntil`. Inventory decrements
+when checkout starts and restores if the session expires or the order is refunded.
+Refunds reverse the Connect transfer and the application fee.
+
+Placeholder Stripe keys (`sk_test_replace_me`) fail closed — checkout returns 503
+instead of faking paid. Forward webhooks locally with:
+
+```bash
+stripe listen --forward-to localhost:3000/api/stripe/webhook
+```
 
 ## Visual identity
 
@@ -212,8 +244,8 @@ self-registered. Group Admin/Moderator badges are community roles, not staff.
 5. ~~Account types + KOBAID~~ ✅
 6. **Marketplace** ✅
 7. **Shops** ✅
-8. **Auctions** ← current
-9. Payments
+8. **Auctions** ✅
+9. **Payments** ← current
 10. Groups / LFG → social → DMs
 11. Influencer / ads → developer portal → staff admin
 12. Production readiness
