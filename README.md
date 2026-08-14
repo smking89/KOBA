@@ -6,7 +6,7 @@ squads; all on one KOBAID.
 
 ## Status
 
-**Phase 1 — Application foundation** is in progress on `chore/project-foundation`.
+**Phase 2 — PWA foundation** is in progress on `feat/pwa-foundation`.
 
 The HTML prototype remains the information-architecture reference:
 
@@ -71,6 +71,24 @@ pnpm exec playwright install chromium
 pnpm test:e2e
 ```
 
+### PWA (Phase 2)
+
+Generate or refresh install icons:
+
+```bash
+pnpm icons:generate
+```
+
+Production build bundles the service worker (`public/sw.js`). Install and update
+prompts appear in production mode:
+
+```bash
+pnpm build && pnpm start
+```
+
+Verify manifest at `/manifest.webmanifest` and offline fallback at `/offline`.
+Sensitive API paths are excluded from service-worker caching by design.
+
 ## Visual identity
 
 | Token          | Value                                  |
@@ -106,8 +124,8 @@ self-registered. Group Admin/Moderator badges are community roles, not staff.
 ## Build plan
 
 1. ~~UI / GUI / UX design prototype~~ ✅
-2. **Application foundation** ← current
-3. PWA foundation
+2. ~~Application foundation~~ ✅
+3. **PWA foundation** ← current
 4. Database + Auth.js
 5. Account types + KOBAID
 6. Marketplace → shops → auctions → payments
