@@ -31,6 +31,10 @@ export function buildPublicProductWhere(query: MarketQuery): Prisma.ProductWhere
     where.platforms = { has: query.platform };
   }
 
+  if (query.listing) {
+    where.listingType = query.listing;
+  }
+
   return where;
 }
 

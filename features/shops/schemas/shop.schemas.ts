@@ -27,6 +27,8 @@ export const upsertProductSchema = z.object({
   gameSlug: z.string().trim().min(1).max(64),
   categorySlug: z.string().trim().min(1).max(64),
   platforms: z.array(z.enum(GAME_PLATFORMS)).min(1).max(4),
+  durationHours: z.number().int().min(1).max(168),
+  minIncrementCents: z.number().int().min(100).max(1_000_000),
 });
 
 export type UpsertProductInput = z.infer<typeof upsertProductSchema>;

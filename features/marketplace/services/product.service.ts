@@ -17,6 +17,7 @@ const productInclude = {
   media: { orderBy: { sortOrder: "asc" as const } },
   variants: { orderBy: { createdAt: "asc" as const } },
   shop: { select: { slug: true, verificationStatus: true } },
+  auction: true,
   seller: {
     select: {
       name: true,
@@ -69,6 +70,14 @@ function toCard(product: NonNullable<ProductRecord>, favorited: boolean): Public
     seller: sellerFrom(product),
     thumbnailAlt: product.media[0]?.alt ?? product.title,
     favorited,
+    auction: product.auction
+      ? {
+          status: product.auction.status,
+          endsAt: product.auction.endsAt.toISOString(),
+          highBidCents: product.auction.highBidCents,
+          minIncrementCents: product.auction.minIncrementCents,
+        }
+      : null,
   };
 }
 

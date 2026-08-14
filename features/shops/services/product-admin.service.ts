@@ -11,6 +11,10 @@ import {
 } from "@/features/shops/lib/access";
 import { ShopError, assertCanManageShop } from "@/features/shops/services/shop.service";
 import type { UpsertProductInput } from "@/features/shops/schemas/shop.schemas";
+import {
+  activateAuctionForProduct,
+  syncAuctionForProduct,
+} from "@/features/auctions/services/auction.service";
 
 async function requireOwnedShop(userId: string) {
   const shop = await prisma.shop.findFirst({
@@ -47,7 +51,7 @@ export async function getSellerProduct(userId: string, slug: string) {
   const shop = await requireOwnedShop(userId);
   const product = await prisma.product.findFirst({
     where: { slug, shopId: shop.id },
-    include: { game: true, category: true },
+    include: { game: true, category: true, auction: true },
   });
   if (!product) {
     throw new ShopError("Product not found in your shop.", "NOT_FOUND");
@@ -85,6 +89,13 @@ export async function createSellerProduct(userId: string, input: UpsertProductIn
     },
   });
 
+  if (input.listingType === "AUCTION") {
+    await syncAuctionForProduct(product.id, {
+      durationHours: input.durationHours,
+      minIncrementCents: input.minIncrementCents,
+    });
+  }
+
   return product;
 }
 
@@ -105,7 +116,7 @@ export async function updateSellerProduct(userId: string, slug: string, input: U
     throw new ShopError("Unknown game or category.", "NOT_FOUND");
   }
 
-  return prisma.product.update({
+  const updated = await prisma.product.update({
     where: { id: product.id },
     data: {
       title: input.title,
@@ -123,6 +134,15 @@ export async function updateSellerProduct(userId: string, slug: string, input: U
       publishedAt: product.moderationStatus === "APPROVED" ? null : product.publishedAt,
     },
   });
+
+  if (input.listingType === "AUCTION") {
+    await syncAuctionForProduct(updated.id, {
+      durationHours: input.durationHours,
+      minIncrementCents: input.minIncrementCents,
+    });
+  }
+
+  return updated;
 }
 
 export async function submitSellerProduct(userId: string, slug: string, ipAddress?: string | null) {
@@ -184,6 +204,10 @@ export async function staffApproveProduct(
     metadata: { slug },
     ipAddress: ipAddress ?? null,
   });
+
+  if (updated.listingType === "AUCTION") {
+    await activateAuctionForProduct(updated.id);
+  }
 
   return updated;
 }
