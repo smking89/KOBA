@@ -1,5 +1,12 @@
 // KOBA — canonical schema. Populated in Phase 12 once Phases 1-11 are built
 // and their per-module data models are reconciled here. See ROADMAP.md.
+//
+// Phase 1 note: apps/api/src/modules/kobaid currently stores KOBAIDs behind
+// an in-memory KobaIdRepository (see that module's README for why), so
+// nothing in apps/api talks to these models yet. They are added here now,
+// ahead of Phase 12, so the shape is validated early and so a future
+// Prisma-backed KobaIdRepository implementation has a target schema that
+// won't need breaking changes for the KOBAID format itself.
 
 generator client {
   provider = "prisma-client-js"
@@ -8,4 +15,114 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+/// Community roles (PL/BZ/IN) are self-registered. Staff roles (SA/AD/MD)
+/// are only created via the admin-issuance path — see kobaid module README.
+enum KobaIdRole {
+  PL
+  BZ
+  IN
+  SA
+  AD
+  MD
+}
+
+/// Auth identity, distinct from KobaId. A User has one or more KobaIds,
+/// one per role per device (see KobaId's unique constraint below).
+model User {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+
+  devices  Device[]
+  kobaIds  KobaId[]
+  interests UserInterest[]
+}
+
+/// Device fingerprint/binding used to enforce "one KOBAID per role per
+/// device" at issuance time.
+model Device {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+
+  kobaIds KobaId[]
+
+  @@index([userId])
+}
+
+/// Minted KOBAID. Immutable once created — deliberately no mutable field
+/// beyond referralCode set at mint time; there is no updatedAt because
+/// there is no update path (corrections are a new issuance, not an edit).
+///
+/// TODO(TDLS): ROADMAP.md's open questions and the Phase 0 prototype refer
+/// to "TDLS encryption" for the KOBAID payload at rest/in transit, but the
+/// term is undefined anywhere in the repo. `code`/`fullId` are stored as
+/// plain validated strings for now — flag this model as the place TDLS
+/// would apply once the client defines what TDLS means. Do not invent a
+/// scheme here.
+model KobaId {
+  id     String     @id @default(uuid())
+  role   KobaIdRole
+  /// 4-char code from the ambiguity-excluded alphabet (see kobaid-format.ts).
+  code   String
+  /// Full rendered identifier, e.g. "KOBA-PL-7F3K".
+  fullId String     @unique
+
+  userId   String
+  user     User   @relation(fields: [userId], references: [id])
+  deviceId String
+  device   Device @relation(fields: [deviceId], references: [id])
+
+  /// Pointer to Phase 10's referral/promo code system — not modeled here.
+  referralCode String?
+
+  /// For staff-issued KOBAIDs, the issuing (staff) KobaId. Null for
+  /// self-registered community KOBAIDs.
+  issuedByKobaId String?
+  issuedBy       KobaId?  @relation("StaffIssuance", fields: [issuedByKobaId], references: [id])
+  issued         KobaId[] @relation("StaffIssuance")
+
+  mintedAt DateTime @default(now())
+
+  cosmeticOwnerships KobaIdCosmeticOwnership[]
+
+  /// One KOBAID per (deviceId, role) pair.
+  @@unique([deviceId, role])
+  @@index([userId])
+}
+
+/// Placeholder relation to owned cosmetics. Cosmetics themselves are
+/// Phase 3 (Marketplace Core) — this only models the join shape (a list of
+/// cosmetic ids) so Phase 3 has somewhere to attach ownership records.
+model KobaIdCosmeticOwnership {
+  id         String @id @default(uuid())
+  kobaIdId   String
+  kobaId     KobaId @relation(fields: [kobaIdId], references: [id])
+  /// Opaque reference to a Phase 3 Cosmetic id — no FK yet since that
+  /// model doesn't exist in this phase.
+  cosmeticId String
+
+  @@index([kobaIdId])
+}
+
+/// Canonical interest hashtag. Catalog management is out of Phase 1 scope
+/// — this only exists so UserInterest has something to join against.
+model Interest {
+  id   String @id @default(uuid())
+  name String @unique
+
+  users UserInterest[]
+}
+
+/// Join table enforcing (at the application layer, via InterestsValidator)
+/// the "minimum 4 interests" onboarding rule.
+model UserInterest {
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  interestId String
+  interest   Interest @relation(fields: [interestId], references: [id])
+
+  @@id([userId, interestId])
 }

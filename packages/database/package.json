@@ -1,0 +1,13 @@
+{
+  "name": "@koba/database",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Prisma schema + migrations for KOBA (Phase 12 integration point)",
+  "scripts": {
+    "validate": "prisma validate",
+    "format": "prisma format"
+  },
+  "devDependencies": {
+    "prisma": "^5.22.0"
+  }
+}
