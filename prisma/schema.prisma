@@ -24,6 +24,9 @@ enum AuditAction {
   PASSWORD_RESET_REQUESTED
   PASSWORD_RESET_COMPLETED
   SESSION_REVOKED
+  KOBAID_MINTED
+  ACCOUNT_SWITCHED
+  KOBAID_ISSUED_STAFF
 }
 
 model User {
@@ -78,11 +81,13 @@ model VerificationToken {
 }
 
 model AccountProfile {
-  id          String   @id @default(cuid())
-  userId      String   @unique
-  displayName String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                 String           @id @default(cuid())
+  userId             String           @unique
+  displayName        String?
+  activeAccountType  KobaAccountType  @default(PLAYER)
+  kobaIdRevealedAt   DateTime?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
