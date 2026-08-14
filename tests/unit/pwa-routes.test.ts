@@ -15,6 +15,7 @@ describe("isSensitivePath", () => {
     expect(isSensitivePath("/api/shops/ironwright/follow")).toBe(true);
     expect(isSensitivePath("/api/business/products")).toBe(true);
     expect(isSensitivePath("/api/auctions/oxide/bids")).toBe(true);
+    expect(isSensitivePath("/api/checkout")).toBe(true);
   });
 
   it("allows public routes", () => {
@@ -32,6 +33,7 @@ describe("prefersNetworkFirst", () => {
     expect(prefersNetworkFirst("/market")).toBe(true);
     expect(prefersNetworkFirst("/shops/ironwright-trading-co")).toBe(true);
     expect(prefersNetworkFirst("/feed")).toBe(true);
+    expect(prefersNetworkFirst("/orders")).toBe(true);
   });
 
   it("treats sensitive paths as network-only preference", () => {
