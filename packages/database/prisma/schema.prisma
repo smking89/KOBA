@@ -117,6 +117,16 @@ model KobaId {
   shopsOwned  Shop[]         @relation("ShopOwner")
   shopFollows ShopFollower[] @relation("ShopFollowerKobaId")
 
+  /// Phase 5 (Groups + LFG) back-relations — additive only, same
+  /// "validated ahead of Phase 12" posture as the Phase 3/4 relations
+  /// above. `apps/api`'s groups module still stores everything behind
+  /// in-memory repositories this phase (see
+  /// apps/api/src/modules/groups/README.md).
+  groupsOwned       Group[]           @relation("GroupOwner")
+  groupMemberships  GroupMembership[] @relation("GroupMembershipMember")
+  groupPosts        GroupPost[]       @relation("GroupPostAuthor")
+  lfgPosts          LfgPost[]         @relation("LfgPostAuthor")
+
   /// One KOBAID per (deviceId, role) pair.
   @@unique([deviceId, role])
   @@index([userId])
@@ -449,4 +459,133 @@ model ShopFollower {
 
   @@id([shopId, followerKobaId])
   @@index([followerKobaId])
+}
+
+// ---------------------------------------------------------------------
+// Phase 5 — Groups + LFG
+//
+// apps/api/src/modules/groups currently stores all of this behind
+// in-memory repositories (GroupRepository/GroupMembershipRepository/
+// GroupPostRepository/LfgPostRepository) — same storage decision and
+// rationale as Phases 1/3/4 above (see that module's README). These
+// models are added here now, ahead of Phase 12, so the target shape is
+// validated early ("prisma validate").
+//
+// `CommunityRole` here is deliberately a *separate* enum from
+// `KobaIdRole` — ROADMAP.md's Phase 5/11 sections call out the
+// community-role vs. platform-staff-role distinction as a hard
+// requirement, matching apps/api/src/modules/accounts/community-role.types.ts.
+// ---------------------------------------------------------------------
+
+/// Community-level role attached to a normal Player/Business KOBAID within
+/// a Group — distinct from `KobaIdRole`'s staff roles (SA/AD/MD). Matches
+/// apps/api/src/modules/accounts/community-role.types.ts's `CommunityRole`
+/// exactly.
+enum CommunityRole {
+  owner
+  admin
+  moderator
+  member
+}
+
+/// Matches apps/api/src/modules/groups/group.types.ts's `GroupVisibility`.
+enum GroupVisibility {
+  public
+  private
+}
+
+/// A Group. `ownerKobaId`/`createdAt` are immutable once created (no
+/// update path for them anywhere in the groups module) — see
+/// apps/api/src/modules/groups/group.types.ts's `Group` docstring.
+model Group {
+  id String @id @default(uuid())
+
+  name       String
+  visibility GroupVisibility @default(public)
+
+  /// Immutable once set. Not restricted to a particular KobaIdRole (unlike
+  /// Shop.ownerKobaId's Business-only rule) — any Player/Business KOBAID
+  /// may own a Group.
+  ownerKobaId String
+  owner       KobaId @relation("GroupOwner", fields: [ownerKobaId], references: [id])
+
+  /// Owner/admin-controlled group-level tag-permission flag — same shape
+  /// as Shop.allowTagging. No enforcement yet (Phase 6); flag + query
+  /// only.
+  allowTagging Boolean @default(true)
+
+  createdAt DateTime @default(now())
+
+  memberships GroupMembership[]
+  posts       GroupPost[]
+  lfgPosts    LfgPost[]
+
+  @@index([ownerKobaId])
+}
+
+/// Join row between a Group and a member KOBAID, carrying that member's
+/// CommunityRole within the group. The group owner is auto-assigned
+/// `owner` here at group-creation time (GroupService#createGroup()).
+model GroupMembership {
+  groupId String
+  group   Group  @relation(fields: [groupId], references: [id])
+
+  memberKobaId String
+  member       KobaId @relation("GroupMembershipMember", fields: [memberKobaId], references: [id])
+
+  role     CommunityRole @default(member)
+  joinedAt DateTime      @default(now())
+
+  @@id([groupId, memberKobaId])
+  @@index([memberKobaId])
+}
+
+/// A lightweight text post scoped to a Group's feed — NOT Phase 6's full
+/// social layer (no likes/comments/shares/tagging enforcement), just
+/// enough of a "group feed" concept to exist and be queryable. See
+/// apps/api/src/modules/groups/group-feed.service.ts.
+model GroupPost {
+  id String @id @default(uuid())
+
+  groupId String
+  group   Group  @relation(fields: [groupId], references: [id])
+
+  authorKobaId String
+  author       KobaId @relation("GroupPostAuthor", fields: [authorKobaId], references: [id])
+
+  text String
+
+  createdAt DateTime @default(now())
+
+  @@index([groupId])
+}
+
+/// A Looking-For-Group post. `groupId` is nullable — an LFG post can be
+/// independent of any Group, per the Phase 0 design's standalone LFG
+/// Page. `expiresAt`/`filledSlots` are read against the clock at query
+/// time (LfgService#isExpired()) — there is deliberately no separate
+/// mutable `status` column that could drift from the clock, same posture
+/// as Auction.endsAt above.
+model LfgPost {
+  id String @id @default(uuid())
+
+  authorKobaId String
+  author       KobaId @relation("LfgPostAuthor", fields: [authorKobaId], references: [id])
+
+  groupId String?
+  group   Group?  @relation(fields: [groupId], references: [id])
+
+  game             String
+  mode             String
+  requirementsText String @default("")
+
+  maxSlots    Int
+  filledSlots Int @default(0)
+
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([groupId])
+  @@index([authorKobaId])
+  @@index([expiresAt])
 }
