@@ -14,6 +14,7 @@ describe("isSensitivePath", () => {
     expect(isSensitivePath("/api/market/favorites")).toBe(true);
     expect(isSensitivePath("/api/shops/ironwright/follow")).toBe(true);
     expect(isSensitivePath("/api/business/products")).toBe(true);
+    expect(isSensitivePath("/api/auctions/oxide/bids")).toBe(true);
   });
 
   it("allows public routes", () => {

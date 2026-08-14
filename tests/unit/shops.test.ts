@@ -90,6 +90,8 @@ describe("shop schemas", () => {
       gameSlug: "rust",
       categorySlug: "monuments",
       platforms: ["STEAM"],
+      durationHours: 48,
+      minIncrementCents: 1000,
     });
     expect(parsed.success).toBe(true);
     expect("moderationStatus" in (parsed.data ?? {})).toBe(false);
