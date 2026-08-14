@@ -2,10 +2,13 @@ import { describe, expect, it } from "vitest";
 import { isAuthPath, isProtectedPath } from "@/lib/auth/protected-routes";
 
 describe("protected routes", () => {
-  it("protects settings routes", () => {
-    expect(isProtectedPath("/settings")).toBe(true);
-    expect(isProtectedPath("/settings/profile")).toBe(true);
-    expect(isProtectedPath("/market")).toBe(false);
+  it("protects identity and dashboard routes", () => {
+    expect(isProtectedPath("/kobaid")).toBe(true);
+    expect(isProtectedPath("/enter")).toBe(true);
+    expect(isProtectedPath("/dashboard")).toBe(true);
+    expect(isProtectedPath("/business")).toBe(true);
+    expect(isProtectedPath("/influencer")).toBe(true);
+    expect(isProtectedPath("/admin")).toBe(true);
   });
 
   it("recognizes auth routes", () => {

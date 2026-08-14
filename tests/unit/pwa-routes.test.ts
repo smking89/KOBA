@@ -9,7 +9,8 @@ describe("isSensitivePath", () => {
   it("blocks auth and payment API prefixes", () => {
     expect(isSensitivePath("/api/auth/session")).toBe(true);
     expect(isSensitivePath("/api/stripe/webhook")).toBe(true);
-    expect(isSensitivePath("/api/messages/123")).toBe(true);
+    expect(isSensitivePath("/api/accounts/switch")).toBe(true);
+    expect(isSensitivePath("/api/admin/kobaid")).toBe(true);
   });
 
   it("allows public routes", () => {

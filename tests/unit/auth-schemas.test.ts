@@ -12,6 +12,7 @@ describe("auth schemas", () => {
       name: "Player One",
       email: "player@example.com",
       password: "SecurePass123",
+      accountType: "PLAYER",
     });
     expect(result.success).toBe(true);
   });
