@@ -363,6 +363,49 @@ describe('KobaidService', () => {
     });
   });
 
+  describe('cosmetic-visibility regression (switching must not touch cosmetic ownership)', () => {
+    it('leaves cosmetic ownership refs unchanged on both the newly-active and newly-inactive KOBAIDs when switching', async () => {
+      const player = await service.mint({
+        role: KobaIdRole.PLAYER,
+        deviceId: 'device-1',
+        userId: 'user-1',
+      });
+      const business = await service.mint({
+        role: KobaIdRole.BUSINESS,
+        deviceId: 'device-1',
+        userId: 'user-1',
+      });
+
+      // Simulate Phase 3 having already granted cosmetic ownership to both
+      // of this device's KOBAIDs (no grant API exists yet this phase —
+      // cosmeticOwnershipRefs is a placeholder field populated directly
+      // here, mirroring how other specs bootstrap fixtures via repository
+      // .save() directly).
+      await repository.save({ ...player, cosmeticOwnershipRefs: ['cosmetic-player-1'] });
+      await repository.save({
+        ...business,
+        cosmeticOwnershipRefs: ['cosmetic-business-1', 'cosmetic-business-2'],
+      });
+
+      const beforePlayer = await service.getCosmeticOwnerships(player.id);
+      const beforeBusiness = await service.getCosmeticOwnerships(business.id);
+      expect(beforePlayer).toEqual(['cosmetic-player-1']);
+      expect(beforeBusiness).toEqual(['cosmetic-business-1', 'cosmetic-business-2']);
+
+      // Switch active mode: Player -> Business -> back to Player.
+      await service.activateForDevice('device-1', KobaIdRole.PLAYER);
+      await service.activateForDevice('device-1', KobaIdRole.BUSINESS);
+      const finalPlayer = await service.activateForDevice('device-1', KobaIdRole.PLAYER);
+
+      expect(finalPlayer.active).toBe(true);
+
+      const afterPlayer = await service.getCosmeticOwnerships(player.id);
+      const afterBusiness = await service.getCosmeticOwnerships(business.id);
+      expect(afterPlayer).toEqual(beforePlayer);
+      expect(afterBusiness).toEqual(beforeBusiness);
+    });
+  });
+
   describe('TDLS transport (exportForTransport / importFromTransport)', () => {
     it('round-trips a real minted KobaId end-to-end', async () => {
       const masterKey = randomBytes(32);

@@ -1,13 +1,13 @@
 # accounts
 
-**Phase:** capability model built in Phase 1; badge-suppression rendering
-and a tightly-scoped slice of Phase 2's account switching (the
-`POST /accounts/switch` endpoint only — not the full flow) pulled forward
-in a later pass — see ROADMAP.md.
-**Status:** capability-flag resolution, mandatory-interest validation,
-badge-suppression resolution, and the account-switch service/endpoint are
-implemented. The full Phase 2 flow (settings UI, tag-permission
-enforcement, ad-pausing) is still NOT implemented — see "Explicitly out of
+**Phase:** capability model built in Phase 1; Phase 2 (Account Switching
+Flow) — see ROADMAP.md.
+**Status:** capability-flag resolution (including the Phase 7 `adsPaused`
+flag), tagging-permission resolution (the Phase 2/6 mode-to-permission
+rule mapping), mandatory-interest validation, badge-suppression
+resolution, and the account-switch service/endpoint are implemented. The
+account-switching **settings UI** and Phase 6's actual tag
+*enforcement*/rendering are still NOT implemented — see "Explicitly out of
 scope" below.
 
 ## What's here
@@ -16,16 +16,40 @@ scope" below.
   booleans): `marketplaceBuy`, `marketplaceBid`, `groupsLfgDmsFeed`,
   `cosmeticInventory`, `shopTools`, `productUploads`, `adsCreation`,
   `devPortalAccess`, `promoPage`, `referralCodeManagement`,
-  `earningsDashboard`.
+  `earningsDashboard`, `adsPaused` (Phase 7's ad-pause-in-Player-mode
+  flag — the ads module itself doesn't exist yet; this is just the
+  mode-to-pause mapping for Phase 7 to consume later).
 - `capability.service.ts` — `CapabilityService.resolve(role)`, pure/no I/O:
-  - Player: marketplace buy/bid, groups/LFG/DMs/feed, cosmetic inventory.
-    No shop tools, no dev portal, no promo page.
+  - Player: marketplace buy/bid, groups/LFG/DMs/feed, cosmetic inventory,
+    `adsPaused: true`. No shop tools, no dev portal, no promo page.
   - Business: every Player capability, plus shop tools, product uploads,
-    ads, dev portal access.
-  - Influencer: promo page, referral code management, earnings dashboard.
+    ads, dev portal access; `adsPaused: false`.
+  - Influencer: promo page, referral code management, earnings dashboard;
+    `adsPaused: false`.
   - Staff roles (`SA`/`AD`/`MD`) throw
     `CapabilitiesNotDefinedForStaffRoleError` — staff permissions are
     Phase 11's RBAC model, not this one.
+- `tagging-permission.types.ts` — `TaggingPermissions`, a typed flag set:
+  `canTagAsPlayer`, `canTagShopProducts`, `canTagPromo`. This is the
+  mode-to-permission *rule* mapping ROADMAP.md's Phase 2 "tagging
+  permission changes per mode" deliverable calls for — Phase 6 (Social
+  Layer) is what builds the actual `TagAction`/@mention model and
+  enforces these rules; nothing here parses/renders/persists a tag.
+- `tagging-permission.service.ts` — `TaggingPermissionService.resolve(role)`,
+  pure/no I/O, same shape as `CapabilityService`:
+  - Player: `canTagAsPlayer: true` only — can tag other players/shops/
+    products in normal social contexts; cannot tag as a business or issue
+    promotional tags.
+  - Business: every Player tagging permission, plus
+    `canTagShopProducts: true` (ROADMAP Phase 6: "Business mode enables
+    shop/product tagging").
+  - Influencer: every Player tagging permission, plus `canTagPromo: true`
+    (ROADMAP Phase 6: "Influencer mode enables promo tagging").
+  - Switching to Player mode naturally clears `canTagShopProducts`/
+    `canTagPromo` (ROADMAP Phase 6: "Player mode disables business/
+    influencer tagging") since those flags are per-resolve, not additive
+    state.
+  - Staff roles throw `TaggingPermissionsNotDefinedForStaffRoleError`.
 - `interests.validator.ts` — `InterestsValidator`, enforcing "minimum 4
   selected interest hashtags before onboarded" (`MINIMUM_INTERESTS = 4`),
   case-insensitive/blank-filtered dedupe before counting.
@@ -33,7 +57,7 @@ scope" below.
   minimum. The interest catalog itself is not in scope — only the count
   rule and its typed error.
 - `accounts.errors.ts` — `CapabilitiesNotDefinedForStaffRoleError`,
-  `InsufficientInterestsError`.
+  `InsufficientInterestsError`, `TaggingPermissionsNotDefinedForStaffRoleError`.
 - `community-role.types.ts` — `CommunityRole` enum
   (`owner`/`admin`/`moderator`/`member`): a Group/Shop-scoped role attached
   to a normal Player/Business KOBAID. Deliberately a *separate* concept
@@ -54,27 +78,44 @@ scope" below.
     }`; `member`/no role → `{ showBadge: false }`.
 - `account-switch.types.ts` — `SwitchActiveRoleParams`/
   `SwitchActiveRoleResult` (the latter bundling the newly-active `KobaId`,
-  its `CapabilityFlags`, and its `BadgeResult`).
+  its `CapabilityFlags` — including `adsPaused` — its `BadgeResult`, and
+  its `TaggingPermissions`).
 - `account-switch.service.ts` — `AccountSwitchService.switchActiveRole()`:
   delegates activation to `KobaidService#activateForDevice()` (which
   enforces "must already exist, never mints, immutability preserved" — see
-  kobaid/README.md), then resolves capabilities via `CapabilityService`
-  and badge via `resolveBadgeForKobaId()`.
+  kobaid/README.md), then resolves capabilities via `CapabilityService`,
+  badge via `resolveBadgeForKobaId()`, and tagging permissions via
+  `TaggingPermissionService` — all wired through the single
+  `SwitchActiveRoleResult` response so callers don't need a second
+  round-trip for tagging/ads-pause state.
 - `account-switch.controller.ts` — `AccountSwitchController`, a thin Nest
   controller exposing `POST /accounts/switch` (body: `{ deviceId, role,
   communityRole? }`), the one HTTP route implemented so far in either
   module.
 - `accounts.module.ts` — Nest module importing `KobaidModule`, wiring
   `AccountSwitchController`, and exporting `CapabilityService`,
-  `InterestsValidator`, `AccountSwitchService`.
+  `InterestsValidator`, `AccountSwitchService`, `TaggingPermissionService`.
 
-## Explicitly out of scope this phase (Phase 2/6/7)
+## Cosmetic-visibility-unaffected invariant
+
+ROADMAP.md's Phase 0/2 design explicitly promises cosmetics stay visible
+regardless of active mode. There's no cosmetics module yet (Phase 3), but
+`KobaId.cosmeticOwnershipRefs` (see kobaid/README.md) is the Phase 1
+placeholder relation for it, and `kobaid.service.spec.ts`'s
+"cosmetic-visibility regression" suite proves `activateForDevice()`
+(switching) never alters, deletes, or hides ownership refs for any
+KOBAID on the device — before/after switching, both the newly-active and
+newly-inactive KOBAIDs' ownership refs are unchanged and queryable via
+`KobaidService#getCosmeticOwnerships()`.
+
+## Explicitly out of scope this phase (Phase 6/7)
 
 - The account-switching **UI** itself (settings screen) — only the backend
   service + endpoint are implemented.
-- Tagging-permission enforcement on switch (`TagPermissionRule`, Phase 6).
-- Ad-pausing in Player mode (Phase 7).
+- Tag *enforcement*/rendering against a real `TagAction`/@mention model
+  (Phase 6) — only the permission *rules* (`TaggingPermissionService`)
+  exist this phase, as ROADMAP.md's Phase 2 section scopes it.
+- The ads module itself (Phase 7) — only the `adsPaused` flag exists for
+  it to consume later.
 - `AccountModeState` as its own persisted concept beyond `KobaId.active` —
   "last switched at" tracking, multi-user session state, etc.
-- Regression coverage for "cosmetic visibility must not change on mode
-  switch" — no cosmetics module exists yet for that to regress against.

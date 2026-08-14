@@ -35,6 +35,10 @@ export class InMemoryKobaIdRepository implements KobaIdRepository {
     return kobaId;
   }
 
+  async getCosmeticOwnerships(kobaId: string): Promise<readonly string[]> {
+    return this.byId.get(kobaId)?.cosmeticOwnershipRefs ?? [];
+  }
+
   /** Test/dev helper — not part of the repository interface. */
   clear(): void {
     this.byId.clear();

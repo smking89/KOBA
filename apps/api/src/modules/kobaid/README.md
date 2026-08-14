@@ -21,7 +21,9 @@ placeholders.
   `KobaIdCollisionRetryExhaustedError`.
 - `kobaid.repository.ts` — `KobaIdRepository` storage interface
   (`KOBAID_REPOSITORY` DI token), including `findAllByDevice()` (used by
-  switching to find every KOBAID on a device).
+  switching to find every KOBAID on a device) and
+  `getCosmeticOwnerships(kobaId)` (reads `cosmeticOwnershipRefs` — see
+  "Cosmetic ownership" below).
 - `in-memory-kobaid.repository.ts` — the only implementation wired up this
   phase.
 - `staff-issuance-log.types.ts` / `staff-issuance-log.repository.ts` /
@@ -54,6 +56,8 @@ placeholders.
   - KOBAIDs are otherwise immutable: there is no general update method
     anywhere in this module, intentionally. `active` is the sole mutable
     field, and only `activateForDevice()` changes it.
+  - `getCosmeticOwnerships(kobaId)` — read-only access to a KOBAID's
+    `cosmeticOwnershipRefs` (see "Cosmetic ownership" below).
   - `exportForTransport(kobaId, peerId, masterKey)` /
     `importFromTransport(token, masterKey)` — TDLS-backed secure transport
     of an already-minted KOBAID's public fields between sandboxed
@@ -75,6 +79,21 @@ dependency or generated client yet — wiring Prisma-backed repositories is
 a Phase 2+/Phase 12 follow-up, not part of this phase's scope. The seams
 (`KobaIdRepository`, `StaffIssuanceLogRepository`) are designed so that
 swap doesn't touch `KobaidService` or its tests.
+
+## Cosmetic ownership — visibility unaffected by mode switching
+
+`KobaId.cosmeticOwnershipRefs` (see kobaid.types.ts) is the Phase 1
+placeholder relation for owned cosmetics (Phase 3 owns the cosmetics
+themselves — this module only models the shape). Nothing in this module
+grants ownership yet; `KobaidService#getCosmeticOwnerships(kobaId)` /
+`KobaIdRepository#getCosmeticOwnerships(kobaId)` exist as a read-only
+query so `activateForDevice()` (switching) can be regression-tested
+against ROADMAP.md's Phase 0/2 promise that cosmetic visibility never
+changes with active mode — see `kobaid.service.spec.ts`'s
+"cosmetic-visibility regression" suite, which mints two KOBAIDs on one
+device, seeds ownership refs on both, switches active mode back and
+forth between them, and asserts both KOBAIDs' ownership refs are
+unchanged and queryable throughout.
 
 ## TDLS — transport security between sandboxed functions/services
 

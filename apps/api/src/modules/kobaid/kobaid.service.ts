@@ -124,6 +124,17 @@ export class KobaidService {
   }
 
   /**
+   * Cosmetic-ownership refs for a KOBAID (see kobaid.types.ts's
+   * `cosmeticOwnershipRefs` placeholder). Read-only — nothing in this
+   * module grants cosmetic ownership yet (Phase 3); this exists so
+   * switching (`activateForDevice`) can be regression-tested against it
+   * never changing what's returned here for any KOBAID on a device.
+   */
+  async getCosmeticOwnerships(kobaId: string): Promise<readonly string[]> {
+    return this.repository.getCosmeticOwnerships(kobaId);
+  }
+
+  /**
    * Marks the device's existing KOBAID for `role` as active, and any other
    * active KOBAID on the same device as inactive. Does NOT mint a KOBAID —
    * the device must already hold one for `role`, or this throws

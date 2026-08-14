@@ -22,3 +22,13 @@ export class InsufficientInterestsError extends AccountsDomainError {
     super(`At least ${minimum} interests are required to complete onboarding, got ${count}`);
   }
 }
+
+/** Thrown when tagging-permission resolution is requested for a staff role. */
+export class TaggingPermissionsNotDefinedForStaffRoleError extends AccountsDomainError {
+  constructor(role: string) {
+    super(
+      `Tagging permissions for staff role "${role}" are not defined — the Player/Business/` +
+        'Influencer tagging-permission model (ROADMAP.md Phase 2/6) does not apply to staff roles',
+    );
+  }
+}

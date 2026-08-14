@@ -15,6 +15,13 @@ export interface CapabilityFlags {
   promoPage: boolean;
   referralCodeManagement: boolean;
   earningsDashboard: boolean;
+  /**
+   * Phase 7 (KOBA Ads) flag, wired through here so it has somewhere to
+   * attach ahead of the ads module existing: true while the active role
+   * is Player, false for Business/Influencer. The ads module itself
+   * isn't built yet — this is just the mode-to-pause mapping.
+   */
+  adsPaused: boolean;
 }
 
 export const NO_CAPABILITIES: CapabilityFlags = {
@@ -29,4 +36,5 @@ export const NO_CAPABILITIES: CapabilityFlags = {
   promoPage: false,
   referralCodeManagement: false,
   earningsDashboard: false,
+  adsPaused: false,
 };

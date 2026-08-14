@@ -7,6 +7,7 @@ import { KobaIdRole } from '../kobaid/kobaid.types';
 import { AccountSwitchService } from './account-switch.service';
 import { CapabilityService } from './capability.service';
 import { CommunityRole } from './community-role.types';
+import { TaggingPermissionService } from './tagging-permission.service';
 
 describe('AccountSwitchService', () => {
   let kobaidService: KobaidService;
@@ -20,7 +21,11 @@ describe('AccountSwitchService', () => {
       new InMemoryStaffIssuanceLogRepository(),
       new TdlsService(),
     );
-    service = new AccountSwitchService(kobaidService, new CapabilityService());
+    service = new AccountSwitchService(
+      kobaidService,
+      new CapabilityService(),
+      new TaggingPermissionService(),
+    );
   });
 
   it('switches to a role the device already has and returns its capabilities', async () => {
@@ -35,6 +40,82 @@ describe('AccountSwitchService', () => {
     expect(result.kobaId.active).toBe(true);
     expect(result.capabilities.marketplaceBuy).toBe(true);
     expect(result.badge).toEqual({ showBadge: false });
+  });
+
+  it('includes tagging permissions for the newly-active role', async () => {
+    await kobaidService.mint({ role: KobaIdRole.PLAYER, deviceId: 'device-1', userId: 'user-1' });
+    await kobaidService.mint({
+      role: KobaIdRole.BUSINESS,
+      deviceId: 'device-1',
+      userId: 'user-1',
+    });
+    await kobaidService.mint({
+      role: KobaIdRole.INFLUENCER,
+      deviceId: 'device-1',
+      userId: 'user-1',
+    });
+
+    const player = await service.switchActiveRole({
+      deviceId: 'device-1',
+      role: KobaIdRole.PLAYER,
+    });
+    expect(player.tagging).toEqual({
+      canTagAsPlayer: true,
+      canTagShopProducts: false,
+      canTagPromo: false,
+    });
+
+    const business = await service.switchActiveRole({
+      deviceId: 'device-1',
+      role: KobaIdRole.BUSINESS,
+    });
+    expect(business.tagging).toEqual({
+      canTagAsPlayer: true,
+      canTagShopProducts: true,
+      canTagPromo: false,
+    });
+
+    const influencer = await service.switchActiveRole({
+      deviceId: 'device-1',
+      role: KobaIdRole.INFLUENCER,
+    });
+    expect(influencer.tagging).toEqual({
+      canTagAsPlayer: true,
+      canTagShopProducts: false,
+      canTagPromo: true,
+    });
+  });
+
+  it('sets adsPaused true only while Player mode is active', async () => {
+    await kobaidService.mint({ role: KobaIdRole.PLAYER, deviceId: 'device-1', userId: 'user-1' });
+    await kobaidService.mint({
+      role: KobaIdRole.BUSINESS,
+      deviceId: 'device-1',
+      userId: 'user-1',
+    });
+    await kobaidService.mint({
+      role: KobaIdRole.INFLUENCER,
+      deviceId: 'device-1',
+      userId: 'user-1',
+    });
+
+    const player = await service.switchActiveRole({
+      deviceId: 'device-1',
+      role: KobaIdRole.PLAYER,
+    });
+    expect(player.capabilities.adsPaused).toBe(true);
+
+    const business = await service.switchActiveRole({
+      deviceId: 'device-1',
+      role: KobaIdRole.BUSINESS,
+    });
+    expect(business.capabilities.adsPaused).toBe(false);
+
+    const influencer = await service.switchActiveRole({
+      deviceId: 'device-1',
+      role: KobaIdRole.INFLUENCER,
+    });
+    expect(influencer.capabilities.adsPaused).toBe(false);
   });
 
   it('includes badge resolution using the passed community role', async () => {

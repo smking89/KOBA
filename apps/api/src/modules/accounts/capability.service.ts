@@ -9,6 +9,8 @@ const PLAYER_CAPABILITIES: CapabilityFlags = {
   marketplaceBid: true,
   groupsLfgDmsFeed: true,
   cosmeticInventory: true,
+  // Ads only pause in Player mode (Phase 7 flag, see capability.types.ts).
+  adsPaused: true,
 };
 
 const BUSINESS_CAPABILITIES: CapabilityFlags = {
@@ -17,6 +19,7 @@ const BUSINESS_CAPABILITIES: CapabilityFlags = {
   productUploads: true,
   adsCreation: true,
   devPortalAccess: true,
+  adsPaused: false,
 };
 
 const INFLUENCER_CAPABILITIES: CapabilityFlags = {
@@ -24,6 +27,7 @@ const INFLUENCER_CAPABILITIES: CapabilityFlags = {
   promoPage: true,
   referralCodeManagement: true,
   earningsDashboard: true,
+  adsPaused: false,
 };
 
 /**

@@ -20,6 +20,8 @@ describe('CapabilityService', () => {
     expect(flags.promoPage).toBe(false);
     expect(flags.referralCodeManagement).toBe(false);
     expect(flags.earningsDashboard).toBe(false);
+
+    expect(flags.adsPaused).toBe(true);
   });
 
   it('grants Business every Player capability plus shop tools/ads/dev portal', () => {
@@ -35,6 +37,8 @@ describe('CapabilityService', () => {
     expect(business.productUploads).toBe(true);
     expect(business.adsCreation).toBe(true);
     expect(business.devPortalAccess).toBe(true);
+
+    expect(business.adsPaused).toBe(false);
   });
 
   it('grants Influencer promo page/referral management/earnings dashboard only', () => {
@@ -46,6 +50,8 @@ describe('CapabilityService', () => {
 
     expect(flags.marketplaceBuy).toBe(false);
     expect(flags.shopTools).toBe(false);
+
+    expect(flags.adsPaused).toBe(false);
   });
 
   it.each([KobaIdRole.SUPERADMIN, KobaIdRole.ADMIN, KobaIdRole.MODERATOR])(
