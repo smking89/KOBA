@@ -11,6 +11,7 @@ describe("isSensitivePath", () => {
     expect(isSensitivePath("/api/stripe/webhook")).toBe(true);
     expect(isSensitivePath("/api/accounts/switch")).toBe(true);
     expect(isSensitivePath("/api/admin/kobaid")).toBe(true);
+    expect(isSensitivePath("/api/market/favorites")).toBe(true);
   });
 
   it("allows public routes", () => {
