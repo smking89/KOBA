@@ -48,8 +48,34 @@ picking one number for everyone.
 
 ## 2. Recommended KOBA rates
 
-**Unverified / regular shops: 12% of the gross transaction amount.**
-**Blue-Badge-verified shops: 6% of the gross transaction amount.**
+> **Revised 2026-08-13 per client direction:** the client wants KOBA
+> positioned as a clearly low-fee platform relative to competitors,
+> prioritizing that over maximizing take rate — "as low as possible but
+> still make a good profit... I don't want KOBA to have high fees like
+> other marketplaces." The numbers below replace the original 12%/6%
+> recommendation for that reason. The 2x verified/unverified ratio and
+> all the reasoning in this section carry over unchanged; only the
+> absolute levels moved down.
+
+**Unverified / regular shops: 8% of the gross transaction amount.**
+**Blue-Badge-verified shops: 4% of the gross transaction amount.**
+
+Where this lands against the comparator table (§1): below Etsy's ~9.5%
+blended rate and Gumroad's 10% direct rate at the unverified tier, and
+below itch.io's own 10% *default* slider at the verified tier — i.e.
+deliberately cheaper than every real-money creator marketplace surveyed
+except itch.io's zero-floor option (which isn't a guaranteed-revenue
+model, so not viable as KOBA's actual rate, only as a positioning
+reference). Still comfortably above Stripe's own ~2.9%+$0.30 processing
+cost (see §4's worked examples, rates there are stale and use the old
+12%/6% figures pending an update pass), so KOBA retains real margin —
+roughly 4-5 points of margin over processing cost at the unverified
+tier, 1-1.5 points at the verified tier on typical transaction sizes.
+
+**Original 12%/6% recommendation, kept below for the reasoning it still
+supports (why a 2x gap, why pure-percentage, competitor grounding) —
+treat the specific numbers in the prose that follows as superseded by
+8%/4% above:**
 
 Both are pure percentages (see §3 for why no added flat fee), computed
 on the gross order amount the buyer pays — the same base
