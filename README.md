@@ -6,7 +6,7 @@ squads; all on one KOBAID.
 
 ## Status
 
-**Phase 2 — PWA foundation** is in progress on `feat/pwa-foundation`.
+**Phase 3 — Database & authentication** is in progress on `feat/auth-foundation`.
 
 The HTML prototype remains the information-architecture reference:
 
@@ -22,7 +22,7 @@ live in `app/globals.css` and `lib/design-tokens.ts`.
 - Tailwind CSS v4 · shadcn-style primitives
 - Zod · Zustand (UI chrome only)
 - Vitest · Playwright · ESLint · Prettier
-- Docker Compose PostgreSQL (Auth/Prisma land in Phase 3)
+- Docker Compose PostgreSQL · Prisma · Auth.js (Phase 3)
 - GitHub Actions CI
 - Vercel-compatible
 
@@ -39,20 +39,28 @@ live in `app/globals.css` and `lib/design-tokens.ts`.
 ```bash
 pnpm install
 cp .env.example .env.local
+# Generate AUTH_SECRET: openssl rand -base64 32
 pnpm dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
 
-### Local database (optional until Phase 3)
+### Local database
 
 ```bash
 docker compose up -d
+pnpm db:migrate
 ```
 
 Default URL (also in `.env.example`):
 
 `postgresql://koba:koba@localhost:5432/koba?schema=public`
+
+Required env for auth (add to `.env.local`):
+
+- `DATABASE_URL` — Postgres connection string
+- `AUTH_SECRET` — at least 32 random characters (`openssl rand -base64 32`)
+- `AUTH_URL` — usually `http://localhost:3000`
 
 ### Quality checks
 
@@ -88,6 +96,25 @@ pnpm build && pnpm start
 
 Verify manifest at `/manifest.webmanifest` and offline fallback at `/offline`.
 Sensitive API paths are excluded from service-worker caching by design.
+
+### Authentication (Phase 3)
+
+Routes:
+
+| Path               | Purpose                          |
+| ------------------ | -------------------------------- |
+| `/register`        | Create player account            |
+| `/verify-email`    | Confirm email (link from mailer) |
+| `/login`           | Credentials sign-in              |
+| `/forgot-password` | Request reset link               |
+| `/reset-password`  | Set new password                 |
+| `/settings`        | Protected (requires session)     |
+
+In development, verification and reset links are logged to the terminal
+(`lib/email/dev-mailer.ts`) instead of sending real email.
+
+Flow: register → verify email → login. Password reset uses one-hour tokens.
+Staff roles (SA/AD/MD) are never self-registered — KOBAID minting is Phase 4.
 
 ## Visual identity
 
