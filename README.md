@@ -6,7 +6,7 @@ squads; all on one KOBAID.
 
 ## Status
 
-**Phase 10 — Social** is in progress on `feat/social`.
+**Phase 11 — Direct messaging** is in progress on `feat/messages`.
 
 The HTML prototype remains the information-architecture reference:
 
@@ -265,6 +265,33 @@ Pagination is `page` / `pageSize` (default 8).
 Seeded examples: `/u/maxbuilds`, `/u/ironwright`, `KOBA-PST-FEED0001`,
 `KOBA-STY-WIPE0001`.
 
+### Direct messaging (Phase 11)
+
+Private 1:1 conversations at `/messages` and `/messages/[ref]`. Blocked accounts
+cannot open or continue a chat. Read state, typing signals, and live updates use
+SSE. Voice notes and attachments accept **https URLs only** in this phase (no
+binary upload yet). Call buttons are UI stubs.
+
+**Vanish mode** marks new messages as vanish and purges them when a participant
+leaves the thread (`pagehide` or explicit leave). Vanish cannot prevent
+screenshots, screen recordings, notification previews, or copies made before
+purge — do not advertise otherwise.
+
+| Path                              | Purpose                     |
+| --------------------------------- | --------------------------- |
+| `GET /api/messages`               | Inbox                       |
+| `POST /api/messages`              | Open/create chat by handle  |
+| `GET /api/messages/[ref]`         | Thread snapshot             |
+| `POST /api/messages/[ref]`        | Send message                |
+| `GET /api/messages/[ref]/stream`  | Live SSE updates            |
+| `POST /api/messages/[ref]/read`   | Mark read                   |
+| `POST /api/messages/[ref]/typing` | Typing signal               |
+| `POST /api/messages/[ref]/vanish` | Toggle vanish mode          |
+| `POST /api/messages/[ref]/leave`  | Purge vanish messages       |
+| `POST /api/messages/[ref]/report` | Report conversation/message |
+
+Seeded example: `KOBA-DM-WIPE0001` between maxbuilds and ironwright.
+
 ## Visual identity
 
 | Token          | Value                                  |
@@ -309,8 +336,8 @@ self-registered. Group Admin/Moderator badges are community roles, not staff.
 8. **Auctions** ✅
 9. **Payments** ✅
 10. **Groups / LFG** ✅
-11. **Social** ← current
-12. DMs
+11. **Social** ✅
+12. **Direct messaging** ← current
 13. Influencer / ads → developer portal → staff admin
 14. Production readiness
 
