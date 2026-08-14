@@ -1,21 +1,46 @@
+import { auth } from "@/lib/auth";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
 import { StatusPill } from "@/components/koba/status-pill";
 import { cn } from "@/lib/utils";
-import { MOCK_COIN_TX, MOCK_WALLET, coinCategoryLabel } from "@/features/wallet/lib/types";
+import { coinCategoryLabel, type CoinTransactionView, type WalletSnapshot } from "@/features/wallet/lib/types";
+import {
+  getWalletSnapshot,
+  listTransactions,
+} from "@/features/wallet/services/ledger.service";
 
 export const metadata = { title: "Wallet" };
 
-export default function WalletPage() {
-  const wallet = MOCK_WALLET;
+const EMPTY_WALLET: WalletSnapshot = {
+  totalCoins: 0,
+  purchased: 0,
+  promotional: 0,
+  earned: 0,
+  reserved: 0,
+};
+
+export default async function WalletPage() {
+  const session = await auth();
+  let wallet: WalletSnapshot = EMPTY_WALLET;
+  let transactions: CoinTransactionView[] = [];
+  if (session?.user.id) {
+    try {
+      [wallet, transactions] = await Promise.all([
+        getWalletSnapshot(session.user.id),
+        listTransactions(session.user.id),
+      ]);
+    } catch {
+      wallet = EMPTY_WALLET;
+      transactions = [];
+    }
+  }
 
   return (
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-semibold tracking-tight">KOBA Coins</h1>
         <p className="mt-2 max-w-2xl text-sm text-muted">
-          Presentation wallet only. Balances are not mutated here — future settlement uses a
-          double-entry ledger (accounts, debit/credit, reservation, capture, release, refund).
+          Double-entry ledger balances. Purchase checkout is not implemented in this phase.
         </p>
       </div>
 
@@ -53,28 +78,32 @@ export default function WalletPage() {
       <Card>
         <CardTitle>Transaction history</CardTitle>
         <ul className="mt-4 space-y-3">
-          {MOCK_COIN_TX.map((tx) => (
-            <li
-              key={tx.id}
-              className="flex flex-col gap-1 border-b border-border/70 pb-3 last:border-0 sm:flex-row sm:items-center sm:justify-between"
-            >
-              <div>
-                <p className="text-sm font-medium">{coinCategoryLabel(tx.category)}</p>
-                <p className="text-xs text-muted">{tx.note}</p>
-              </div>
-              <div className="flex items-center gap-2">
-                {tx.bucket ? <StatusPill>{tx.bucket}</StatusPill> : null}
-                <span
-                  className={cn(
-                    "font-mono text-sm",
-                    tx.amount < 0 ? "text-destructive" : "text-electric-green",
-                  )}
-                >
-                  {tx.amount > 0 ? `+${tx.amount}` : tx.amount}
-                </span>
-              </div>
-            </li>
-          ))}
+          {transactions.length === 0 ? (
+            <li className="text-sm text-muted">No ledger activity yet.</li>
+          ) : (
+            transactions.map((tx) => (
+              <li
+                key={tx.id}
+                className="flex flex-col gap-1 border-b border-border/70 pb-3 last:border-0 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div>
+                  <p className="text-sm font-medium">{coinCategoryLabel(tx.category)}</p>
+                  <p className="text-xs text-muted">{tx.note}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  {tx.bucket ? <StatusPill>{tx.bucket}</StatusPill> : null}
+                  <span
+                    className={cn(
+                      "font-mono text-sm",
+                      tx.amount < 0 ? "text-destructive" : "text-electric-green",
+                    )}
+                  >
+                    {tx.amount > 0 ? `+${tx.amount}` : tx.amount}
+                  </span>
+                </div>
+              </li>
+            ))
+          )}
         </ul>
       </Card>
     </div>

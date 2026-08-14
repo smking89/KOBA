@@ -4,20 +4,20 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { StatusPill } from "@/components/koba/status-pill";
-import { MOCK_SERVERS } from "@/features/servers/lib/catalog";
 import {
   hasCapability,
   visibleMap,
   visiblePlayerCount,
   visibleQueue,
+  type GameServerView,
 } from "@/features/servers/lib/types";
 
-export function ServerDirectory() {
+export function ServerDirectory({ initialServers = [] }: { initialServers?: GameServerView[] }) {
   const [query, setQuery] = useState("");
   const [game, setGame] = useState("ALL");
 
   const servers = useMemo(() => {
-    return MOCK_SERVERS.filter((server) => {
+    return initialServers.filter((server) => {
       const q = query.toLowerCase();
       const matchesQuery =
         !q ||
@@ -27,9 +27,9 @@ export function ServerDirectory() {
       const matchesGame = game === "ALL" || server.game === game;
       return matchesQuery && matchesGame;
     });
-  }, [query, game]);
+  }, [query, game, initialServers]);
 
-  const games = [...new Set(MOCK_SERVERS.map((server) => server.game))];
+  const games = [...new Set(initialServers.map((server) => server.game))];
 
   return (
     <div className="space-y-8">
@@ -76,6 +76,9 @@ export function ServerDirectory() {
       </Card>
 
       <ul className="grid gap-4 md:grid-cols-2">
+        {servers.length === 0 ? (
+          <li className="text-sm text-muted">No servers in the directory yet.</li>
+        ) : null}
         {servers.map((server) => {
           const players = visiblePlayerCount(server);
           const queue = visibleQueue(server);

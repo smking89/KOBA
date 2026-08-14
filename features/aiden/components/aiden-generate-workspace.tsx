@@ -5,16 +5,20 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { StatusPill } from "@/components/koba/status-pill";
-import { MOCK_AIDEN_JOBS } from "@/features/aiden/lib/catalog";
 import {
   AIDEN_ASSET_TYPES,
   AIDEN_DISCLAIMER,
   aidenAssetTypeLabel,
   aidenJobLabel,
   type AidenAssetType,
+  type AidenJobView,
 } from "@/features/aiden/lib/types";
 
-export function AidenGenerateWorkspace() {
+export function AidenGenerateWorkspace({
+  initialJobs = [],
+}: {
+  initialJobs?: AidenJobView[];
+}) {
   const [assetType, setAssetType] = useState<AidenAssetType>("CONCEPT_IMAGE");
   const [prompt, setPrompt] = useState("");
   const costPreview = assetType === "MAP" || assetType === "TERRAIN" ? 120 : 40;
@@ -86,31 +90,35 @@ export function AidenGenerateWorkspace() {
       <Card>
         <CardTitle>Generation history</CardTitle>
         <ul className="mt-4 space-y-3">
-          {MOCK_AIDEN_JOBS.map((job) => (
-            <li
-              key={job.publicRef}
-              className="flex flex-col gap-2 rounded-md border border-border p-3 sm:flex-row sm:items-center sm:justify-between"
-            >
-              <div>
-                <p className="font-mono text-xs text-neon-mint">{job.publicRef}</p>
-                <p className="text-sm">{job.prompt}</p>
-                <p className="text-xs text-muted">
-                  {job.game} · {aidenAssetTypeLabel(job.assetType)} · {job.coinCostPreview} Coins
-                </p>
-              </div>
-              <StatusPill
-                tone={
-                  job.state === "COMPLETED"
-                    ? "success"
-                    : job.state === "FAILED"
-                      ? "danger"
-                      : "warning"
-                }
+          {initialJobs.length === 0 ? (
+            <li className="text-sm text-muted">No generation jobs yet.</li>
+          ) : (
+            initialJobs.map((job) => (
+              <li
+                key={job.publicRef}
+                className="flex flex-col gap-2 rounded-md border border-border p-3 sm:flex-row sm:items-center sm:justify-between"
               >
-                {aidenJobLabel(job.state)}
-              </StatusPill>
-            </li>
-          ))}
+                <div>
+                  <p className="font-mono text-xs text-neon-mint">{job.publicRef}</p>
+                  <p className="text-sm">{job.prompt}</p>
+                  <p className="text-xs text-muted">
+                    {job.game} · {aidenAssetTypeLabel(job.assetType)} · {job.coinCostPreview} Coins
+                  </p>
+                </div>
+                <StatusPill
+                  tone={
+                    job.state === "COMPLETED"
+                      ? "success"
+                      : job.state === "FAILED"
+                        ? "danger"
+                        : "warning"
+                  }
+                >
+                  {aidenJobLabel(job.state)}
+                </StatusPill>
+              </li>
+            ))
+          )}
         </ul>
       </Card>
     </div>

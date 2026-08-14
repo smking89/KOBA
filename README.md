@@ -6,8 +6,9 @@ squads; all on one KOBAID.
 
 ## Status
 
-**Owner product expansion UI** is in progress on `feat/owner-product-expansion-ui`
-(Trade, Servers/RCON, Aiden, Plus, Wallet, Developers — presentation foundations).
+**Owner expansion backends** are in progress on `feat/owner-expansion-backends`
+(Prisma + APIs for Trade, Servers/RCON storage, Plus, Coins ledger, Aiden jobs,
+Developers — still no live AI, RCON command execution, or Stripe Plus charges).
 
 The HTML prototype remains the information-architecture reference:
 
@@ -28,9 +29,10 @@ live in `app/globals.css` and `lib/design-tokens.ts`.
 | `/wallet`                                                | KOBA Coins buckets + ledger-shaped history |
 | `/developers`, `/developers/apps`, `/developers/plugins` | Developer apps/plugins marketplace         |
 
-This phase is **presentation only**: no AI providers, coin ledger writes, trade
-settlement, RCON command execution, subscription charges, or real API keys.
-No Prisma migration was added — domain contracts live under `features/*/lib`.
+This phase adds **Prisma models + API services**. Still no live AI providers,
+RCON admin commands, Stripe Plus charges, or coin purchases. RCON passwords are
+sealed at rest and never returned. Coin balances use a double-entry ledger (no
+`User.balance`).
 
 ## Stack
 
@@ -403,8 +405,9 @@ self-registered. Group Admin/Moderator badges are community roles, not staff.
 14. **Production readiness** ✅
 15. **Brand icons (official logo)** ✅
 16. **Fee tiers (8% / 4% verified)** ✅
-17. **Owner product expansion UI** ← current (Trade, Servers, Aiden, Plus, Wallet, Developers)
-18. Influencer ads network / live backends for expansion features (deferred)
+17. **Owner product expansion UI** ✅
+18. **Owner expansion backends** ← current (schema + APIs; no live AI/RCON/charges)
+19. Influencer ads network / deeper settlement backends (deferred)
 
 ## License
 
