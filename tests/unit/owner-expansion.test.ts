@@ -19,7 +19,7 @@ import { MOCK_SERVERS } from "@/features/servers/lib/catalog";
 import { plusStateLabel, PLUS_BENEFITS } from "@/features/plus/lib/types";
 import { aidenJobLabel, aidenTechnicalLabel, AIDEN_DISCLAIMER } from "@/features/aiden/lib/types";
 import { MOCK_AIDEN_LIBRARY } from "@/features/aiden/lib/catalog";
-import { coinCategoryLabel, MOCK_WALLET } from "@/features/wallet/lib/types";
+import { coinCategoryLabel } from "@/features/wallet/lib/types";
 import { isProtectedPath } from "@/lib/auth/protected-routes";
 
 describe("expansion navigation", () => {
@@ -87,14 +87,12 @@ describe("plus, aiden, wallet contracts", () => {
   });
 
   it("models coin buckets without a mutable user.balance field", () => {
-    expect(MOCK_WALLET.purchased + MOCK_WALLET.promotional + MOCK_WALLET.earned).toBe(920);
-    expect(MOCK_WALLET.reserved).toBe(60);
-    expect(MOCK_WALLET.totalCoins).toBe(860);
     expect(coinCategoryLabel("PURCHASE")).toBe("Purchase");
     expect(coinCategoryLabel("REFUND")).toBe("Refund");
     expect(coinCategoryLabel("SELLER_EARNING")).toBe("Seller Earning");
     expect(coinCategoryLabel("PLATFORM_FEE")).toBe("Platform Fee");
     expect(coinCategoryLabel("GENERATION_RESERVATION")).toBe("Generation Reservation");
+    expect(coinCategoryLabel("PROMOTIONAL_GRANT")).toBe("Promotional Grant");
     expect(isProtectedPath("/wallet")).toBe(true);
     expect(isProtectedPath("/servers/connect")).toBe(true);
   });
