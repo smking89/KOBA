@@ -72,7 +72,7 @@ export function MobileNav() {
                     active ? "text-neon-lime" : "text-muted hover:text-foreground",
                   )}
                 >
-                  <Icon className="h-5 w-5" aria-hidden />
+                  <Icon className="h-5 w-5" aria-hidden suppressHydrationWarning />
                   <span>{label}</span>
                 </Link>
               </li>
@@ -89,7 +89,7 @@ export function MobileNav() {
               aria-controls={panelId}
               onClick={() => setMoreOpen((open) => !open)}
             >
-              <Ellipsis className="h-5 w-5" aria-hidden />
+              <Ellipsis className="h-5 w-5" aria-hidden suppressHydrationWarning />
               <span>More</span>
             </button>
           </li>
