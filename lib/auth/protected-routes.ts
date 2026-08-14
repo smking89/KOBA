@@ -7,6 +7,7 @@ export const PROTECTED_PATH_PREFIXES = [
   "/influencer",
   "/admin",
   "/orders",
+  "/messages",
 ] as const;
 
 export function isProtectedPath(pathname: string): boolean {
