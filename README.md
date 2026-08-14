@@ -6,9 +6,8 @@ squads; all on one KOBAID.
 
 ## Status
 
-**Owner expansion backends** are in progress on `feat/owner-expansion-backends`
-(Prisma + APIs for Trade, Servers/RCON storage, Plus, Coins ledger, Aiden jobs,
-Developers — still no live AI, RCON command execution, or Stripe Plus charges).
+**Phase 14B — KOBA Coins ledger** is in progress on `feat/koba-coins-ledger`
+(double-entry BigInt ledger, reservations, wallet APIs — no live Coin purchases).
 
 The HTML prototype remains the information-architecture reference:
 
@@ -26,13 +25,10 @@ live in `app/globals.css` and `lib/design-tokens.ts`.
 | `/servers`, `/servers/[serverId]`, `/servers/connect`    | Server directory + RCON connect wizard     |
 | `/plus`                                                  | KOBA Plus plans and subscription states    |
 | `/aiden`, `/aiden/generate`, `/aiden/library`            | Aiden creator, jobs, asset library         |
-| `/wallet`                                                | KOBA Coins buckets + ledger-shaped history |
-| `/developers`, `/developers/apps`, `/developers/plugins` | Developer apps/plugins marketplace         |
+| `/wallet`                                                | KOBA Coins wallet (ledger-backed)          |
 
-This phase adds **Prisma models + API services**. Still no live AI providers,
-RCON admin commands, Stripe Plus charges, or coin purchases. RCON passwords are
-sealed at rest and never returned. Coin balances use a double-entry ledger (no
-`User.balance`).
+See [docs/wallet-ledger.md](docs/wallet-ledger.md) for the Phase 14B accounting model.
+Coin purchases, live AI capture, and cash withdrawal remain deferred.
 
 ## Stack
 
@@ -406,8 +402,9 @@ self-registered. Group Admin/Moderator badges are community roles, not staff.
 15. **Brand icons (official logo)** ✅
 16. **Fee tiers (8% / 4% verified)** ✅
 17. **Owner product expansion UI** ✅
-18. **Owner expansion backends** ← current (schema + APIs; no live AI/RCON/charges)
-19. Influencer ads network / deeper settlement backends (deferred)
+18. **Owner expansion backends** ✅
+19. **KOBA Coins double-entry ledger** ← current
+20. Influencer ads network / live Coin purchases (deferred)
 
 ## License
 
