@@ -244,7 +244,36 @@ async function main() {
     }
   }
 
-  console.info("KOBA shops and marketplace catalog seeded.");
+  const now = new Date();
+  const auctionSeeds = [
+    { slug: "oxide-camo-monument-kit", hours: 2, increment: 1000 },
+    { slug: "ember-wake-profile-effect", hours: 6, increment: 1000 },
+  ] as const;
+
+  for (const seed of auctionSeeds) {
+    const product = await prisma.product.findUniqueOrThrow({ where: { slug: seed.slug } });
+    const endsAt = new Date(now.getTime() + seed.hours * 60 * 60 * 1000);
+    await prisma.auction.upsert({
+      where: { productId: product.id },
+      update: {
+        status: "LIVE",
+        startingBidCents: product.priceCents,
+        minIncrementCents: seed.increment,
+        startsAt: now,
+        endsAt,
+      },
+      create: {
+        productId: product.id,
+        status: "LIVE",
+        startingBidCents: product.priceCents,
+        minIncrementCents: seed.increment,
+        startsAt: now,
+        endsAt,
+      },
+    });
+  }
+
+  console.info("KOBA shops, catalog, and auctions seeded.");
 }
 
 main()

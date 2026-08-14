@@ -32,6 +32,8 @@ enum AuditAction {
   SHOP_VERIFIED
   PRODUCT_SUBMITTED
   PRODUCT_APPROVED
+  BID_PLACED
+  AUCTION_SETTLED
 }
 
 model User {
@@ -56,6 +58,8 @@ model User {
   shopFollows    ShopFollow[]
   shopReviews    ShopReview[]     @relation("ShopReviewAuthor")
   ordersBought   Order[]          @relation("OrderBuyer")
+  bids           Bid[]
+  wonAuctions    Auction[]        @relation("AuctionWinner")
 }
 
 model Account {
@@ -223,6 +227,7 @@ model Product {
   media     ProductMedia[]
   favorites ProductFavorite[]
   orderItems OrderItem[]
+  auction    Auction?
 
   @@index([moderationStatus, publishedAt])
   @@index([gameId])
@@ -385,4 +390,58 @@ model OrderItem {
 
   @@index([orderId])
   @@index([productId])
+}
+
+enum AuctionStatus {
+  SCHEDULED
+  LIVE
+  ENDED
+  RESERVED
+  CANCELLED
+}
+
+enum BidStatus {
+  ACTIVE
+  OUTBID
+  WON
+  VOID
+}
+
+model Auction {
+  id                String        @id @default(cuid())
+  productId         String        @unique
+  status            AuctionStatus @default(SCHEDULED)
+  startingBidCents  Int
+  minIncrementCents Int
+  highBidCents      Int?
+  bidCount          Int           @default(0)
+  startsAt          DateTime
+  endsAt            DateTime
+  winnerUserId      String?
+  reservedUntil     DateTime?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  winner  User?   @relation("AuctionWinner", fields: [winnerUserId], references: [id], onDelete: SetNull)
+  bids    Bid[]
+
+  @@index([status, endsAt])
+  @@index([winnerUserId])
+}
+
+model Bid {
+  id             String    @id @default(cuid())
+  auctionId      String
+  bidderUserId   String
+  amountCents    Int
+  status         BidStatus @default(ACTIVE)
+  idempotencyKey String    @unique
+  createdAt      DateTime  @default(now())
+
+  auction Auction @relation(fields: [auctionId], references: [id], onDelete: Cascade)
+  bidder  User    @relation(fields: [bidderUserId], references: [id], onDelete: Restrict)
+
+  @@index([auctionId, amountCents])
+  @@index([bidderUserId, createdAt])
 }
