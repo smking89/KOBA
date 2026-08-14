@@ -65,3 +65,11 @@ venv/
 .tmp/
 .cache/
 .turbo/
+
+/lib/generated/prisma
+
+# Prisma init noise (local agent skills — not part of KOBA)
+.agents/
+.claude/
+.windsurf/
+skills-lock.json
