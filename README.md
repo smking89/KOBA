@@ -6,7 +6,8 @@ squads; all on one KOBAID.
 
 ## Status
 
-**Phase 13 — Production readiness** is in progress on `feat/prod-readiness`.
+**Phase 13 — Production readiness** is complete on `feat/prod-readiness`.
+Brand install icons use the official logo on `feat/brand-icons`.
 
 The HTML prototype remains the information-architecture reference:
 
@@ -349,8 +350,9 @@ curl -s "http://localhost:3000/api/health?deep=1"
 Use CSS theme tokens (`bg-background`, `text-neon-lime`, `bg-brand-gradient`) —
 do not scatter raw hex in feature components.
 
-> Official logo assets are not in the repo yet. `BrandMark` is a temporary
-> geometric placeholder for Phase 1–2 until the logo file is supplied.
+Official mark: `public/brand/koba-logo.png` (used by `BrandMark`). Refresh install
+icons with `pnpm icons:generate` (writes `public/icons/*` and `apple-touch-icon.png`
+from that asset). Favicon: `app/icon.png`.
 
 ## KOBAID (product rules)
 
@@ -381,8 +383,9 @@ self-registered. Group Admin/Moderator badges are community roles, not staff.
 11. **Social** ✅
 12. **Direct messaging** ✅
 13. **Staff admin** ✅
-14. **Production readiness** ← current
-15. Influencer / ads → developer portal (deferred until GMV)
+14. **Production readiness** ✅
+15. **Brand icons (official logo)** ← current
+16. Influencer / ads → developer portal (deferred until GMV)
 
 ## License
 

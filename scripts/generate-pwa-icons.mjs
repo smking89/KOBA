@@ -4,29 +4,36 @@ import sharp from "sharp";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 const OUT_DIR = path.join(ROOT, "public", "icons");
+const LOGO = path.join(ROOT, "public", "brand", "koba-logo.png");
 
-/** Brand mark SVG — gradient tile + K on dark ground (placeholder until official logo). */
-function buildMarkSvg({ maskable = false }) {
-  const padding = maskable ? 128 : 64;
-  const tileSize = 512 - padding * 2;
-  const tileX = padding;
-  const tileY = padding;
-  const radius = maskable ? 48 : 72;
-  const fontSize = maskable ? 160 : 220;
-  const textY = maskable ? 300 : 320;
+/**
+ * Builds install icons from the official KOBA logo on the product background.
+ * Maskable icons keep ~20% safe-zone padding (Android adaptive icons).
+ */
+async function renderIcon({ size, maskable }) {
+  const paddingRatio = maskable ? 0.22 : 0.14;
+  const padding = Math.round(size * paddingRatio);
+  const inner = size - padding * 2;
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <defs>
-    <linearGradient id="kobaGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#C6FF00"/>
-      <stop offset="48%" stop-color="#55FF35"/>
-      <stop offset="100%" stop-color="#00F5A0"/>
-    </linearGradient>
-  </defs>
-  <rect width="512" height="512" fill="#050505"/>
-  <rect x="${tileX}" y="${tileY}" width="${tileSize}" height="${tileSize}" rx="${radius}" fill="url(#kobaGrad)"/>
-  <text x="256" y="${textY}" font-family="Arial, Helvetica, sans-serif" font-size="${fontSize}" font-weight="700" text-anchor="middle" fill="#050505">K</text>
-</svg>`;
+  const logo = await sharp(LOGO)
+    .resize(inner, inner, {
+      fit: "contain",
+      background: { r: 0, g: 0, b: 0, alpha: 0 },
+    })
+    .png()
+    .toBuffer();
+
+  return sharp({
+    create: {
+      width: size,
+      height: size,
+      channels: 4,
+      background: { r: 5, g: 5, b: 5, alpha: 1 },
+    },
+  })
+    .composite([{ input: logo, left: padding, top: padding }])
+    .png()
+    .toBuffer();
 }
 
 const outputs = [
@@ -36,14 +43,16 @@ const outputs = [
   { file: "../apple-touch-icon.png", size: 180, maskable: false },
 ];
 
+await fs.access(LOGO);
+
 await fs.mkdir(OUT_DIR, { recursive: true });
 
 for (const { file, size, maskable } of outputs) {
-  const svg = buildMarkSvg({ maskable });
   const dest = file.startsWith("..")
     ? path.join(ROOT, "public", path.basename(file))
     : path.join(OUT_DIR, file);
 
-  await sharp(Buffer.from(svg)).resize(size, size).png().toFile(dest);
+  const buffer = await renderIcon({ size, maskable });
+  await fs.writeFile(dest, buffer);
   console.log(`Wrote ${path.relative(ROOT, dest)}`);
 }
