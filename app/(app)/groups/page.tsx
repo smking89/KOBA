@@ -1,22 +1,53 @@
+import Link from "next/link";
+import { auth } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { listGroups } from "@/features/groups/services/group.service";
 
 export const metadata = { title: "Groups" };
 
-export default function GroupsPage() {
+export default async function GroupsPage() {
+  const session = await auth();
+  const groups = await listGroups(session?.user.id);
+
   return (
     <div className="space-y-6">
-      <div>
-        <Badge>Preview</Badge>
-        <h1 className="mt-3 text-3xl font-semibold tracking-tight">Groups</h1>
-        <p className="mt-2 max-w-2xl text-muted">
-          Public/private groups, membership, and community roles ship in Phase 9.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <Badge tone="live">Groups</Badge>
+          <h1 className="mt-3 text-3xl font-semibold tracking-tight">Find your squad</h1>
+          <p className="mt-2 max-w-2xl text-muted">
+            Public groups are open. Private groups need a request or invite. Group Admin and
+            Moderator are community roles, not KOBA staff.
+          </p>
+        </div>
+        <Link href="/groups/new" className={cn(buttonVariants())}>
+          New group
+        </Link>
       </div>
-      <Card>
-        <CardTitle>Rust Legacy Raiders</CardTitle>
-        <CardDescription>Example shell card — no live membership data yet.</CardDescription>
-      </Card>
+
+      {groups.length === 0 ? (
+        <p className="text-sm text-muted">No groups yet. Create one after you sign in.</p>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2">
+          {groups.map((group) => (
+            <Link key={group.slug} href={`/groups/${group.slug}`}>
+              <Card>
+                <div className="flex items-start justify-between gap-2">
+                  <CardTitle>{group.name}</CardTitle>
+                  <Badge>{group.visibility}</Badge>
+                </div>
+                <CardDescription className="mt-2 line-clamp-2">{group.bio}</CardDescription>
+                <p className="mt-3 text-xs text-muted">
+                  {group.memberCount} members{group.joined ? " · Joined" : ""}
+                </p>
+              </Card>
+            </Link>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
