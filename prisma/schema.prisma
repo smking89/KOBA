@@ -115,6 +115,8 @@ model User {
   directMessages  DirectMessage[]
   tradesProposed  TradeOffer[]      @relation("TradeProposer")
   tradesReceived  TradeOffer[]      @relation("TradeCounterparty")
+  inventoryItems  InventoryItem[]
+  tradeEvents     TradeEvent[]
   ownedServers    GameServer[]
   plusSubscription PlusSubscription?
   coinWallet      CoinWallet?
@@ -999,11 +1001,45 @@ enum TradeState {
   COMPLETED
   DISPUTED
   COUNTERED
+  VOIDED
 }
 
 enum TradeItemSide {
   OFFERED
   REQUESTED
+}
+
+enum InventoryItemStatus {
+  ACTIVE
+  TRADE_LOCKED
+  AUCTION_LOCKED
+  ORDER_LOCKED
+  DISPUTE_LOCKED
+  TRANSFERRED
+  REVOKED
+}
+
+enum InventoryAcquisitionSource {
+  PURCHASE
+  GENERATION
+  TRADE
+  GRANT
+  SEED
+  MINT
+}
+
+enum TradeEventType {
+  CREATED
+  ACCEPTED
+  REJECTED
+  CANCELLED
+  COUNTERED
+  EXPIRED
+  COMPLETED
+  DISPUTED
+  VOIDED
+  LOCKED
+  UNLOCKED
 }
 
 enum ServerPlatformFamily {
@@ -1174,43 +1210,102 @@ enum DevReviewState {
   REVOKED
 }
 
-model TradeOffer {
-  id                   String     @id @default(cuid())
-  publicRef            String     @unique
-  state                TradeState @default(PENDING)
-  proposerUserId       String
-  counterpartyUserId   String
-  note                 String?
-  expiresAt            DateTime?
-  createdAt            DateTime   @default(now())
-  updatedAt            DateTime   @updatedAt
+model InventoryItem {
+  id                 String                     @id @default(cuid())
+  publicRef          String                     @unique
+  ownerUserId        String
+  title              String
+  game               String
+  platform           GamePlatform
+  rarity             ProductRarity
+  transferable       Boolean                    @default(false)
+  listedForTrade     Boolean                    @default(false)
+  status             InventoryItemStatus        @default(ACTIVE)
+  acquisitionSource  InventoryAcquisitionSource @default(GRANT)
+  productId          String?
+  aidenAssetId       String?
+  serial             String?
+  lockTradeOfferId   String?
+  createdAt          DateTime                   @default(now())
+  updatedAt          DateTime                   @updatedAt
 
-  proposer     User            @relation("TradeProposer", fields: [proposerUserId], references: [id], onDelete: Cascade)
-  counterparty User            @relation("TradeCounterparty", fields: [counterpartyUserId], references: [id], onDelete: Cascade)
+  owner          User             @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+  lockTradeOffer TradeOffer?      @relation("TradeItemLocks", fields: [lockTradeOfferId], references: [id], onDelete: SetNull)
+  tradeLines     TradeOfferItem[]
+
+  @@index([ownerUserId, listedForTrade, status])
+  @@index([rarity, game])
+  @@index([lockTradeOfferId])
+  @@index([productId])
+}
+
+model TradeOffer {
+  id                 String     @id @default(cuid())
+  publicRef          String     @unique
+  idempotencyKey     String     @unique
+  state              TradeState @default(PENDING)
+  rarityTier         ProductRarity
+  proposerUserId     String
+  counterpartyUserId String
+  note               String?
+  expiresAt          DateTime?
+  version            Int        @default(0)
+  parentTradeId      String?
+  acceptedAt         DateTime?
+  completedAt        DateTime?
+  rejectedAt         DateTime?
+  cancelledAt        DateTime?
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+
+  proposer     User             @relation("TradeProposer", fields: [proposerUserId], references: [id], onDelete: Cascade)
+  counterparty User             @relation("TradeCounterparty", fields: [counterpartyUserId], references: [id], onDelete: Cascade)
+  parentTrade  TradeOffer?      @relation("TradeCounterChain", fields: [parentTradeId], references: [id], onDelete: SetNull)
+  childTrades  TradeOffer[]     @relation("TradeCounterChain")
   items        TradeOfferItem[]
+  events       TradeEvent[]
+  lockedItems  InventoryItem[]  @relation("TradeItemLocks")
 
   @@index([proposerUserId, createdAt])
   @@index([counterpartyUserId, createdAt])
-  @@index([state, createdAt])
+  @@index([state, expiresAt])
+  @@index([parentTradeId])
 }
 
 model TradeOfferItem {
+  id               String         @id @default(cuid())
+  tradeOfferId     String
+  inventoryItemId  String
+  side             TradeItemSide
+  titleSnapshot    String
+  gameSnapshot     String
+  platformSnapshot GamePlatform
+  raritySnapshot   ProductRarity
+  ownerUserIdSnap  String
+  createdAt        DateTime       @default(now())
+
+  tradeOffer    TradeOffer    @relation(fields: [tradeOfferId], references: [id], onDelete: Cascade)
+  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Restrict)
+
+  @@unique([tradeOfferId, inventoryItemId])
+  @@index([tradeOfferId, side])
+  @@index([inventoryItemId])
+}
+
+model TradeEvent {
   id           String         @id @default(cuid())
   tradeOfferId String
-  side         TradeItemSide
-  title        String
-  game         String
-  platform     GamePlatform
-  rarity       ProductRarity
-  locked       Boolean        @default(false)
-  eligible     Boolean        @default(true)
-  eligibilityNote String?
-  productId    String?
+  actorUserId  String?
+  type         TradeEventType
+  fromState    TradeState?
+  toState      TradeState?
+  metadataJson String?
   createdAt    DateTime       @default(now())
 
   tradeOffer TradeOffer @relation(fields: [tradeOfferId], references: [id], onDelete: Cascade)
+  actor      User?      @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
 
-  @@index([tradeOfferId, side])
+  @@index([tradeOfferId, createdAt])
 }
 
 model GameServer {
