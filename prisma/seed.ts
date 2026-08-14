@@ -427,7 +427,64 @@ async function main() {
     },
   });
 
-  console.info("KOBA shops, catalog, auctions, groups, LFG, and social seeded.");
+  const pairKey = [player.id, seller.id].sort().join(":");
+  const conversation = await prisma.conversation.upsert({
+    where: { pairKey },
+    update: { vanishMode: false, lastMessageAt: new Date() },
+    create: {
+      publicRef: "KOBA-DM-WIPE0001",
+      pairKey,
+      vanishMode: false,
+      lastMessageAt: new Date(),
+      participants: {
+        create: [{ userId: player.id }, { userId: seller.id }],
+      },
+    },
+  });
+  await prisma.conversationParticipant.upsert({
+    where: {
+      conversationId_userId: { conversationId: conversation.id, userId: player.id },
+    },
+    update: {},
+    create: { conversationId: conversation.id, userId: player.id },
+  });
+  await prisma.conversationParticipant.upsert({
+    where: {
+      conversationId_userId: { conversationId: conversation.id, userId: seller.id },
+    },
+    update: {},
+    create: { conversationId: conversation.id, userId: seller.id },
+  });
+  await prisma.directMessage.upsert({
+    where: { publicRef: "KOBA-MSG-WIPE0001" },
+    update: {
+      body: "Still down to trade for the Wyvern crest?",
+      deletedAt: null,
+    },
+    create: {
+      publicRef: "KOBA-MSG-WIPE0001",
+      conversationId: conversation.id,
+      senderUserId: player.id,
+      kind: "TEXT",
+      body: "Still down to trade for the Wyvern crest?",
+    },
+  });
+  await prisma.directMessage.upsert({
+    where: { publicRef: "KOBA-MSG-WIPE0002" },
+    update: {
+      body: "Yeah — I'll throw in $8 on top.",
+      deletedAt: null,
+    },
+    create: {
+      publicRef: "KOBA-MSG-WIPE0002",
+      conversationId: conversation.id,
+      senderUserId: seller.id,
+      kind: "TEXT",
+      body: "Yeah — I'll throw in $8 on top.",
+    },
+  });
+
+  console.info("KOBA shops, catalog, auctions, groups, LFG, social, and messages seeded.");
 }
 
 main()
