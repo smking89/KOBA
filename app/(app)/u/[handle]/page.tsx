@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { BlockButton } from "@/features/social/components/block-button";
 import { FeedList } from "@/features/social/components/feed-list";
 import { FollowButton } from "@/features/social/components/follow-button";
+import { MessageButton } from "@/features/messages/components/message-button";
 import { SocialError } from "@/features/social/lib/errors";
 import { listProfilePosts } from "@/features/social/services/post.service";
 import { getProfileByHandle } from "@/features/social/services/profile.service";
@@ -54,6 +55,12 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
               signedIn={Boolean(session?.user.id)}
               isSelf={profile.isSelf}
               initialFollowing={profile.followingThem}
+            />
+            <MessageButton
+              handle={profile.handle}
+              signedIn={Boolean(session?.user.id)}
+              isSelf={profile.isSelf}
+              blocked={profile.blocked}
             />
             <BlockButton
               handle={profile.handle}

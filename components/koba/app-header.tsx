@@ -13,6 +13,7 @@ const links = [
   { href: "/groups", label: "Groups" },
   { href: "/lfg", label: "LFG" },
   { href: "/feed", label: "Feed" },
+  { href: "/messages", label: "Messages" },
 ] as const;
 
 export function AppHeader() {
