@@ -1,0 +1,238 @@
+import { AuditAction } from "@/lib/generated/prisma/client";
+import { prisma } from "@/lib/db";
+import { writeAuditLog } from "@/features/auth/services/audit-log.service";
+import {
+  canStaffApproveListing,
+  canStaffModerateContent,
+  canStaffRefund,
+  canStaffVerifyShop,
+  isAnyStaff,
+} from "@/features/admin/lib/access";
+import { AdminError } from "@/features/admin/lib/errors";
+import { hidePost } from "@/features/social/services/post.service";
+
+async function loadActorTypes(userId: string) {
+  const actor = await prisma.user.findUnique({
+    where: { id: userId },
+    include: { kobaIdentities: { select: { accountType: true } } },
+  });
+  return actor?.kobaIdentities.map((row) => row.accountType) ?? [];
+}
+
+export async function requireAnyStaff(userId: string) {
+  const types = await loadActorTypes(userId);
+  if (!isAnyStaff(types)) {
+    throw new AdminError("Staff only.", "FORBIDDEN");
+  }
+  return types;
+}
+
+export async function getAdminOverview(actorUserId: string) {
+  await requireAnyStaff(actorUserId);
+
+  const [pendingProducts, pendingShops, openReports, paidOrders, recentAudit] = await Promise.all([
+    prisma.product.count({ where: { moderationStatus: "PENDING" } }),
+    prisma.shop.count({ where: { verificationStatus: "PENDING" } }),
+    prisma.contentReport.count({ where: { status: "OPEN" } }),
+    prisma.order.count({ where: { status: { in: ["PAID", "FULFILLED"] } } }),
+    prisma.auditLog.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 12,
+      select: {
+        id: true,
+        action: true,
+        targetType: true,
+        targetId: true,
+        metadata: true,
+        createdAt: true,
+        actorUserId: true,
+      },
+    }),
+  ]);
+
+  return {
+    counts: {
+      pendingProducts,
+      pendingShops,
+      openReports,
+      refundableOrders: paidOrders,
+    },
+    recentAudit,
+  };
+}
+
+export async function listPendingProducts(actorUserId: string) {
+  const types = await requireAnyStaff(actorUserId);
+  if (!canStaffApproveListing(types)) {
+    throw new AdminError("Staff only.", "FORBIDDEN");
+  }
+
+  const products = await prisma.product.findMany({
+    where: { moderationStatus: "PENDING" },
+    orderBy: { updatedAt: "asc" },
+    take: 50,
+    include: {
+      shop: { select: { slug: true, name: true } },
+      game: { select: { slug: true, name: true } },
+      category: { select: { slug: true, name: true } },
+      seller: { select: { email: true, profile: { select: { handle: true } } } },
+    },
+  });
+
+  return products.map((product) => ({
+    slug: product.slug,
+    title: product.title,
+    listingType: product.listingType,
+    priceCents: product.priceCents,
+    updatedAt: product.updatedAt.toISOString(),
+    shopSlug: product.shop?.slug ?? null,
+    shopName: product.shop?.name ?? null,
+    game: product.game.name,
+    category: product.category.name,
+    sellerHandle: product.seller.profile?.handle ?? null,
+    sellerEmail: product.seller.email,
+  }));
+}
+
+export async function listPendingShops(actorUserId: string) {
+  const types = await requireAnyStaff(actorUserId);
+  if (!canStaffVerifyShop(types)) {
+    throw new AdminError("Only Admin or Superadmin can review shops.", "FORBIDDEN");
+  }
+
+  const shops = await prisma.shop.findMany({
+    where: { verificationStatus: "PENDING" },
+    orderBy: { updatedAt: "asc" },
+    take: 50,
+    include: {
+      owner: { select: { email: true, profile: { select: { handle: true } } } },
+      _count: { select: { products: true } },
+    },
+  });
+
+  return shops.map((shop) => ({
+    slug: shop.slug,
+    name: shop.name,
+    bio: shop.bio,
+    updatedAt: shop.updatedAt.toISOString(),
+    productCount: shop._count.products,
+    ownerHandle: shop.owner.profile?.handle ?? null,
+    ownerEmail: shop.owner.email,
+  }));
+}
+
+export async function listOpenReports(actorUserId: string) {
+  const types = await requireAnyStaff(actorUserId);
+  if (!canStaffModerateContent(types)) {
+    throw new AdminError("Staff only.", "FORBIDDEN");
+  }
+
+  const reports = await prisma.contentReport.findMany({
+    where: { status: "OPEN" },
+    orderBy: { createdAt: "asc" },
+    take: 50,
+    include: {
+      reporter: { select: { email: true, profile: { select: { handle: true } } } },
+    },
+  });
+
+  return reports.map((report) => ({
+    publicRef: report.publicRef,
+    targetType: report.targetType,
+    targetRef: report.targetRef,
+    reason: report.reason,
+    createdAt: report.createdAt.toISOString(),
+    reporterHandle: report.reporter.profile?.handle ?? null,
+    reporterEmail: report.reporter.email,
+  }));
+}
+
+export async function resolveReport(
+  actorUserId: string,
+  publicRef: string,
+  input: { status: "REVIEWED" | "DISMISSED"; hidePost?: boolean | undefined },
+  ipAddress?: string | null,
+) {
+  const types = await requireAnyStaff(actorUserId);
+  if (!canStaffModerateContent(types)) {
+    throw new AdminError("Staff only.", "FORBIDDEN");
+  }
+
+  const report = await prisma.contentReport.findUnique({ where: { publicRef } });
+  if (!report) {
+    throw new AdminError("Report not found.", "NOT_FOUND");
+  }
+  if (report.status !== "OPEN") {
+    throw new AdminError("Report is already resolved.", "CONFLICT");
+  }
+
+  if (input.hidePost && report.targetType === "POST") {
+    await hidePost(actorUserId, report.targetRef);
+  }
+
+  const updated = await prisma.contentReport.update({
+    where: { id: report.id },
+    data: { status: input.status },
+  });
+
+  await writeAuditLog({
+    actorUserId,
+    action: AuditAction.REPORT_RESOLVED,
+    targetType: "ContentReport",
+    targetId: report.id,
+    metadata: {
+      publicRef,
+      status: input.status,
+      hidePost: Boolean(input.hidePost),
+      targetType: report.targetType,
+      targetRef: report.targetRef,
+    },
+    ipAddress: ipAddress ?? null,
+  });
+
+  return { publicRef: updated.publicRef, status: updated.status };
+}
+
+export async function staffRejectProduct(
+  actorUserId: string,
+  slug: string,
+  note?: string,
+  ipAddress?: string | null,
+) {
+  const types = await requireAnyStaff(actorUserId);
+  if (!canStaffApproveListing(types)) {
+    throw new AdminError("Staff only.", "FORBIDDEN");
+  }
+
+  const product = await prisma.product.findUnique({ where: { slug } });
+  if (!product) {
+    throw new AdminError("Product not found.", "NOT_FOUND");
+  }
+
+  const updated = await prisma.product.update({
+    where: { id: product.id },
+    data: {
+      moderationStatus: "REJECTED",
+      publishedAt: null,
+    },
+  });
+
+  await writeAuditLog({
+    actorUserId,
+    action: AuditAction.PRODUCT_REJECTED,
+    targetType: "Product",
+    targetId: product.id,
+    metadata: { slug, note: note ?? null },
+    ipAddress: ipAddress ?? null,
+  });
+
+  return updated;
+}
+
+export async function assertCanStaffRefund(actorUserId: string) {
+  const types = await requireAnyStaff(actorUserId);
+  if (!canStaffRefund(types)) {
+    throw new AdminError("Only Admin or Superadmin can refund.", "FORBIDDEN");
+  }
+  return types;
+}

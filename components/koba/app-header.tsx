@@ -16,10 +16,15 @@ const links = [
   { href: "/messages", label: "Messages" },
 ] as const;
 
+function isStaffSessionType(value: string | null | undefined): boolean {
+  return value === "SUPERADMIN" || value === "ADMIN" || value === "MODERATOR";
+}
+
 export function AppHeader() {
   const pathname = usePathname();
   const { data: session, status } = useSession();
   const isLoggedIn = status === "authenticated";
+  const showStaff = isLoggedIn && isStaffSessionType(session?.user.accountType);
 
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-background/90 backdrop-blur">
@@ -49,6 +54,14 @@ export function AppHeader() {
         <div className="hidden items-center gap-3 md:flex">
           {isLoggedIn ? (
             <>
+              {showStaff ? (
+                <Link
+                  href="/admin"
+                  className="text-sm font-medium text-muted transition-colors hover:text-foreground"
+                >
+                  Staff
+                </Link>
+              ) : null}
               <Link
                 href="/orders"
                 className="text-sm font-medium text-muted transition-colors hover:text-foreground"

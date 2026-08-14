@@ -106,6 +106,7 @@ async function main() {
   const monuments = await prisma.category.findUniqueOrThrow({ where: { slug: "monuments" } });
   const cosmetics = await prisma.category.findUniqueOrThrow({ where: { slug: "cosmetics" } });
   const skins = await prisma.category.findUniqueOrThrow({ where: { slug: "skins" } });
+  const kits = await prisma.category.findUniqueOrThrow({ where: { slug: "kits" } });
 
   const listings = [
     {
@@ -484,7 +485,179 @@ async function main() {
     },
   });
 
-  console.info("KOBA shops, catalog, auctions, groups, LFG, social, and messages seeded.");
+  const staffPasswordHash = await bcrypt.hash("KobaStaff1!", 12);
+  const staff = await prisma.user.upsert({
+    where: { email: "staff@koba.local" },
+    update: {
+      passwordHash: staffPasswordHash,
+      emailVerified: new Date(),
+    },
+    create: {
+      email: "staff@koba.local",
+      name: "KOBA Staff",
+      emailVerified: new Date(),
+      passwordHash: staffPasswordHash,
+      profile: {
+        create: {
+          handle: "kobastaff",
+          displayName: "KOBA Staff",
+          activeAccountType: "SUPERADMIN",
+          kobaIdRevealedAt: new Date(),
+        },
+      },
+    },
+  });
+
+  await prisma.accountProfile.upsert({
+    where: { userId: staff.id },
+    update: {
+      handle: "kobastaff",
+      displayName: "KOBA Staff",
+      activeAccountType: "SUPERADMIN",
+      kobaIdRevealedAt: new Date(),
+    },
+    create: {
+      userId: staff.id,
+      handle: "kobastaff",
+      displayName: "KOBA Staff",
+      activeAccountType: "SUPERADMIN",
+      kobaIdRevealedAt: new Date(),
+    },
+  });
+
+  const staffIdentities = await prisma.kobaIdentity.findMany({ where: { userId: staff.id } });
+  if (!staffIdentities.some((row) => row.accountType === "SUPERADMIN")) {
+    await prisma.kobaIdentity.create({
+      data: {
+        userId: staff.id,
+        accountType: "SUPERADMIN",
+        code: generateKobaIdCode("SUPERADMIN", (size) => randomBytes(size)),
+      },
+    });
+  }
+
+  const pendingApplicantPassword = await bcrypt.hash(randomBytes(24).toString("hex"), 12);
+  const applicant = await prisma.user.upsert({
+    where: { email: "maps@koba.local" },
+    update: {},
+    create: {
+      email: "maps@koba.local",
+      name: "Raid Ready Maps",
+      emailVerified: new Date(),
+      passwordHash: pendingApplicantPassword,
+      profile: {
+        create: {
+          handle: "raidmaps",
+          displayName: "Raid Ready Maps",
+          activeAccountType: "BUSINESS",
+          kobaIdRevealedAt: new Date(),
+        },
+      },
+    },
+  });
+
+  await prisma.accountProfile.upsert({
+    where: { userId: applicant.id },
+    update: {
+      handle: "raidmaps",
+      displayName: "Raid Ready Maps",
+      activeAccountType: "BUSINESS",
+    },
+    create: {
+      userId: applicant.id,
+      handle: "raidmaps",
+      displayName: "Raid Ready Maps",
+      activeAccountType: "BUSINESS",
+    },
+  });
+
+  const applicantIdentities = await prisma.kobaIdentity.findMany({
+    where: { userId: applicant.id },
+  });
+  if (!applicantIdentities.some((row) => row.accountType === "BUSINESS")) {
+    await prisma.kobaIdentity.create({
+      data: {
+        userId: applicant.id,
+        accountType: "BUSINESS",
+        code: generateKobaIdCode("BUSINESS", (size) => randomBytes(size)),
+      },
+    });
+  }
+
+  const pendingShop = await prisma.shop.upsert({
+    where: { slug: "raid-ready-maps" },
+    update: {
+      name: "Raid Ready Maps",
+      bio: "Custom Rust monuments awaiting KOBA verification.",
+      verificationStatus: "PENDING",
+    },
+    create: {
+      slug: "raid-ready-maps",
+      name: "Raid Ready Maps",
+      bio: "Custom Rust monuments awaiting KOBA verification.",
+      ownerUserId: applicant.id,
+      verificationStatus: "PENDING",
+    },
+  });
+
+  await prisma.shopMember.upsert({
+    where: { shopId_userId: { shopId: pendingShop.id, userId: applicant.id } },
+    update: { role: "OWNER" },
+    create: { shopId: pendingShop.id, userId: applicant.id, role: "OWNER" },
+  });
+
+  await prisma.product.upsert({
+    where: { slug: "pending-oil-rig-kit" },
+    update: {
+      title: "Oil Rig Kit (pending review)",
+      description: "Seeded listing waiting for staff approval.",
+      moderationStatus: "PENDING",
+      publishedAt: null,
+      shopId: shop.id,
+      priceCents: 2400,
+      inventoryQty: 5,
+    },
+    create: {
+      slug: "pending-oil-rig-kit",
+      title: "Oil Rig Kit (pending review)",
+      description: "Seeded listing waiting for staff approval.",
+      rarity: "RARE",
+      rarityRank: RARITY_RANK.RARE,
+      listingType: "FIXED",
+      moderationStatus: "PENDING",
+      priceCents: 2400,
+      inventoryQty: 5,
+      platforms: ["STEAM"],
+      sellerUserId: seller.id,
+      shopId: shop.id,
+      gameId: rust.id,
+      categoryId: kits.id,
+      publishedAt: null,
+    },
+  });
+
+  await prisma.contentReport.upsert({
+    where: { publicRef: "KOBA-RPT-STAFF001" },
+    update: {
+      reason: "Seeded open report for the staff queue.",
+      status: "OPEN",
+      targetType: "POST",
+      targetRef: "KOBA-PST-FEED0001",
+    },
+    create: {
+      publicRef: "KOBA-RPT-STAFF001",
+      reporterUserId: player.id,
+      targetType: "POST",
+      targetRef: "KOBA-PST-FEED0001",
+      reason: "Seeded open report for the staff queue.",
+      status: "OPEN",
+    },
+  });
+
+  console.info(
+    "KOBA shops, catalog, auctions, groups, LFG, social, messages, and staff queues seeded.",
+  );
+  console.info("Local staff login: staff@koba.local / KobaStaff1!");
 }
 
 main()

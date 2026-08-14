@@ -6,7 +6,7 @@ squads; all on one KOBAID.
 
 ## Status
 
-**Phase 11 — Direct messaging** is in progress on `feat/messages`.
+**Phase 12 — Staff admin** is in progress on `feat/staff-admin`.
 
 The HTML prototype remains the information-architecture reference:
 
@@ -292,6 +292,30 @@ purge — do not advertise otherwise.
 
 Seeded example: `KOBA-DM-WIPE0001` between maxbuilds and ironwright.
 
+### Staff admin (Phase 12)
+
+Staff console at `/admin` for Superadmin / Admin / Moderator KOBAIDs. Queues cover
+pending listings, pending shop verification, and open content reports. Staff can
+approve or reject listings, verify or reject shops (SA/AD), resolve reports (and
+hide posts), issue staff KOBAIDs, and refund orders by public ref (SA/AD).
+
+| Path                                      | Purpose                            |
+| ----------------------------------------- | ---------------------------------- |
+| `GET /api/admin/overview`                 | Counts + recent audit              |
+| `GET /api/admin/products/pending`         | Listing moderation queue           |
+| `POST /api/admin/products/[slug]/approve` | Approve listing                    |
+| `POST /api/admin/products/[slug]/reject`  | Reject listing                     |
+| `GET /api/admin/shops/pending`            | Shop verification queue            |
+| `POST /api/admin/shops/[slug]/verify`     | Verify or reject shop              |
+| `GET /api/admin/reports`                  | Open content reports               |
+| `POST /api/admin/reports/[ref]/resolve`   | Review / dismiss (+ optional hide) |
+| `POST /api/admin/kobaid`                  | Issue staff KOBAID                 |
+| `POST /api/admin/orders/[ref]/refund`     | Staff refund                       |
+| `POST /api/admin/posts/[ref]/hide`        | Hide a live post                   |
+
+Local seed staff: `staff@koba.local` / `KobaStaff1!` (SUPERADMIN). Queues include
+`pending-oil-rig-kit`, shop `raid-ready-maps`, and report `KOBA-RPT-STAFF001`.
+
 ## Visual identity
 
 | Token          | Value                                  |
@@ -337,9 +361,9 @@ self-registered. Group Admin/Moderator badges are community roles, not staff.
 9. **Payments** ✅
 10. **Groups / LFG** ✅
 11. **Social** ✅
-12. **Direct messaging** ← current
-13. Influencer / ads → developer portal → staff admin
-14. Production readiness
+12. **Direct messaging** ✅
+13. **Staff admin** ← current
+14. Influencer / ads → developer portal → production readiness
 
 ## License
 
