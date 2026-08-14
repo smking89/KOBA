@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { auth } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
@@ -9,12 +10,18 @@ import {
   PLUS_BENEFITS,
   PLUS_PLANS,
   plusStateLabel,
+  type PlusSubscriptionView,
 } from "@/features/plus/lib/types";
+import { getSubscription } from "@/features/plus/services/plus.service";
 
 export const metadata = { title: "KOBA Plus" };
 
-export default function PlusPage() {
-  const subscription = MOCK_PLUS_SUBSCRIPTION;
+export default async function PlusPage() {
+  const session = await auth();
+  let subscription: PlusSubscriptionView = MOCK_PLUS_SUBSCRIPTION;
+  if (session?.user.id) {
+    subscription = await getSubscription(session.user.id).catch(() => MOCK_PLUS_SUBSCRIPTION);
+  }
 
   return (
     <div className="space-y-8">
@@ -77,7 +84,10 @@ export default function PlusPage() {
 
       <Card>
         <CardTitle>Subscription controls</CardTitle>
-        <CardDescription>Active, past-due, cancelled, and expired — UI only.</CardDescription>
+        <CardDescription>
+          Plan: {subscription.planId ?? "none"}
+          {subscription.renewsAt ? ` · Renews ${subscription.renewsAt}` : ""}
+        </CardDescription>
         <div className="mt-4 flex flex-wrap gap-2">
           <button
             type="button"
@@ -88,7 +98,9 @@ export default function PlusPage() {
           <button type="button" className={cn(buttonVariants({ size: "sm", variant: "ghost" }))}>
             Cancel
           </button>
-          <StatusPill tone="accent">Plus badge preview</StatusPill>
+          {subscription.badgeVisible ? (
+            <StatusPill tone="accent">Plus badge preview</StatusPill>
+          ) : null}
         </div>
       </Card>
     </div>

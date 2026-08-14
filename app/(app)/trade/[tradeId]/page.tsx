@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { auth } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { StatusPill } from "@/components/koba/status-pill";
 import { getMockTrade } from "@/features/trade/lib/catalog";
 import { tradeStateLabel } from "@/features/trade/lib/types";
+import { getTradeByRef } from "@/features/trade/services/trade.service";
 import { RARITY_LABEL } from "@/features/marketplace/lib/catalog";
 
 export const metadata = { title: "Trade detail" };
@@ -16,7 +18,11 @@ export default async function TradeDetailPage({
   params: Promise<{ tradeId: string }>;
 }) {
   const { tradeId } = await params;
-  const trade = getMockTrade(tradeId);
+  const session = await auth();
+  let trade = session?.user.id
+    ? await getTradeByRef(session.user.id, tradeId).catch(() => null)
+    : null;
+  trade ??= getMockTrade(tradeId) ?? null;
   if (!trade) {
     notFound();
   }
@@ -67,7 +73,7 @@ export default async function TradeDetailPage({
 
       <Card>
         <CardTitle>Actions</CardTitle>
-        <CardDescription>UI stubs — no settlement in this phase.</CardDescription>
+        <CardDescription>UI stubs — settlement uses PATCH /api/trade/[ref].</CardDescription>
         <div className="mt-4 flex flex-wrap gap-2">
           <Button size="sm">Accept</Button>
           <Button size="sm" variant="secondary">

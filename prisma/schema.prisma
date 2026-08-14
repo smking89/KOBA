@@ -55,6 +55,16 @@ enum AuditAction {
   CONVERSATION_STARTED
   MESSAGE_SENT
   VANISH_PURGED
+  TRADE_CREATED
+  TRADE_UPDATED
+  SERVER_REGISTERED
+  SERVER_RCON_UPDATED
+  PLUS_CHECKOUT_STARTED
+  PLUS_CANCELLED
+  COIN_LEDGER_POSTED
+  AIDEN_JOB_CREATED
+  AIDEN_JOB_CANCELLED
+  DEV_PRODUCT_SUBMITTED
 }
 
 model User {
@@ -103,6 +113,16 @@ model User {
   reports         ContentReport[]
   conversationMemberships ConversationParticipant[]
   directMessages  DirectMessage[]
+  tradesProposed  TradeOffer[]      @relation("TradeProposer")
+  tradesReceived  TradeOffer[]      @relation("TradeCounterparty")
+  ownedServers    GameServer[]
+  plusSubscription PlusSubscription?
+  coinWallet      CoinWallet?
+  ledgerAccounts  LedgerAccount[]
+  aidenJobs       AidenJob[]
+  aidenAssets     AidenAsset[]
+  devProducts     DevProduct[]
+  devInstalls     DevInstall[]
 }
 
 model Account {
@@ -374,6 +394,7 @@ model Shop {
   reviews  ShopReview[]
   products Product[]
   orders   Order[]
+  servers  GameServer[]
 }
 
 model ShopMember {
@@ -741,6 +762,10 @@ enum ReportTargetType {
   USER
   MESSAGE
   CONVERSATION
+  TRADE
+  SERVER
+  AIDEN_ASSET
+  DEV_PRODUCT
 }
 
 enum MessageKind {
@@ -960,4 +985,485 @@ model DirectMessage {
 
   @@index([conversationId, createdAt])
   @@index([senderUserId])
+}
+
+// --- Owner expansion backends (Trade, Servers, Plus, Coins, Aiden, Developers) ---
+
+enum TradeState {
+  DRAFT
+  PENDING
+  ACCEPTED
+  REJECTED
+  CANCELLED
+  EXPIRED
+  COMPLETED
+  DISPUTED
+  COUNTERED
+}
+
+enum TradeItemSide {
+  OFFERED
+  REQUESTED
+}
+
+enum ServerPlatformFamily {
+  PC
+  CONSOLE
+}
+
+enum ServerCapability {
+  STATUS
+  PLAYER_COUNT
+  PLAYER_LIST
+  QUEUE_COUNT
+  MAP_INFO
+  RCON_READ
+  RCON_WRITE
+  PC
+  CONSOLE
+}
+
+enum ServerOnlineStatus {
+  ONLINE
+  OFFLINE
+  UNKNOWN
+}
+
+enum RconTestState {
+  IDLE
+  TESTING
+  SUCCESS
+  TIMEOUT
+  AUTH_FAILED
+  UNSUPPORTED
+}
+
+enum PlusPlanInterval {
+  MONTHLY
+  ANNUAL
+}
+
+enum PlusSubscriptionState {
+  NONE
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  EXPIRED
+}
+
+enum CoinBucket {
+  PURCHASED
+  PROMOTIONAL
+  EARNED
+  RESERVED
+}
+
+enum LedgerAccountKind {
+  USER_PURCHASED
+  USER_PROMOTIONAL
+  USER_EARNED
+  USER_RESERVED
+  PLATFORM_TREASURY
+  PLATFORM_PROMO_ISSUANCE
+  PLATFORM_REVENUE
+  REFUND_CLEARING
+  EXTERNAL
+}
+
+enum LedgerEntrySide {
+  DEBIT
+  CREDIT
+}
+
+enum CoinTxCategory {
+  ISSUANCE
+  PROMOTIONAL_GRANT
+  PURCHASE_CREDIT
+  RESERVATION
+  RESERVATION_CAPTURE
+  RESERVATION_RELEASE
+  MARKETPLACE_PURCHASE
+  SELLER_EARNING
+  PLATFORM_COMMISSION
+  REFUND
+  ADMIN_ADJUSTMENT
+  REVERSAL
+  PURCHASE
+  GENERATION_RESERVATION
+  CAPTURE
+  RELEASE
+  PLATFORM_FEE
+}
+
+enum LedgerTxStatus {
+  PENDING
+  POSTED
+  REVERSED
+}
+
+enum CoinWalletStatus {
+  ACTIVE
+  SUSPENDED
+  CLOSED
+}
+
+enum CoinReservationStatus {
+  PENDING
+  ACTIVE
+  CAPTURED
+  RELEASED
+  EXPIRED
+  CANCELLED
+}
+
+enum CoinCurrency {
+  KOBA_COIN
+}
+
+enum AidenAssetType {
+  CONCEPT_IMAGE
+  SKIN
+  TEXTURE
+  PROP
+  ANIMATION
+  TERRAIN
+  MAP
+}
+
+enum AidenTechnicalStatus {
+  CONCEPT_ONLY
+  PREVIEW
+  REQUIRES_CONVERSION
+  GAME_READY
+  VALIDATION_FAILED
+}
+
+enum AidenJobState {
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum AidenModerationState {
+  PRIVATE
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+  HIDDEN
+}
+
+enum DevProductKind {
+  APPLICATION
+  PLUGIN
+}
+
+enum DevPricing {
+  FREE
+  PAID
+}
+
+enum DevReviewState {
+  DRAFT
+  SUBMITTED
+  IN_REVIEW
+  SECURITY_REVIEW
+  APPROVED
+  REJECTED
+  REVOKED
+}
+
+model TradeOffer {
+  id                   String     @id @default(cuid())
+  publicRef            String     @unique
+  state                TradeState @default(PENDING)
+  proposerUserId       String
+  counterpartyUserId   String
+  note                 String?
+  expiresAt            DateTime?
+  createdAt            DateTime   @default(now())
+  updatedAt            DateTime   @updatedAt
+
+  proposer     User            @relation("TradeProposer", fields: [proposerUserId], references: [id], onDelete: Cascade)
+  counterparty User            @relation("TradeCounterparty", fields: [counterpartyUserId], references: [id], onDelete: Cascade)
+  items        TradeOfferItem[]
+
+  @@index([proposerUserId, createdAt])
+  @@index([counterpartyUserId, createdAt])
+  @@index([state, createdAt])
+}
+
+model TradeOfferItem {
+  id           String         @id @default(cuid())
+  tradeOfferId String
+  side         TradeItemSide
+  title        String
+  game         String
+  platform     GamePlatform
+  rarity       ProductRarity
+  locked       Boolean        @default(false)
+  eligible     Boolean        @default(true)
+  eligibilityNote String?
+  productId    String?
+  createdAt    DateTime       @default(now())
+
+  tradeOffer TradeOffer @relation(fields: [tradeOfferId], references: [id], onDelete: Cascade)
+
+  @@index([tradeOfferId, side])
+}
+
+model GameServer {
+  id              String                @id @default(cuid())
+  publicRef       String                @unique
+  slug            String                @unique
+  name            String
+  game            String
+  platformFamily  ServerPlatformFamily
+  region          String
+  tags            String[]
+  ownerUserId     String
+  shopId          String?
+  joinInfo        String?
+  lastRefreshAt   DateTime?
+  capabilities    ServerCapability[]
+  status          ServerOnlineStatus    @default(UNKNOWN)
+  livePlayers     Int?
+  maxPlayers      Int?
+  queue           Int?
+  mapName         String?
+  mapSize         String?
+  pingMs          Int?
+  host            String?
+  port            Int?
+  rconTestState   RconTestState         @default(IDLE)
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  owner       User             @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+  shop        Shop?            @relation(fields: [shopId], references: [id], onDelete: SetNull)
+  credential  ServerCredential?
+
+  @@index([ownerUserId])
+  @@index([game, region])
+  @@index([platformFamily])
+}
+
+model ServerCredential {
+  id                 String   @id @default(cuid())
+  serverId           String   @unique
+  ciphertext         String   @db.Text
+  iv                 String
+  authTag            String
+  rotatedAt          DateTime @default(now())
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  server GameServer @relation(fields: [serverId], references: [id], onDelete: Cascade)
+}
+
+model PlusSubscription {
+  id        String                @id @default(cuid())
+  userId    String                @unique
+  state     PlusSubscriptionState @default(NONE)
+  planId    String?
+  interval  PlusPlanInterval?
+  renewsAt  DateTime?
+  createdAt DateTime              @default(now())
+  updatedAt DateTime              @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model CoinWallet {
+  id                   String           @id @default(cuid())
+  userId               String           @unique
+  status               CoinWalletStatus @default(ACTIVE)
+  currency             CoinCurrency     @default(KOBA_COIN)
+  version              Int              @default(0)
+  /// Projection caches — ledger entries remain source of truth.
+  purchasedBalance     BigInt           @default(0)
+  promotionalBalance   BigInt           @default(0)
+  earnedBalance        BigInt           @default(0)
+  reservedBalance      BigInt           @default(0)
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+
+  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accounts      LedgerAccount[]
+  reservations  CoinReservation[]
+  transactions  LedgerTransaction[] @relation("WalletTransactions")
+}
+
+model LedgerAccount {
+  id        String            @id @default(cuid())
+  walletId  String?
+  userId    String?
+  kind      LedgerAccountKind
+  bucket    CoinBucket?
+  code      String
+  createdAt DateTime          @default(now())
+
+  wallet  CoinWallet?   @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  user    User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  entries LedgerEntry[]
+
+  @@unique([code])
+  @@index([walletId])
+  @@index([userId, kind])
+}
+
+model LedgerTransaction {
+  id                 String         @id @default(cuid())
+  publicRef          String         @unique
+  idempotencyKey     String         @unique
+  category           CoinTxCategory
+  status             LedgerTxStatus @default(POSTED)
+  memo               String
+  actorUserId        String?
+  walletId           String?
+  externalRef        String?
+  metadataJson       String?
+  createdAt          DateTime       @default(now())
+  postedAt           DateTime?
+  reversedAt         DateTime?
+  reversesTxId       String?        @unique
+  reversedByTxId     String?        @unique
+
+  wallet     CoinWallet?        @relation("WalletTransactions", fields: [walletId], references: [id], onDelete: SetNull)
+  reverses   LedgerTransaction? @relation("LedgerReversal", fields: [reversesTxId], references: [id], onDelete: SetNull)
+  reversedBy LedgerTransaction? @relation("LedgerReversal")
+  entries    LedgerEntry[]
+  reservationReserve  CoinReservation? @relation("ReservationReserveTx")
+  reservationCapture  CoinReservation? @relation("ReservationCaptureTx")
+  reservationRelease  CoinReservation? @relation("ReservationReleaseTx")
+
+  @@index([category, createdAt])
+  @@index([walletId, createdAt])
+  @@index([actorUserId, createdAt])
+  @@index([status, createdAt])
+}
+
+model LedgerEntry {
+  id            String          @id @default(cuid())
+  transactionId String
+  accountId     String
+  side          LedgerEntrySide
+  amount        BigInt
+  classification CoinBucket?
+  createdAt     DateTime        @default(now())
+
+  transaction LedgerTransaction @relation(fields: [transactionId], references: [id], onDelete: Restrict)
+  account     LedgerAccount     @relation(fields: [accountId], references: [id], onDelete: Restrict)
+
+  @@index([transactionId])
+  @@index([accountId])
+}
+
+model CoinReservation {
+  id                 String                @id @default(cuid())
+  publicRef          String                @unique
+  walletId           String
+  amount             BigInt
+  /// JSON array of { bucket, amount } source allocations (immutable after ACTIVE).
+  allocationsJson    String
+  purpose            String
+  status             CoinReservationStatus @default(PENDING)
+  idempotencyKey     String                @unique
+  expiresAt          DateTime?
+  metadataJson       String?
+  reserveTxId        String?               @unique
+  captureTxId        String?               @unique
+  releaseTxId        String?               @unique
+  capturedAt         DateTime?
+  releasedAt         DateTime?
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+
+  wallet     CoinWallet         @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  reserveTx  LedgerTransaction? @relation("ReservationReserveTx", fields: [reserveTxId], references: [id], onDelete: SetNull)
+  captureTx  LedgerTransaction? @relation("ReservationCaptureTx", fields: [captureTxId], references: [id], onDelete: SetNull)
+  releaseTx  LedgerTransaction? @relation("ReservationReleaseTx", fields: [releaseTxId], references: [id], onDelete: SetNull)
+
+  @@index([walletId, status])
+  @@index([status, expiresAt])
+}
+
+model AidenJob {
+  id              String         @id @default(cuid())
+  publicRef       String         @unique
+  userId          String
+  prompt          String         @db.Text
+  game            String
+  platform        String
+  assetType       AidenAssetType
+  state           AidenJobState  @default(QUEUED)
+  coinCostPreview Int
+  reservationTxId String?
+  failureReason   String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  user  User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  asset AidenAsset?
+
+  @@index([userId, createdAt])
+  @@index([state, createdAt])
+}
+
+model AidenAsset {
+  id               String                @id @default(cuid())
+  publicRef        String                @unique
+  userId           String
+  jobId            String?               @unique
+  title            String
+  assetType        AidenAssetType
+  technicalStatus  AidenTechnicalStatus  @default(CONCEPT_ONLY)
+  moderation       AidenModerationState  @default(PRIVATE)
+  game             String
+  previewLabel     String
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+
+  user User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job  AidenJob? @relation(fields: [jobId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([moderation])
+}
+
+model DevProduct {
+  id            String         @id @default(cuid())
+  publicRef     String         @unique
+  ownerUserId   String
+  kind          DevProductKind
+  name          String
+  pricing       DevPricing     @default(FREE)
+  priceCents    Int            @default(0)
+  version       String         @default("0.1.0")
+  compatibility String[]
+  scopes        String[]
+  reviewState   DevReviewState @default(DRAFT)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  owner    User         @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+  installs DevInstall[]
+
+  @@index([ownerUserId])
+  @@index([kind, reviewState])
+}
+
+model DevInstall {
+  id        String   @id @default(cuid())
+  productId String
+  userId    String
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+
+  product DevProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user    User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, userId])
+  @@index([userId])
 }

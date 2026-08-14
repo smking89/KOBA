@@ -5,11 +5,15 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { StatusPill } from "@/components/koba/status-pill";
-import { MOCK_TRADE_INVENTORY, MOCK_TRADES } from "@/features/trade/lib/catalog";
-import { sameRarityTier, tradeStateLabel } from "@/features/trade/lib/types";
+import { MOCK_TRADE_INVENTORY } from "@/features/trade/lib/catalog";
+import {
+  sameRarityTier,
+  tradeStateLabel,
+  type TradeOfferView,
+} from "@/features/trade/lib/types";
 import { RARITY_LABEL } from "@/features/marketplace/lib/catalog";
 
-export function TradeHub() {
+export function TradeHub({ initialTrades = [] }: { initialTrades?: TradeOfferView[] }) {
   const [query, setQuery] = useState("");
   const [rarity, setRarity] = useState<string>("ALL");
   const [offerIds, setOfferIds] = useState<string[]>(["inv-1"]);
@@ -169,39 +173,43 @@ export function TradeHub() {
         <CardTitle>Trade history</CardTitle>
         <CardDescription>Pending, completed, expired, and disputed states.</CardDescription>
         <ul className="mt-4 divide-y divide-border">
-          {MOCK_TRADES.map((trade) => (
-            <li
-              key={trade.publicRef}
-              className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between"
-            >
-              <div>
-                <p className="font-mono text-xs text-neon-lime">{trade.publicRef}</p>
-                <p className="text-sm">
-                  @{trade.proposerHandle} → @{trade.counterpartyHandle}
-                </p>
-                <p className="text-xs text-muted">{trade.note ?? "No note"}</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <StatusPill
-                  tone={
-                    trade.state === "COMPLETED"
-                      ? "success"
-                      : trade.state === "DISPUTED" || !trade.sameRarityRuleOk
-                        ? "danger"
-                        : "warning"
-                  }
-                >
-                  {tradeStateLabel(trade.state)}
-                </StatusPill>
-                <Link
-                  href={`/trade/${trade.publicRef}`}
-                  className="text-sm text-neon-mint hover:underline"
-                >
-                  Open
-                </Link>
-              </div>
-            </li>
-          ))}
+          {initialTrades.length === 0 ? (
+            <li className="py-3 text-sm text-muted">No trades yet.</li>
+          ) : (
+            initialTrades.map((trade) => (
+              <li
+                key={trade.publicRef}
+                className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div>
+                  <p className="font-mono text-xs text-neon-lime">{trade.publicRef}</p>
+                  <p className="text-sm">
+                    @{trade.proposerHandle} → @{trade.counterpartyHandle}
+                  </p>
+                  <p className="text-xs text-muted">{trade.note ?? "No note"}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <StatusPill
+                    tone={
+                      trade.state === "COMPLETED"
+                        ? "success"
+                        : trade.state === "DISPUTED" || !trade.sameRarityRuleOk
+                          ? "danger"
+                          : "warning"
+                    }
+                  >
+                    {tradeStateLabel(trade.state)}
+                  </StatusPill>
+                  <Link
+                    href={`/trade/${trade.publicRef}`}
+                    className="text-sm text-neon-mint hover:underline"
+                  >
+                    Open
+                  </Link>
+                </div>
+              </li>
+            ))
+          )}
         </ul>
       </Card>
     </div>

@@ -1,13 +1,18 @@
 import Link from "next/link";
+import { auth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { StatusPill } from "@/components/koba/status-pill";
-import { MOCK_DEV_PRODUCTS, devReviewLabel } from "@/features/developer-portal/lib/types";
+import { devReviewLabel } from "@/features/developer-portal/lib/types";
+import { listProducts } from "@/features/developers/services/developer.service";
 
 export const metadata = { title: "Developer plugins" };
 
-export default function DeveloperPluginsPage() {
-  const plugins = MOCK_DEV_PRODUCTS.filter((product) => product.kind === "PLUGIN");
+export default async function DeveloperPluginsPage() {
+  const session = await auth();
+  const plugins = (await listProducts("PLUGIN", session?.user.id).catch(() => [])).filter(
+    (product) => product.kind === "PLUGIN",
+  );
 
   return (
     <div className="space-y-6">
@@ -29,7 +34,8 @@ export default function DeveloperPluginsPage() {
                 <StatusPill tone="warning">{devReviewLabel(plugin.reviewState)}</StatusPill>
               </div>
               <p className="mt-3 text-xs text-muted">
-                Compat: {plugin.compatibility.join(", ")} · Scopes: {plugin.scopes.join(", ")}
+                Compat: {plugin.compatibility.join(", ") || "—"} · Scopes:{" "}
+                {plugin.scopes.join(", ") || "—"}
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
                 <Button size="sm" disabled={plugin.reviewState !== "APPROVED"}>
@@ -44,7 +50,7 @@ export default function DeveloperPluginsPage() {
         ))}
       </ul>
       {plugins.length === 0 ? (
-        <p className="text-sm text-muted">No plugins in the demo catalog.</p>
+        <p className="text-sm text-muted">No plugins yet.</p>
       ) : null}
     </div>
   );

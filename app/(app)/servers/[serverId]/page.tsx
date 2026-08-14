@@ -11,6 +11,7 @@ import {
   visiblePlayerCount,
   visibleQueue,
 } from "@/features/servers/lib/types";
+import { getBySlugOrRef } from "@/features/servers/services/server.service";
 
 export const metadata = { title: "Server detail" };
 
@@ -20,7 +21,8 @@ export default async function ServerDetailPage({
   params: Promise<{ serverId: string }>;
 }) {
   const { serverId } = await params;
-  const server = getMockServer(serverId);
+  let server = await getBySlugOrRef(serverId).catch(() => null);
+  server ??= getMockServer(serverId) ?? null;
   if (!server) {
     notFound();
   }
