@@ -6,7 +6,7 @@ squads; all on one KOBAID.
 
 ## Status
 
-**Phase 8 — Payments** is in progress on `feat/payments`.
+**Phase 9 — Groups and LFG** is in progress on `feat/groups-lfg`.
 
 The HTML prototype remains the information-architecture reference:
 
@@ -203,6 +203,32 @@ instead of faking paid. Forward webhooks locally with:
 stripe listen --forward-to localhost:3000/api/stripe/webhook
 ```
 
+### Groups and LFG (Phase 9)
+
+Public and private groups at `/groups` and `/groups/[slug]`. Anyone with a KOBAID
+can create a group. **Group Owner / Admin / Moderator are community roles**, not
+KOBA staff (SA/AD/MD).
+
+Public groups join immediately. Private groups need a request or an invite by
+KOBAID. Moderators can approve requests, kick, and ban. Admins can invite and
+assign Moderator/Member. The owner can assign Admin.
+
+LFG at `/lfg` filters by game, platform, region, skill, mic, and availability.
+Posts expire; authors accept requests until the roster is full. Self-join is
+blocked. Group feed posts wait for the social system.
+
+| Path                               | Purpose                           |
+| ---------------------------------- | --------------------------------- |
+| `POST /api/groups`                 | Create a group                    |
+| `POST /api/groups/[slug]/join`     | Join public or request private    |
+| `POST /api/groups/[slug]/leave`    | Leave (owner cannot)              |
+| `POST /api/groups/[slug]/moderate` | Invite, approve, kick, ban, roles |
+| `POST /api/lfg`                    | Create an LFG post                |
+| `POST /api/lfg/[ref]/join`         | Request a seat                    |
+| `POST /api/lfg/[ref]/moderate`     | Accept, deny, or cancel           |
+
+Seeded examples: `/groups/rust-legacy-raiders` and `KOBA-LFG-WIPE0001`.
+
 ## Visual identity
 
 | Token          | Value                                  |
@@ -245,10 +271,11 @@ self-registered. Group Admin/Moderator badges are community roles, not staff.
 6. **Marketplace** ✅
 7. **Shops** ✅
 8. **Auctions** ✅
-9. **Payments** ← current
-10. Groups / LFG → social → DMs
-11. Influencer / ads → developer portal → staff admin
-12. Production readiness
+9. **Payments** ✅
+10. **Groups / LFG** ← current
+11. Social → DMs
+12. Influencer / ads → developer portal → staff admin
+13. Production readiness
 
 ## License
 
