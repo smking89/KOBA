@@ -1,43 +1,44 @@
 <title>KOBA — UI/UX Design System</title>
 <style>
 :root{
-  --ink:#0b0d16; --paper:#f5f4fa; --paper-2:#ecebf4; --paper-3:#e1dfee;
-  --rust:#ff5a1f; --rust-dim:#e2431a; --ember-2:#ff2469; --brass:#ffb648; --moss:#1fbf6c; --steel:#6b7280; --slate-blue:#33c1f0; --violet:#b451f0;
+  --ink:#0a0a18; --paper:#f6f5fb; --paper-2:#ececf6; --paper-3:#e0deef;
+  --rust:#8b5cf6; --rust-dim:#7440e8; --ember-2:#f43f5e; --brass:#fbbf24; --moss:#22c55e; --steel:#8a86ab; --slate-blue:#22d3ee; --violet:#a78bfa;
   --bg:var(--paper); --surface:#ffffff; --surface-2:var(--paper-2); --surface-3:var(--paper-3);
-  --text:#15121f; --text-dim:#514c66; --text-faint:#8b86a0;
-  --border:rgba(21,18,31,0.11); --border-strong:rgba(21,18,31,0.24);
-  --accent:var(--rust); --accent-2:var(--brass); --success:var(--moss); --info:var(--slate-blue); --danger:#ff3b5c;
+  --text:#14121f; --text-dim:#4f4b68; --text-faint:#8783a3;
+  --border:rgba(20,18,31,0.11); --border-strong:rgba(20,18,31,0.24);
+  --accent:var(--rust); --accent-2:var(--brass); --success:var(--moss); --info:var(--slate-blue); --danger:#f43f5e;
   --grad-brand:linear-gradient(135deg,var(--rust),var(--ember-2));
-  --r-common:#8b8a9c; --r-uncommon:#1fbf6c; --r-rare:#33c1f0; --r-epic:#b451f0; --r-legendary:#ffb648; --r-relic:#ff2469;
-  --shadow:0 1px 2px rgba(21,18,31,0.06), 0 16px 36px -18px rgba(21,18,31,0.22);
-  --glow-brand:0 0 0 1px rgba(255,90,31,0.18), 0 10px 30px -10px rgba(255,36,105,0.35);
+  --r-common:#8f8bab; --r-uncommon:#22c55e; --r-rare:#22d3ee; --r-epic:#a78bfa; --r-legendary:#fbbf24; --r-relic:#f43f5e;
+  --shadow:0 1px 2px rgba(20,18,31,0.06), 0 16px 36px -18px rgba(20,18,31,0.22);
+  --glow-brand:0 0 0 1px rgba(139,92,246,0.20), 0 10px 30px -10px rgba(244,63,94,0.35);
   --font-display:"Century Gothic","Avenir Next","Futura","Segoe UI",sans-serif;
   --font-body:-apple-system,"Segoe UI","Helvetica Neue",Arial,sans-serif;
   --font-mono:"SF Mono",SFMono-Regular,Consolas,"Liberation Mono",Menlo,monospace;
   --radius:10px; --radius-sm:6px;
+  --thumb-grad:linear-gradient(135deg,#e4e1f4,#d5d1ec); --thumb-ink:#5b567a;
 }
 @media (prefers-color-scheme: dark){
   :root{
-    --bg:#0a0b13; --surface:#12131f; --surface-2:#181a2a; --surface-3:#212437;
-    --text:#f3f2fa; --text-dim:#c4c1d6; --text-faint:#87839c;
-    --border:rgba(243,242,250,0.09); --border-strong:rgba(243,242,250,0.20);
+    --bg:#08080f; --surface:#121120; --surface-2:#191830; --surface-3:#242145;
+    --text:#f3f1fb; --text-dim:#c3bfdb; --text-faint:#8983ac;
+    --border:rgba(243,241,251,0.09); --border-strong:rgba(243,241,251,0.20);
     --shadow:0 1px 2px rgba(0,0,0,0.5), 0 20px 44px -18px rgba(0,0,0,0.65);
-    --glow-brand:0 0 0 1px rgba(255,90,31,0.28), 0 0 44px -8px rgba(255,36,105,0.45);
+    --glow-brand:0 0 0 1px rgba(139,92,246,0.30), 0 0 44px -8px rgba(244,63,94,0.45);
   }
 }
 :root[data-theme="dark"]{
-  --bg:#0a0b13; --surface:#12131f; --surface-2:#181a2a; --surface-3:#212437;
-  --text:#f3f2fa; --text-dim:#c4c1d6; --text-faint:#87839c;
-  --border:rgba(243,242,250,0.09); --border-strong:rgba(243,242,250,0.20);
+  --bg:#08080f; --surface:#121120; --surface-2:#191830; --surface-3:#242145;
+  --text:#f3f1fb; --text-dim:#c3bfdb; --text-faint:#8983ac;
+  --border:rgba(243,241,251,0.09); --border-strong:rgba(243,241,251,0.20);
   --shadow:0 1px 2px rgba(0,0,0,0.5), 0 20px 44px -18px rgba(0,0,0,0.65);
-  --glow-brand:0 0 0 1px rgba(255,90,31,0.28), 0 0 44px -8px rgba(255,36,105,0.45);
+  --glow-brand:0 0 0 1px rgba(139,92,246,0.30), 0 0 44px -8px rgba(244,63,94,0.45);
 }
 :root[data-theme="light"]{
   --bg:var(--paper); --surface:#ffffff; --surface-2:var(--paper-2); --surface-3:var(--paper-3);
-  --text:#15121f; --text-dim:#514c66; --text-faint:#8b86a0;
-  --border:rgba(21,18,31,0.11); --border-strong:rgba(21,18,31,0.24);
-  --shadow:0 1px 2px rgba(21,18,31,0.06), 0 16px 36px -18px rgba(21,18,31,0.22);
-  --glow-brand:0 0 0 1px rgba(255,90,31,0.18), 0 10px 30px -10px rgba(255,36,105,0.35);
+  --text:#14121f; --text-dim:#4f4b68; --text-faint:#8783a3;
+  --border:rgba(20,18,31,0.11); --border-strong:rgba(20,18,31,0.24);
+  --shadow:0 1px 2px rgba(20,18,31,0.06), 0 16px 36px -18px rgba(20,18,31,0.22);
+  --glow-brand:0 0 0 1px rgba(139,92,246,0.20), 0 10px 30px -10px rgba(244,63,94,0.35);
 }
 *{box-sizing:border-box;}
 html,body{margin:0;padding:0;}
@@ -228,7 +229,8 @@ svg.icn{stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stro
 .tcg-foot{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:#fdfdfd;}
 .tcg-foot .platform-row{gap:9px;flex-wrap:nowrap;}
 .tcg-foot .ic{width:20px;height:20px;color:#c79a52;}
-.tcg-foot .star-row .ic{width:17px;height:17px;color:#c79a52;}
+.tcg-foot .star-row{color:#c79a52;}
+.tcg-foot .star-row svg{width:18px;height:18px;}
 .tcg-caption{padding:12px 4px 4px;color:#f3f2fa;}
 .tcg-caption .tcg-title{font-weight:700;font-size:.94rem;margin:2px 0 3px;}
 .tcg-caption .tcg-foot-row{display:flex;align-items:center;justify-content:space-between;margin-top:8px;}
@@ -248,7 +250,7 @@ svg.icn{stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stro
 .product-card[data-rarity="epic"]{border-top:3px solid var(--r-epic);}
 .product-card[data-rarity="legendary"]{border-top:3px solid var(--r-legendary);}
 .product-card[data-rarity="relic"]{border-top:3px solid transparent;border-image:var(--grad-brand) 1;box-shadow:var(--glow-brand);}
-.product-card .thumb{height:96px;background:linear-gradient(135deg,var(--surface-3),var(--surface-2));display:flex;align-items:center;justify-content:center;color:var(--text-faint);}
+.product-card .thumb{height:96px;background:var(--thumb-grad);display:flex;align-items:center;justify-content:center;color:var(--thumb-ink);}
 .product-card .thumb svg{width:30px;height:30px;}
 .product-card .thumb{position:relative;}
 .product-card .pc-save{position:absolute;top:7px;right:7px;background:rgba(20,17,12,.45);border:none;border-radius:5px;padding:5px;color:#fff;backdrop-filter:blur(2px);}
@@ -263,7 +265,7 @@ svg.icn{stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stro
 
 .auction-card{border:1px solid var(--border-strong);border-radius:var(--radius);background:var(--surface);padding:16px;display:flex;gap:16px;}
 @container (max-width:480px){ .auction-card{flex-direction:column;} }
-.auction-card .a-thumb{width:150px;height:110px;flex:none;border-radius:var(--radius-sm);background:linear-gradient(135deg,var(--surface-3),var(--surface-2));display:flex;align-items:center;justify-content:center;color:var(--r-relic);}
+.auction-card .a-thumb{width:150px;height:110px;flex:none;border-radius:var(--radius-sm);background:var(--thumb-grad);display:flex;align-items:center;justify-content:center;color:var(--r-relic);}
 .auction-card .a-thumb svg{width:34px;height:34px;}
 .a-body{flex:1;min-width:0;}
 .a-timer{font-family:var(--font-mono);font-size:0.9rem;color:var(--rust);font-weight:700;}
@@ -291,7 +293,7 @@ svg.icn{stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stro
 .post{border-bottom:1px solid var(--border);padding-bottom:12px;margin-bottom:4px;}
 .post .post-head{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;}
 .post .post-head .more{color:var(--text-faint);font-size:1.1rem;line-height:1;padding:4px;}
-.post .post-media{width:100%;aspect-ratio:4/5;background:linear-gradient(135deg,var(--surface-3),var(--surface-2));display:flex;align-items:center;justify-content:center;color:var(--text-faint);}
+.post .post-media{width:100%;aspect-ratio:4/5;background:var(--thumb-grad);display:flex;align-items:center;justify-content:center;color:var(--thumb-ink);}
 .post .post-media.relic{background:linear-gradient(135deg,var(--r-relic),#3a2115);color:#fff8f0;}
 .post .post-actionrow{display:flex;align-items:center;justify-content:space-between;padding:10px 14px 2px;}
 .post .post-actionrow .left{display:flex;align-items:center;gap:14px;color:var(--text);}
@@ -432,9 +434,9 @@ footer.credit{padding:18px 32px 40px;font-family:var(--font-mono);font-size:0.68
 .save-toggle .ic{width:15px;height:15px;}
 .save-toggle.saved{color:var(--brass);}
 
-.star-row{display:inline-flex;gap:2px;color:var(--brass);vertical-align:-2px;}
-.star-row .ic{width:12px;height:12px;}
-.star-row .ic.off{color:var(--border-strong);background-color:var(--border-strong);}
+.star-row{display:inline-flex;gap:3px;color:var(--brass);vertical-align:-3px;}
+.star-row svg{width:15px;height:15px;stroke:none;}
+.star-row svg.off{color:var(--border-strong);}
 
 .badge-partner{background:color-mix(in srgb, var(--brass) 16%, transparent);color:var(--brass);}
 
@@ -500,6 +502,7 @@ footer.credit{padding:18px 32px 40px;font-family:var(--font-mono);font-size:0.68
 .ic-license{-webkit-mask-image:var(--ic-license);mask-image:var(--ic-license);}
 .ic-law{-webkit-mask-image:var(--ic-law);mask-image:var(--ic-law);}
 .ic-stripe{-webkit-mask-image:var(--ic-stripe);mask-image:var(--ic-stripe);}
+.ic-stripe{width:44px!important;height:18px!important;}
 .ic-marketplace{-webkit-mask-image:var(--ic-marketplace);mask-image:var(--ic-marketplace);}
 </style>
 <style>
@@ -534,6 +537,8 @@ footer.credit{padding:18px 32px 40px;font-family:var(--font-mono);font-size:0.68
 <symbol id="i-shield" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.2 20.5 5.3v6.2c0 6.2-3.6 9.7-8.5 11.5-4.9-1.8-8.5-5.3-8.5-11.5V5.3z"/></symbol>
 <symbol id="i-ring" viewBox="0 0 24 24"><circle class="icn" cx="12" cy="12" r="7"/><circle class="icn" cx="12" cy="12" r="2.3"/></symbol>
 <symbol id="i-plus" viewBox="0 0 24 24"><path class="icn" d="M12 5v14M5 12h14"/></symbol>
+<symbol id="i-star" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5l2.86 6.28 6.9.68-5.17 4.66 1.5 6.78L12 17.6l-6.09 3.3 1.5-6.78L2.24 9.46l6.9-.68z"/></symbol>
+<symbol id="i-star-outline" viewBox="0 0 24 24"><path class="icn" d="M12 2.5l2.86 6.28 6.9.68-5.17 4.66 1.5 6.78L12 17.6l-6.09 3.3 1.5-6.78L2.24 9.46l6.9-.68z"/></symbol>
 <symbol id="i-check" viewBox="0 0 24 24"><path class="icn" d="M4 12.5l5 5L20 6"/></symbol>
 <symbol id="i-copy" viewBox="0 0 24 24"><rect class="icn" x="9" y="9" width="11" height="11" rx="1.3"/><path class="icn" d="M5 15V4h11v3"/></symbol>
 <symbol id="i-send" viewBox="0 0 24 24"><path class="icn" d="M4 12l16-8-6 16-3-6z"/></symbol>
@@ -1111,7 +1116,7 @@ footer.credit{padding:18px 32px 40px;font-family:var(--font-mono);font-size:0.68
                   </div>
                   <div class="tcg-foot">
                     <div class="platform-row"><span class="ic ic-xbox"></span><span class="ic ic-playstation"></span><span class="ic ic-steam"></span></div>
-                    <span class="star-row"><span class="ic ic-ratings"></span><span class="ic ic-ratings"></span><span class="ic ic-ratings"></span><span class="ic ic-ratings"></span><span class="ic ic-ratings off"></span></span>
+                    <span class="star-row"><svg class="icn" viewBox="0 0 24 24"><use href="#i-star"/></svg><svg class="icn" viewBox="0 0 24 24"><use href="#i-star"/></svg><svg class="icn" viewBox="0 0 24 24"><use href="#i-star"/></svg><svg class="icn" viewBox="0 0 24 24"><use href="#i-star"/></svg><svg class="icn off" viewBox="0 0 24 24"><use href="#i-star"/></svg></span>
                   </div>
                   <div class="tcg-notch bottom"></div>
                 </div>
@@ -1131,7 +1136,7 @@ footer.credit{padding:18px 32px 40px;font-family:var(--font-mono);font-size:0.68
                   </div>
                   <div class="tcg-foot">
                     <div class="platform-row"><span class="ic ic-steam"></span></div>
-                    <span class="star-row"><span class="ic ic-ratings"></span><span class="ic ic-ratings"></span><span class="ic ic-ratings"></span><span class="ic ic-ratings"></span><span class="ic ic-ratings"></span></span>
+                    <span class="star-row"><svg class="icn" viewBox="0 0 24 24"><use href="#i-star"/></svg><svg class="icn" viewBox="0 0 24 24"><use href="#i-star"/></svg><svg class="icn" viewBox="0 0 24 24"><use href="#i-star"/></svg><svg class="icn" viewBox="0 0 24 24"><use href="#i-star"/></svg><svg class="icn" viewBox="0 0 24 24"><use href="#i-star"/></svg></span>
                   </div>
                   <div class="tcg-notch bottom"></div>
                 </div>
@@ -1151,7 +1156,7 @@ footer.credit{padding:18px 32px 40px;font-family:var(--font-mono);font-size:0.68
                   </div>
                   <div class="tcg-foot">
                     <div class="platform-row"><span class="ic ic-xbox"></span><span class="ic ic-playstation"></span><span class="ic ic-steam"></span><span class="ic ic-discord"></span></div>
-                    <span class="star-row"><span class="ic ic-ratings"></span><span class="ic ic-ratings"></span><span class="ic ic-ratings"></span><span class="ic ic-ratings"></span><span class="ic ic-ratings"></span></span>
+                    <span class="star-row"><svg class="icn" viewBox="0 0 24 24"><use href="#i-star"/></svg><svg class="icn" viewBox="0 0 24 24"><use href="#i-star"/></svg><svg class="icn" viewBox="0 0 24 24"><use href="#i-star"/></svg><svg class="icn" viewBox="0 0 24 24"><use href="#i-star"/></svg><svg class="icn" viewBox="0 0 24 24"><use href="#i-star"/></svg></span>
                   </div>
                   <div class="tcg-notch bottom"></div>
                 </div>
@@ -1180,7 +1185,7 @@ footer.credit{padding:18px 32px 40px;font-family:var(--font-mono);font-size:0.68
             <div class="h-block"><h3>Expanded detail panel</h3></div>
             <div class="grid-2">
               <div class="card" style="padding:0;overflow:hidden">
-                <div style="height:200px;background:linear-gradient(135deg,var(--surface-3),var(--surface-2));display:flex;align-items:center;justify-content:center"><span class="ic ic-law" style="width:44px;height:44px;color:var(--r-legendary);vertical-align:-4px"></span></div>
+                <div style="height:200px;background:var(--thumb-grad);display:flex;align-items:center;justify-content:center"><span class="ic ic-law" style="width:44px;height:44px;color:var(--r-legendary);vertical-align:-4px"></span></div>
               </div>
               <div>
                 <span class="rarity-chip legendary">Legendary</span>
@@ -1190,7 +1195,7 @@ footer.credit{padding:18px 32px 40px;font-family:var(--font-mono);font-size:0.68
                   <span class="ic-verified" title="Verified Shop"></span>
                 </div>
                 <div style="display:flex;align-items:center;gap:6px;margin-top:4px">
-                  <span class="star-row"><span class="ic ic-ratings"></span><span class="ic ic-ratings"></span><span class="ic ic-ratings"></span><span class="ic ic-ratings"></span><span class="ic ic-ratings off"></span></span>
+                  <span class="star-row"><svg class="icn" viewBox="0 0 24 24"><use href="#i-star"/></svg><svg class="icn" viewBox="0 0 24 24"><use href="#i-star"/></svg><svg class="icn" viewBox="0 0 24 24"><use href="#i-star"/></svg><svg class="icn" viewBox="0 0 24 24"><use href="#i-star"/></svg><svg class="icn off" viewBox="0 0 24 24"><use href="#i-star"/></svg></span>
                   <span class="hint">4.3 · 61 reviews</span>
                 </div>
                 <p class="body-sample" style="margin:12px 0">Hand-authored monument replacing Launch Site's central silo — full RCON-ready spawn config, tested on modded and vanilla+ servers.</p>
@@ -1244,7 +1249,7 @@ footer.credit{padding:18px 32px 40px;font-family:var(--font-mono);font-size:0.68
             <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:-32px">
               <div style="display:flex;align-items:flex-end;gap:12px">
                 <div class="avatar" style="width:64px;height:64px;font-size:1.2rem;border:3px solid var(--bg)">IW</div>
-                <div style="padding-bottom:4px"><h3 style="font-size:1.15rem">Ironwright Trading Co. <span class="badge badge-verified" style="vertical-align:2px"><span class="ic-verified" style="width:11px;height:11px"></span>Verified</span></h3><span class="hint">KOBA-BZ-88A0 · 2,930 followers</span><div style="margin-top:3px"><span class="star-row"><span class="ic ic-ratings"></span><span class="ic ic-ratings"></span><span class="ic ic-ratings"></span><span class="ic ic-ratings"></span><span class="ic ic-ratings off"></span></span> <span class="hint">4.6 (318)</span></div></div>
+                <div style="padding-bottom:4px"><h3 style="font-size:1.15rem">Ironwright Trading Co. <span class="badge badge-verified" style="vertical-align:2px"><span class="ic-verified" style="width:11px;height:11px"></span>Verified</span></h3><span class="hint">KOBA-BZ-88A0 · 2,930 followers</span><div style="margin-top:3px"><span class="star-row"><svg class="icn" viewBox="0 0 24 24"><use href="#i-star"/></svg><svg class="icn" viewBox="0 0 24 24"><use href="#i-star"/></svg><svg class="icn" viewBox="0 0 24 24"><use href="#i-star"/></svg><svg class="icn" viewBox="0 0 24 24"><use href="#i-star"/></svg><svg class="icn off" viewBox="0 0 24 24"><use href="#i-star"/></svg></span> <span class="hint">4.6 (318)</span></div></div>
               </div>
               <button class="btn btn-primary">Follow</button>
             </div>
