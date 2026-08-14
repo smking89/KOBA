@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { auth } from "@/lib/auth";
 import { getAccountSnapshot } from "@/features/accounts/services/account.service";
+import { countActiveBids } from "@/features/auctions/services/auction.service";
 import { ACCOUNT_TYPE_LABEL } from "@/features/koba-id/lib/format";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -25,6 +26,8 @@ export default async function PlayerDashboardPage() {
     redirect("/enter");
   }
 
+  const activeBids = await countActiveBids(session.user.id);
+
   return (
     <div className="space-y-6">
       <div>
@@ -45,8 +48,8 @@ export default async function PlayerDashboardPage() {
         </Card>
         <Card>
           <CardTitle>Active bids</CardTitle>
-          <p className="mt-2 font-mono text-2xl">0</p>
-          <CardDescription>Auctions land in Phase 7.</CardDescription>
+          <p className="mt-2 font-mono text-2xl">{activeBids}</p>
+          <CardDescription>Live auctions where you are the leading bid.</CardDescription>
         </Card>
         <Card>
           <CardTitle>Groups joined</CardTitle>

@@ -34,8 +34,8 @@ export default async function MarketPage({
         <Badge tone="live">Marketplace</Badge>
         <h1 className="mt-3 text-3xl font-semibold tracking-tight">Trade what you build</h1>
         <p className="mt-2 max-w-2xl text-muted">
-          Skins, maps, monuments, kits, and cosmetics. Only approved listings appear here. Auctions
-          and checkout land in later phases — Bid/Buy open the product page.
+          Skins, maps, monuments, kits, and cosmetics. Only approved listings appear here. Place
+          bids on live auctions. Checkout for buy-now listings is Phase 8.
         </p>
       </div>
 

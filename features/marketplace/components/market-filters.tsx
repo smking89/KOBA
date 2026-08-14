@@ -25,7 +25,7 @@ export function MarketFilters({
 
   function apply(form: FormData) {
     const params = new URLSearchParams();
-    const fields = ["q", "game", "category", "rarity", "platform", "sort"] as const;
+    const fields = ["q", "game", "category", "rarity", "platform", "listing", "sort"] as const;
     for (const field of fields) {
       const value = String(form.get(field) ?? "").trim();
       if (value) {
@@ -102,6 +102,16 @@ export function MarketFilters({
               {PLATFORM_LABEL[platform]}
             </option>
           ))}
+        </select>
+        <select
+          name="listing"
+          defaultValue={query.listing ?? ""}
+          className="h-10 rounded-md border border-border bg-surface-2 px-3 text-sm"
+          aria-label="Listing type"
+        >
+          <option value="">All listings</option>
+          <option value="FIXED">Buy now</option>
+          <option value="AUCTION">Auctions</option>
         </select>
         <select
           name="sort"

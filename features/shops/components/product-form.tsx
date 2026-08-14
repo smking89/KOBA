@@ -40,6 +40,7 @@ export function ProductForm({
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<UpsertProductInput>({
     resolver: zodResolver(upsertProductSchema),
@@ -51,9 +52,13 @@ export function ProductForm({
       platforms: ["STEAM"],
       gameSlug: games[0]?.slug ?? "",
       categorySlug: categories[0]?.slug ?? "",
+      durationHours: 48,
+      minIncrementCents: 1000,
       ...defaultValues,
     },
   });
+
+  const listingType = watch("listingType");
 
   const onSubmit = handleSubmit(async (values) => {
     setFormError(null);
@@ -150,6 +155,35 @@ export function ProductForm({
             {...register("inventoryQty", { valueAsNumber: true })}
           />
         </FormField>
+        {listingType === "AUCTION" ? (
+          <>
+            <FormField
+              id="durationHours"
+              label="Duration (hours)"
+              error={errors.durationHours?.message}
+            >
+              <Input
+                id="durationHours"
+                type="number"
+                min={1}
+                max={168}
+                {...register("durationHours", { valueAsNumber: true })}
+              />
+            </FormField>
+            <FormField
+              id="minIncrementCents"
+              label="Min increment (cents)"
+              error={errors.minIncrementCents?.message}
+            >
+              <Input
+                id="minIncrementCents"
+                type="number"
+                min={100}
+                {...register("minIncrementCents", { valueAsNumber: true })}
+              />
+            </FormField>
+          </>
+        ) : null}
       </div>
       <fieldset className="space-y-2">
         <legend className="text-sm font-medium">Platforms</legend>

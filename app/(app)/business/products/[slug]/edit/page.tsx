@@ -42,6 +42,13 @@ export default async function EditProductPage({ params }: { params: Promise<{ sl
             gameSlug: product.game.slug,
             categorySlug: product.category.slug,
             platforms: product.platforms as GamePlatform[],
+            durationHours: product.auction
+              ? Math.max(
+                  1,
+                  Math.round((product.auction.endsAt.getTime() - Date.now()) / (60 * 60 * 1000)),
+                )
+              : 48,
+            minIncrementCents: product.auction?.minIncrementCents ?? 1000,
           }}
         />
       </div>
