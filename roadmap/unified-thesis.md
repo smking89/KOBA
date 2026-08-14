@@ -49,24 +49,24 @@ that one title. See §2.
 
 ## 2. Red Flags & Constraints Table
 
-| # | Flag | Severity | Detail | Gate before proceeding |
-|---|---|---|---|---|
-| 1 | ARK:SA monetization conflict | **Blocker** | CurseForge's ARK:SA policy requires paid mods to go through Wildcard's own Tebex-wallet-only Premium Mods program. KOBA facilitating ARK trades outside that is a direct ToS conflict. | Legal review before ARK enters the marketplace pillar in any form beyond cosmetics; hold out entirely until resolved. |
-| 2 | Unverified per-game ToS (10 of 14 titles) | High | Only Minecraft, Rust, ARK, and DayZ were checked against primary-source policy. Valheim, Conan Exiles, 7DTD, Unturned, GMod, S&Box, Project Zomboid, Eco, Terraria, Starbound were not — compliance is unproven, not assumed-safe. | Check each title's EULA/ToS individually before its marketplace (not just cosmetics) features go live. |
-| 3 | Seller migration is untested | **Blocker for scale** | The entire supply side depends on sellers with existing Tebex/CurseForge storefronts choosing to cross-list or migrate to KOBA. Nothing in the current build tests this. | 5-10 hand-recruited sellers cross-listing manually, before more Phase 4+ investment (see §5). |
-| 4 | Buyer trust on a new platform is untested | High | Every sourced revenue figure in the market research is revenue to an *incumbent* with existing buyer traffic; none demonstrates new-platform buyer trust. | Real paid pilot (actual Stripe checkout, minimal UI) measuring conversion, not assumed from catalog quality alone. |
-| 5 | Social/feed-as-discovery is unproven | High | KOBA's core differentiation claim vs. every competitor has zero direct precedent in this category succeeding. Feed-driven discovery needs content volume KOBA won't have at launch. | Ship a plain filterable catalog first; only build the feed ranking engine (Phase 8) if real session data justifies it. |
-| 6 | Console kit-only limits the differentiated pillar | Medium | Maps/monuments/custom assets (KOBA's most differentiated inventory vs. Discord/pure-cosmetics competitors) are PC-only by the README's own console policy. | Check real sell-through mix (cosmetics vs. PC-only assets) before further Map Builder (Phase 9) investment. |
-| 7 | Influencer referral cannibalization | Medium | Referral programs are frequently net-negative without an organic baseline to measure lift against — structural risk, not execution risk. | Don't build Phase 10 until months of organic sales data exist per shop; test one shop manually (spreadsheet discount code) first. |
-| 8 | Tebex/Codefling/BuiltByBit switching cost | Medium | Sellers already have payment infra, tax handling, chargeback insurance (Tebex), and SEO/community trust (Codefling/BuiltByBit) — KOBA's 8%/4% fee is not a decisive undercut of Codefling's flat 10%. | Discovery/social layer has to prove out (Flag 5) to be the actual differentiator, since fee alone won't win switchers. |
-| 9 | Scope-to-validation ratio | High (process risk, not market risk) | 13-phase roadmap has no validation checkpoint before Phase 12-13 ("everything is built"). Roughly half the roadmap (Ads, Dev Portal, Influencer, full Social/DM, Feed engine) is unrelated to proving the core trade loop. | See §6 — insert an explicit gate now, given Phases 1-5 are already built. |
-| 10 | Ads-as-monetization is premature | Low (deferred, not live risk) | Native ads need attention (DAU × session time) to sell against, which doesn't exist pre-launch. Platform take-rate (already built, Phase 3) is a simpler, already-functioning monetization model. | Defer Phase 7 indefinitely until organic traffic data justifies it. |
+| #   | Flag                                              | Severity                             | Detail                                                                                                                                                                                                                             | Gate before proceeding                                                                                                            |
+| --- | ------------------------------------------------- | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | ARK:SA monetization conflict                      | **Blocker**                          | CurseForge's ARK:SA policy requires paid mods to go through Wildcard's own Tebex-wallet-only Premium Mods program. KOBA facilitating ARK trades outside that is a direct ToS conflict.                                             | Legal review before ARK enters the marketplace pillar in any form beyond cosmetics; hold out entirely until resolved.             |
+| 2   | Unverified per-game ToS (10 of 14 titles)         | High                                 | Only Minecraft, Rust, ARK, and DayZ were checked against primary-source policy. Valheim, Conan Exiles, 7DTD, Unturned, GMod, S&Box, Project Zomboid, Eco, Terraria, Starbound were not — compliance is unproven, not assumed-safe. | Check each title's EULA/ToS individually before its marketplace (not just cosmetics) features go live.                            |
+| 3   | Seller migration is untested                      | **Blocker for scale**                | The entire supply side depends on sellers with existing Tebex/CurseForge storefronts choosing to cross-list or migrate to KOBA. Nothing in the current build tests this.                                                           | 5-10 hand-recruited sellers cross-listing manually, before more Phase 4+ investment (see §5).                                     |
+| 4   | Buyer trust on a new platform is untested         | High                                 | Every sourced revenue figure in the market research is revenue to an _incumbent_ with existing buyer traffic; none demonstrates new-platform buyer trust.                                                                          | Real paid pilot (actual Stripe checkout, minimal UI) measuring conversion, not assumed from catalog quality alone.                |
+| 5   | Social/feed-as-discovery is unproven              | High                                 | KOBA's core differentiation claim vs. every competitor has zero direct precedent in this category succeeding. Feed-driven discovery needs content volume KOBA won't have at launch.                                                | Ship a plain filterable catalog first; only build the feed ranking engine (Phase 8) if real session data justifies it.            |
+| 6   | Console kit-only limits the differentiated pillar | Medium                               | Maps/monuments/custom assets (KOBA's most differentiated inventory vs. Discord/pure-cosmetics competitors) are PC-only by the README's own console policy.                                                                         | Check real sell-through mix (cosmetics vs. PC-only assets) before further Map Builder (Phase 9) investment.                       |
+| 7   | Influencer referral cannibalization               | Medium                               | Referral programs are frequently net-negative without an organic baseline to measure lift against — structural risk, not execution risk.                                                                                           | Don't build Phase 10 until months of organic sales data exist per shop; test one shop manually (spreadsheet discount code) first. |
+| 8   | Tebex/Codefling/BuiltByBit switching cost         | Medium                               | Sellers already have payment infra, tax handling, chargeback insurance (Tebex), and SEO/community trust (Codefling/BuiltByBit) — KOBA's 8%/4% fee is not a decisive undercut of Codefling's flat 10%.                              | Discovery/social layer has to prove out (Flag 5) to be the actual differentiator, since fee alone won't win switchers.            |
+| 9   | Scope-to-validation ratio                         | High (process risk, not market risk) | 13-phase roadmap has no validation checkpoint before Phase 12-13 ("everything is built"). Roughly half the roadmap (Ads, Dev Portal, Influencer, full Social/DM, Feed engine) is unrelated to proving the core trade loop.         | See §6 — insert an explicit gate now, given Phases 1-5 are already built.                                                         |
+| 10  | Ads-as-monetization is premature                  | Low (deferred, not live risk)        | Native ads need attention (DAU × session time) to sell against, which doesn't exist pre-launch. Platform take-rate (already built, Phase 3) is a simpler, already-functioning monetization model.                                  | Defer Phase 7 indefinitely until organic traffic data justifies it.                                                               |
 
 ---
 
 ## 3. KOBA MVP Diagram
 
-What the market/product research says the *actual* MVP looks like —
+What the market/product research says the _actual_ MVP looks like —
 materially smaller than what's already been built (Phases 1-5). This
 is a target shape for the next validation cycle, not a description of
 current state.
@@ -154,11 +154,11 @@ how firmly each is deferred:
   the marketplace. Not on the validation-critical path at all.
 - **Auctions, multi-game/multi-type catalog, shop analytics depth,
   promo/rarity-distribution reporting** — already built (Phases 3-4)
-  ahead of the MVP shape in §3. Not "undo," but: no *further*
+  ahead of the MVP shape in §3. Not "undo," but: no _further_
   investment in this direction (more auction features, more rarity
   tiers, deeper analytics) until §6 clears.
 - **Groups + LFG deeper features** — the module itself is already
-  built (Phase 5); the do-not-build is anything *beyond* what exists —
+  built (Phase 5); the do-not-build is anything _beyond_ what exists —
   invite/request-to-join flows, deeper community tooling — until
   Groups proves out as a distribution channel, not before.
 - **Blue Badge program depth, full three-tier RBAC nuance** — a single
@@ -173,15 +173,15 @@ how firmly each is deferred:
 Concrete, cheap, sequenced — each tests one Red Flag from §2 before
 more engineering goes toward the assumption it rests on.
 
-| Test | Tests which flag | Method | Signal to watch |
-|---|---|---|---|
-| Manual seller recruitment | #3 (seller migration) | Recruit 5-10 Business-role sellers from Rust/Minecraft server communities; have them cross-list 3-5 items via spreadsheet + a manual Stripe payment link — zero marketplace UI required. | Will they do this for free with nothing built? If not, self-serve Business-mode won't change their mind either. |
-| Real-money pilot | #4 (buyer trust) | Same manual listings, but real checkout, pointed at a small paid-traffic or community-post sample. | Actual conversion rate vs. adjacent marketplaces' known benchmarks (Codefling/BuiltByBit order volume as a rough comparator). |
-| Catalog vs. feed test | #5 (social discovery) | Ship a plain sortable/filterable grid first (already buildable from Phase 3-4's existing Product model — no new engineering). Instrument search vs. browse behavior once there's real catalog volume. | Only build Phase 8's feed ranking engine if data justifies it — not before. |
-| Sell-through mix check | #6 (console/PC split) | Once live, track revenue split: cosmetics (all-platform) vs. maps/monuments/assets (PC-only). | Determines how much further Map Builder (Phase 9) investment is justified. |
-| ARK legal review | #1 (blocker) | Direct legal/compliance review of Wildcard's Premium Mods policy against KOBA facilitating ARK trades outside it. | Go/no-go specifically for ARK entering the marketplace pillar — cosmetics-only fallback if unresolved. |
-| Per-title ToS sweep | #2 | Individual EULA/ToS check for each of the 10 unverified titles before that title's marketplace (not cosmetics-only) features ship. | Pass/fail per title — don't assume compliance by analogy to the four already checked. |
-| Manual referral test | #7 (influencer cannibalization) | Once organic sales data exists for a shop, run one manual discount-code referral (spreadsheet-tracked) and compare lift against that shop's own trend line. | Only automate Phase 10 if lift is real and measurable. |
+| Test                      | Tests which flag                | Method                                                                                                                                                                                                | Signal to watch                                                                                                               |
+| ------------------------- | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Manual seller recruitment | #3 (seller migration)           | Recruit 5-10 Business-role sellers from Rust/Minecraft server communities; have them cross-list 3-5 items via spreadsheet + a manual Stripe payment link — zero marketplace UI required.              | Will they do this for free with nothing built? If not, self-serve Business-mode won't change their mind either.               |
+| Real-money pilot          | #4 (buyer trust)                | Same manual listings, but real checkout, pointed at a small paid-traffic or community-post sample.                                                                                                    | Actual conversion rate vs. adjacent marketplaces' known benchmarks (Codefling/BuiltByBit order volume as a rough comparator). |
+| Catalog vs. feed test     | #5 (social discovery)           | Ship a plain sortable/filterable grid first (already buildable from Phase 3-4's existing Product model — no new engineering). Instrument search vs. browse behavior once there's real catalog volume. | Only build Phase 8's feed ranking engine if data justifies it — not before.                                                   |
+| Sell-through mix check    | #6 (console/PC split)           | Once live, track revenue split: cosmetics (all-platform) vs. maps/monuments/assets (PC-only).                                                                                                         | Determines how much further Map Builder (Phase 9) investment is justified.                                                    |
+| ARK legal review          | #1 (blocker)                    | Direct legal/compliance review of Wildcard's Premium Mods policy against KOBA facilitating ARK trades outside it.                                                                                     | Go/no-go specifically for ARK entering the marketplace pillar — cosmetics-only fallback if unresolved.                        |
+| Per-title ToS sweep       | #2                              | Individual EULA/ToS check for each of the 10 unverified titles before that title's marketplace (not cosmetics-only) features ship.                                                                    | Pass/fail per title — don't assume compliance by analogy to the four already checked.                                         |
+| Manual referral test      | #7 (influencer cannibalization) | Once organic sales data exists for a shop, run one manual discount-code referral (spreadsheet-tracked) and compare lift against that shop's own trend line.                                           | Only automate Phase 10 if lift is real and measurable.                                                                        |
 
 ---
 
@@ -193,6 +193,7 @@ premise.
 
 **Gate to Phase 6+ generally (Social layer beyond a basic feed, deeper
 Groups):**
+
 - ✅ Proceed if: hand-recruited sellers cross-list without heavy
   hand-holding (validates #3), **and** real buyers convert at a rate
   comparable to adjacent marketplaces (validates #4).
@@ -204,6 +205,7 @@ Groups):**
 
 **Gate to Groups as a real distribution channel (beyond what Phase 5
 already built):**
+
 - ✅ Proceed if: a manually-simulated version (KOBA staff posting in an
   existing Discord) shows real referral traffic before building further
   Groups tooling.
@@ -211,6 +213,7 @@ already built):**
   distribution in the manual test.
 
 **Gate to Phase 8 (Feed engine):**
+
 - ✅ Proceed if: the §6 catalog-vs-feed test shows real session data
   where a feed would plausibly outperform search/browse (needs catalog
   volume to even be testable).
@@ -218,6 +221,7 @@ already built):**
   sufficient — revisit only when volume changes the picture.
 
 **Gate to Phase 10 (Influencer):**
+
 - ✅ Proceed if: months of organic sales data exist per shop, **and**
   a manual single-shop referral test shows real incremental lift, not
   cannibalized organic sales.
@@ -226,6 +230,7 @@ already built):**
   happened anyway.
 
 **Gate to Phase 7 (Ads) and Phase 9 (Dev Portal):**
+
 - ✅ Ads: proceed only once organic DAU × session-time data shows
   enough attention to be worth selling against — treat as a
   launch-readiness threshold, not a scheduled phase.
@@ -238,6 +243,7 @@ already built):**
   shipped.
 
 **Gate to expanding past Rust + Minecraft (the remaining 12 titles):**
+
 - ✅ Proceed per-title once that title's individual ToS sweep (§6)
   clears **and** the Rust/Minecraft wedge shows real GMV — expand one
   validated title at a time, not the full list at once.
@@ -246,6 +252,6 @@ already built):**
 
 ---
 
-*Companion documents: [`market-research.md`](market-research.md),
+_Companion documents: [`market-research.md`](market-research.md),
 [`product-research.md`](product-research.md),
-[`platform-fee-research.md`](platform-fee-research.md).*
+[`platform-fee-research.md`](platform-fee-research.md)._

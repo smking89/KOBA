@@ -11,7 +11,7 @@ open questions that need client decisions before (or during) each phase.
 
 > Numbering note: this roadmap keeps the same phase numbers/order as the
 > original outline (Phase 1 → Phase 13). The repo README's "Build plan"
-> list uses 1-indexed *steps* that include Phase 0 as step 1 — this
+> list uses 1-indexed _steps_ that include Phase 0 as step 1 — this
 > ROADMAP.md is the canonical phase numbering going forward; update the
 > README's list to link here once this is merged.
 
@@ -48,47 +48,50 @@ the stack to share types, (b) a relational core because the domain is
 transactional and permission-heavy (orders, bids, payouts, RBAC), and
 (c) boring, well-documented tools over novelty.
 
-| Layer | Choice | Why |
-|---|---|---|
-| Language | TypeScript, everywhere (frontend, backend, scripts) | One language, shared types between client/server via a monorepo, matches the JS-heavy prototype tooling |
-| Monorepo | Turborepo + pnpm workspaces | Shared `packages/types`, `packages/ui` between web app and (future) mobile; incremental builds |
-| Frontend | Next.js (App Router) + React + Tailwind CSS | Tailwind's utility classes map cleanly onto the design tokens already established in `design/ui-ux-design-system.html`; Next.js gives SSR for feed/marketplace SEO and a single deploy artifact |
-| Backend | Node.js + NestJS | Opinionated module/DI structure fits a domain with 13+ bounded contexts (marketplace, shops, groups, ads, feed, dev portal, RBAC); built-in guards map directly onto the RBAC model in Phase 11 |
-| Database | PostgreSQL | Relational integrity for money-adjacent data (orders, bids, payouts, referral codes) and RBAC joins; JSONB columns cover flexible fields (product metadata, KCU payloads) without a second database |
-| ORM / migrations | Prisma | Type-safe schema shared with the monorepo; migration history doubles as a changelog for Phase 12 |
-| Cache / queues | Redis (+ BullMQ) | Feed ranking cache and pagination cursors (Phase 8); background jobs for auction close, badge-eligibility checks, Stripe webhook processing, referral payout reconciliation |
-| Object storage | S3-compatible (AWS S3 or Cloudflare R2 — see open questions) | Cosmetic/product images, shop banners, Map Builder assets, KCU creative assets |
-| Payments | Stripe Connect (Express accounts) | Explicitly required for shops + influencer payouts (Phase 3/4/10); KOBA never stores government ID — identity verification is delegated to Stripe's own onboarding/dashboard and read back via API (Phase 4) |
-| Realtime | WebSockets (Socket.IO) for DMs/typing/presence; dedicated provider (see open questions) for voice/video calls | DM text/stickers/vanish-mode is a straightforward socket problem; voice/video calls need a purpose-built SFU, not hand-rolled WebRTC |
-| Search | Postgres full-text to start; revisit a dedicated search engine (Meilisearch/Typesense) once catalog size demands it | Avoids a second system prematurely; index strategy is part of Phase 12 |
-| Auth | Custom KOBAID-based auth (KOBAID is itself the identity primitive) layered over standard credential/OAuth login, session via JWT + refresh token | KOBAID format is bespoke to this product (Phase 1); underlying login mechanics (email/password, OAuth) are conventional and shouldn't be reinvented |
-| Mobile | Responsive web via Next.js first; native app (React Native, sharing `packages/types`/`packages/ui` logic) is a later, separately-scoped track | See open questions — client has not confirmed native app scope |
-| Infra / hosting | Not yet decided — see open questions | Stack above works on Vercel+Render/Fly, or a single AWS/GCP account; decision affects Phase 12 sharding notes and file storage choice |
-| CI | GitHub Actions | Repo already lives on GitHub |
+| Layer            | Choice                                                                                                                                           | Why                                                                                                                                                                                                          |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Language         | TypeScript, everywhere (frontend, backend, scripts)                                                                                              | One language, shared types between client/server via a monorepo, matches the JS-heavy prototype tooling                                                                                                      |
+| Monorepo         | Turborepo + pnpm workspaces                                                                                                                      | Shared `packages/types`, `packages/ui` between web app and (future) mobile; incremental builds                                                                                                               |
+| Frontend         | Next.js (App Router) + React + Tailwind CSS                                                                                                      | Tailwind's utility classes map cleanly onto the design tokens already established in `design/ui-ux-design-system.html`; Next.js gives SSR for feed/marketplace SEO and a single deploy artifact              |
+| Backend          | Node.js + NestJS                                                                                                                                 | Opinionated module/DI structure fits a domain with 13+ bounded contexts (marketplace, shops, groups, ads, feed, dev portal, RBAC); built-in guards map directly onto the RBAC model in Phase 11              |
+| Database         | PostgreSQL                                                                                                                                       | Relational integrity for money-adjacent data (orders, bids, payouts, referral codes) and RBAC joins; JSONB columns cover flexible fields (product metadata, KCU payloads) without a second database          |
+| ORM / migrations | Prisma                                                                                                                                           | Type-safe schema shared with the monorepo; migration history doubles as a changelog for Phase 12                                                                                                             |
+| Cache / queues   | Redis (+ BullMQ)                                                                                                                                 | Feed ranking cache and pagination cursors (Phase 8); background jobs for auction close, badge-eligibility checks, Stripe webhook processing, referral payout reconciliation                                  |
+| Object storage   | S3-compatible (AWS S3 or Cloudflare R2 — see open questions)                                                                                     | Cosmetic/product images, shop banners, Map Builder assets, KCU creative assets                                                                                                                               |
+| Payments         | Stripe Connect (Express accounts)                                                                                                                | Explicitly required for shops + influencer payouts (Phase 3/4/10); KOBA never stores government ID — identity verification is delegated to Stripe's own onboarding/dashboard and read back via API (Phase 4) |
+| Realtime         | WebSockets (Socket.IO) for DMs/typing/presence; dedicated provider (see open questions) for voice/video calls                                    | DM text/stickers/vanish-mode is a straightforward socket problem; voice/video calls need a purpose-built SFU, not hand-rolled WebRTC                                                                         |
+| Search           | Postgres full-text to start; revisit a dedicated search engine (Meilisearch/Typesense) once catalog size demands it                              | Avoids a second system prematurely; index strategy is part of Phase 12                                                                                                                                       |
+| Auth             | Custom KOBAID-based auth (KOBAID is itself the identity primitive) layered over standard credential/OAuth login, session via JWT + refresh token | KOBAID format is bespoke to this product (Phase 1); underlying login mechanics (email/password, OAuth) are conventional and shouldn't be reinvented                                                          |
+| Mobile           | Responsive web via Next.js first; native app (React Native, sharing `packages/types`/`packages/ui` logic) is a later, separately-scoped track    | See open questions — client has not confirmed native app scope                                                                                                                                               |
+| Infra / hosting  | Not yet decided — see open questions                                                                                                             | Stack above works on Vercel+Render/Fly, or a single AWS/GCP account; decision affects Phase 12 sharding notes and file storage choice                                                                        |
+| CI               | GitHub Actions                                                                                                                                   | Repo already lives on GitHub                                                                                                                                                                                 |
 
 ---
 
 ## Phase 1 — KOBAID + Account Types
 
 **Scope, as engineering deliverables**
-- Design and implement the KOBAID *format*: `KOBA-XX-XXXX`, atomic (generated once, never edited in place — corrections are a new issuance + ledger entry, not a mutation), role-coded (`PL`/`BZ`/`IN` community roles, `SA`/`AD`/`MD` staff roles).
-- Implement TDLS encryption for the KOBAID payload/metadata at rest and in transit. *(TDLS is a client-defined term used in the design prototype; its exact algorithm/spec is not yet documented anywhere in the repo — flagged as an open question below. Treat this phase's TDLS work as "wire up to whatever TDLS turns out to mean" once specified.)*
+
+- Design and implement the KOBAID _format_: `KOBA-XX-XXXX`, atomic (generated once, never edited in place — corrections are a new issuance + ledger entry, not a mutation), role-coded (`PL`/`BZ`/`IN` community roles, `SA`/`AD`/`MD` staff roles).
+- Implement TDLS encryption for the KOBAID payload/metadata at rest and in transit. _(TDLS is a client-defined term used in the design prototype; its exact algorithm/spec is not yet documented anywhere in the repo — flagged as an open question below. Treat this phase's TDLS work as "wire up to whatever TDLS turns out to mean" once specified.)_
 - Enforce "one KOBAID per role per device" at issuance time — device fingerprint/binding check, not just a UI toggle.
 - Staff KOBAID issuance flow: staff codes (`SA`/`AD`/`MD`) are created by an existing admin via an internal issuance action, never via public self-registration. Community roles (`PL`/`BZ`/`IN`) are self-registered.
 - Badge-icon suppression logic: staff roles (`SA`/`AD`/`MD`) never render a badge anywhere in the UI; this is a rendering rule, not a data flag, and must be enforced server-side (i.e., staff role objects should not even carry a "badge" field that a careless frontend could render).
-- Player/Business/Influencer *capability* definitions: what each role can and can't do, expressed as a capability-flag set attached to the KOBAID (not hardcoded role checks scattered through the app) so Phase 2's switching logic and Phase 11's RBAC can both read from the same source.
+- Player/Business/Influencer _capability_ definitions: what each role can and can't do, expressed as a capability-flag set attached to the KOBAID (not hardcoded role checks scattered through the app) so Phase 2's switching logic and Phase 11's RBAC can both read from the same source.
 - Mandatory interest selection at onboarding: minimum 4 hashtags/interest tags, validated at registration, feeds Phase 8's ranking signals later.
 - KOBAID metadata fields for: cosmetic ownership (pointer/join to owned cosmetics, not the cosmetics themselves — see Phase 3), referral/promo code association (pointer to Phase 10's referral codes).
 
 **Data models / entities**
+
 - `KobaId` (id, code, role_type, owner_user_id, device_binding_id, issued_by [nullable, staff issuer], issued_at, status)
-- `User` (auth identity distinct from KobaId — a user *has* one or more KobaIds, one per role per device)
+- `User` (auth identity distinct from KobaId — a user _has_ one or more KobaIds, one per role per device)
 - `CapabilityFlagSet` (per role_type, defines allowed actions — read by Phase 2 and Phase 11)
 - `InterestTag` (canonical hashtag list) and `UserInterest` (join, min 4 enforced at write time)
 - `KobaIdMetadata` (kobaid_id, cosmetic_ownership_ref, referral_code_ref)
 - `StaffIssuanceLog` (issuer_kobaid_id, issued_kobaid_id, timestamp) — audit trail, also feeds Phase 11's admin action
 
 **Dependencies on earlier phases**
+
 - None — this is the foundation everything else is built on.
 
 ---
@@ -96,19 +99,22 @@ transactional and permission-heavy (orders, bids, payouts, RBAC), and
 ## Phase 2 — Account Switching Flow
 
 **Scope, as engineering deliverables**
+
 - Settings UI + backend endpoint to switch active mode among Player/Business/Influencer for a given user (each mode maps to a distinct KOBAID per Phase 1's "one per role per device" rule — switching is really "activate a different KOBAID," not mutating one KOBAID's role).
-- Business mode activation: unlocks shop tools, product uploads, ad creation, and dev-portal access (dev-portal *access* is gated here; dev-portal *functionality* is built in Phase 9).
+- Business mode activation: unlocks shop tools, product uploads, ad creation, and dev-portal access (dev-portal _access_ is gated here; dev-portal _functionality_ is built in Phase 9).
 - Influencer mode activation: unlocks promo page, referral code generation UI, earnings dashboard (functionality built in Phase 10; this phase only wires the mode gate).
 - Player mode: hides all business/influencer tooling from nav/UI — this must be a capability-flag check (from Phase 1), not per-screen hardcoding.
-- Tagging permission changes per mode (permission *rules* defined here; tag *rendering/enforcement* is Phase 6 — this phase just needs the mode-to-permission mapping to exist and be queryable).
+- Tagging permission changes per mode (permission _rules_ defined here; tag _rendering/enforcement_ is Phase 6 — this phase just needs the mode-to-permission mapping to exist and be queryable).
 - Explicit non-goal carried over from the outline: cosmetic visibility must NOT change when switching modes — write a regression test/checklist item for this since it's an easy thing to accidentally couple to mode state.
 
 **Data models / entities**
+
 - `AccountModeState` (user_id, active_kobaid_id, active_role_type, last_switched_at)
 - Extends `CapabilityFlagSet` from Phase 1 (read, not redefined here)
 - `TagPermissionRule` (role_type → allowed tag actions) — schema only in this phase, enforced in Phase 6
 
 **Dependencies**
+
 - Phase 1 (KOBAID + capability flags must exist first).
 
 ---
@@ -116,6 +122,7 @@ transactional and permission-heavy (orders, bids, payouts, RBAC), and
 ## Phase 3 — Marketplace Core
 
 **Scope, as engineering deliverables**
+
 - `Product` model covering four listing kinds: skins, maps, monuments, and generic "assets" (game-specific tradeable items), plus a separate cosmetics track.
 - Cosmetics constrained explicitly to three sub-types — Avatar Decoration, Profile Effect, Nameplate — sold pre-made (à la Discord Nitro items), never assembled/configured by the buyer. Enforce this at the schema level (cosmetic sub-type enum, no "custom build" fields) so Phase 9's Map Builder doesn't accidentally become a precedent for a "cosmetic builder."
 - Auction engine: start price, minimum bid increment, end time, auto-extend-on-last-second-bid rule (recommend adding this even though not explicitly requested — flag as a decision, not a silent addition).
@@ -126,6 +133,7 @@ transactional and permission-heavy (orders, bids, payouts, RBAC), and
 - Platform fee: KOBA takes a cut on every settled order — needs a configurable fee schedule (flat %, possibly tiered later) computed at settlement time, not just at checkout, so refunds/disputes recompute correctly.
 
 **Data models / entities**
+
 - `Product` (id, kobaid_owner, type [skin|map|monument|asset], game_id, rarity_tier, price_type [fixed|auction], metadata JSONB)
 - `Cosmetic` (id, kobaid_owner_or_shop, sub_type [avatar_decoration|profile_effect|nameplate], rarity_tier) — separate table from `Product` since cosmetics have a closed sub-type enum and different ownership semantics (cosmetic ownership also referenced from Phase 1's `KobaIdMetadata`)
 - `Auction` (product_id, start_price, min_increment, start_at, end_at, status)
@@ -135,6 +143,7 @@ transactional and permission-heavy (orders, bids, payouts, RBAC), and
 - `StripeAccountLink` (kobaid_or_shop_id, stripe_account_id, onboarding_status) — shared plumbing consumed by Phase 4 and Phase 10
 
 **Dependencies**
+
 - Phase 1 (KOBAID as owner/buyer/seller identity).
 - Phase 2 not strictly required but expected to exist first in practice (Business mode is how sellers list products).
 
@@ -143,12 +152,14 @@ transactional and permission-heavy (orders, bids, payouts, RBAC), and
 ## Phase 4 — Shops + Business Tools
 
 **Scope, as engineering deliverables**
+
 - `Shop` model: bio, banner, avatar, plus the operational surface — analytics dashboard, product management (CRUD over Phase 3's `Product`/`Cosmetic`), rarity distribution reporting (what % of a shop's catalog is common vs. relic, etc.), followers, tagging permissions specific to shops.
 - Stripe connection flow (onboarding UI wrapping Phase 3's `StripeAccountLink` plumbing).
 - Promo settings: enable/disable influencer eligibility for the shop's products, and set payout terms (percentage or fixed rate) — this is the shop-side half of Phase 10's influencer payout config.
-- Explicit non-goal carried over from the outline: KOBA's backend never collects or stores government ID. Business identity/KYC lives entirely in Stripe's own dashboard; KOBA only reads verification *status* back via the Stripe API. This should be a hard architectural constraint, not just a policy note — no `government_id` field should ever exist in this schema.
+- Explicit non-goal carried over from the outline: KOBA's backend never collects or stores government ID. Business identity/KYC lives entirely in Stripe's own dashboard; KOBA only reads verification _status_ back via the Stripe API. This should be a hard architectural constraint, not just a policy note — no `government_id` field should ever exist in this schema.
 
 **Data models / entities**
+
 - `Shop` (id, owner_kobaid_id [must be BZ role], bio, banner_url, avatar_url, follower_count_cache)
 - `ShopFollower` (shop_id, follower_kobaid_id)
 - `ShopAnalyticsSnapshot` (shop_id, period, views, sales, conversion — precomputed rollups, not live-queried every page load)
@@ -156,6 +167,7 @@ transactional and permission-heavy (orders, bids, payouts, RBAC), and
 - Extends `StripeAccountLink` from Phase 3 with shop-specific onboarding state
 
 **Dependencies**
+
 - Phase 1 (Business KOBAID), Phase 3 (Product/Cosmetic/Stripe plumbing).
 
 ---
@@ -163,6 +175,7 @@ transactional and permission-heavy (orders, bids, payouts, RBAC), and
 ## Phase 5 — Groups + LFG
 
 **Scope, as engineering deliverables**
+
 - `Group` model: public/private visibility, group feed (a scoped view into Phase 8's feed engine once that exists — build the group feed's data shape now, wire it into the ranked feed later).
 - Membership roles: Owner/Admin/Moderator/Member — explicitly a **community-level** role attached to a normal Player/Business KOBAID, distinct from Phase 11's platform staff roles. Model these as two entirely separate enums/tables from day one to avoid any future conflation (this distinction is called out twice in the source material — treat it as a hard requirement, not a nice-to-have).
 - LFG (Looking-For-Group) post model: game, mode, requirements (free-text or structured — recommend structured with a free-text fallback field), slot count, expiration.
@@ -170,12 +183,14 @@ transactional and permission-heavy (orders, bids, payouts, RBAC), and
 - Cosmetic display in group member profiles (reads Phase 3 cosmetic ownership; no new cosmetic logic).
 
 **Data models / entities**
+
 - `Group` (id, name, visibility [public|private], owner_kobaid_id, created_at)
 - `GroupMembership` (group_id, member_kobaid_id, community_role [owner|admin|moderator|member]) — deliberately named `community_role` to avoid collision with Phase 11's `staff_role`
 - `LfgPost` (group_id_or_null, author_kobaid_id, game_id, mode, requirements JSONB, slot_count, filled_count, expires_at)
 - `GroupTagPermissionRule` (group_id, community_role → allowed tag actions)
 
 **Dependencies**
+
 - Phase 1 (KOBAID), Phase 3 (cosmetic display references product/cosmetic data).
 - Soft dependency on Phase 8 (group feed will eventually plug into the unified feed, but can ship with its own simple reverse-chronological view first).
 
@@ -184,6 +199,7 @@ transactional and permission-heavy (orders, bids, payouts, RBAC), and
 ## Phase 6 — Social Layer (tagging included)
 
 **Scope, as engineering deliverables**
+
 - `SocialAction` model covering like/comment/share/repost/story as a single polymorphic action type (or a small family of related tables — decide during schema design in Phase 12, model the concept now).
 - DM system: text, stickers, voice messages, voice/video calls, and "Vanish Mode" disappearing messages. Voice/video calls in particular are a distinct technical subsystem (see tech stack's realtime row and the open question on call provider) — scope it separately from the text/sticker/voice-message DM CRUD, which is comparatively simple.
 - Block/Report rules: blocking must cascade into tag suggestions, DM delivery, feed visibility, and search — write this as a single enforcement checkpoint (e.g., a shared `isBlocked(a,b)` check) reused everywhere rather than re-implemented per feature.
@@ -193,6 +209,7 @@ transactional and permission-heavy (orders, bids, payouts, RBAC), and
 - Tagging permission changes on account-mode switch (the enforcement half of what Phase 2 only modeled).
 
 **Data models / entities**
+
 - `SocialAction` (id, actor_kobaid_id, action_type [like|comment|share|repost|story], target_id, target_type, content JSONB, created_at)
 - `DirectMessage` (thread_id, sender_kobaid_id, type [text|sticker|voice|call_event], content, vanish_mode boolean, expires_at)
 - `DmThread` (participants, vanish_mode_default)
@@ -203,6 +220,7 @@ transactional and permission-heavy (orders, bids, payouts, RBAC), and
 - `TagPrivacySetting` (kobaid_id or role_type, who_can_tag_me enum)
 
 **Dependencies**
+
 - Phase 1 (KOBAID), Phase 2 (mode-based tag permission mapping), Phase 5 (group-scoped tag rules feed into this phase's enforcement).
 
 ---
@@ -210,17 +228,20 @@ transactional and permission-heavy (orders, bids, payouts, RBAC), and
 ## Phase 7 — KOBA Ads (native)
 
 **Scope, as engineering deliverables**
+
 - KOBA Content Unit (KCU) spec: a formal schema for "a piece of content that can appear in the feed," shared by organic content and ads so rendering code doesn't fork.
 - `sponsored` flag on KCUs; native rendering must be visually/structurally identical to organic content across every ad type: product, shop, group, creator, LFG, and cosmetic ads.
-- Ads respect the same tagging permission rules as organic content (Phase 6) and expose the *correct* action buttons per ad type (e.g., a product ad gets "Buy"/"View listing," a group ad gets "Join," etc. — enumerate this mapping explicitly during implementation).
+- Ads respect the same tagging permission rules as organic content (Phase 6) and expose the _correct_ action buttons per ad type (e.g., a product ad gets "Buy"/"View listing," a group ad gets "Join," etc. — enumerate this mapping explicitly during implementation).
 - Ads pause entirely in Player mode — this is a hard business rule (ads are a Business-mode monetization surface; Player mode should never render sponsored KCUs), enforce it at the feed query layer, not just client-side hiding.
 
 **Data models / entities**
+
 - `KcuUnit` (id, content_type [product|shop|group|creator|lfg|cosmetic], sponsored boolean, source_ref_id, created_by_kobaid_id, targeting JSONB)
 - `AdCampaign` (kcu_id, shop_or_influencer_id, budget, spend_to_date, targeting_criteria, status, start_at, end_at)
 - `AdImpressionLog` / `AdClickLog` (for billing and Phase 8 ranking signal input)
 
 **Dependencies**
+
 - Phase 3/4 (products/shops being advertised), Phase 5 (groups/LFG being advertised), Phase 6 (tag permission enforcement), and functionally precedes/parallels Phase 8 (feed engine is what actually interleaves KCUs — build the KCU spec here, wire ranking in Phase 8).
 
 ---
@@ -228,17 +249,20 @@ transactional and permission-heavy (orders, bids, payouts, RBAC), and
 ## Phase 8 — Feed Engine
 
 **Scope, as engineering deliverables**
+
 - Unified feed combining organic `SocialAction`/content and `KcuUnit` ads (Phase 7) into one ranked, paginated stream.
 - Ranking signal inputs: user interests (Phase 1), social actions (Phase 6), tag relevance (Phase 6), marketplace activity (Phase 3), group activity (Phase 5), ad targeting (Phase 7), cosmetic engagement (Phase 3), influencer promo activity (Phase 10 — soft dependency, can stub this signal until Phase 10 ships).
 - Caching/pagination strategy for infinite scroll: cursor-based pagination, Redis-backed precomputed feed pages/scores rather than recomputing rank on every request.
-- This phase is explicitly a *ranking and delivery* layer — it does not own the underlying content models, only queries and scores them.
+- This phase is explicitly a _ranking and delivery_ layer — it does not own the underlying content models, only queries and scores them.
 
 **Data models / entities**
+
 - `FeedRankingSignal` (weights/config per signal type — likely a config table, not per-row data)
 - `FeedCacheEntry` (Redis: user_id/session → cached ranked page, cursor, TTL)
 - No new primary content entities — this phase is read/aggregation-heavy over everything built in Phases 1-7.
 
 **Dependencies**
+
 - Phases 1, 3, 5, 6, 7 (all ranking signal sources). Phase 10's signal can be stubbed and back-filled later without a schema change if `FeedRankingSignal` is designed as an extensible weight table up front.
 
 ---
@@ -246,15 +270,17 @@ transactional and permission-heavy (orders, bids, payouts, RBAC), and
 ## Phase 9 — Developer Portal
 
 **Scope, as engineering deliverables**
+
 - Access gate: Business-mode only (reuses Phase 2's mode gating).
 - Map Builder: the one genuine "builder" in the product — skins/monuments/cosmetics are uploaded pre-made, packs are just bundles of existing products (no packing/building logic needed beyond a bundle reference list). Scope Map Builder as its own substantial feature (asset placement, terrain/prefab tooling scoped per-game — this will need its own design pass per supported PC game, since RCON/modding capabilities differ by title per the README's supported-games table).
 - KOBA APIs exposed to developers: AI Behavior, Faction Simulation, Event Trigger, Logistics, NPC Personality, Pack Metadata. Each is effectively its own mini-product — recommend treating each as a separately versioned API surface with its own docs/sandbox rather than one monolithic "dev API."
 - Sandbox testing environment isolated from production marketplace data.
-- Instant publishing: explicitly no manual review gate to publish (contrast with Phase 4's shop identity flow, which *is* Stripe-gated, and with the Blue Badge below, which *does* require manual review — publishing itself does not).
+- Instant publishing: explicitly no manual review gate to publish (contrast with Phase 4's shop identity flow, which _is_ Stripe-gated, and with the Blue Badge below, which _does_ require manual review — publishing itself does not).
 - Creator earnings dashboard (reads Order/payout data from Phase 3/4).
 - KOBA Blue Badge eligibility tracking: automated tracking of the four numeric thresholds (1,000+ followers, 4.0★+ shop rating, account 30+ days old, $2,500+ gross sales in a rolling 30-day window, refunds/manipulated purchases excluded from that figure) feeding a queue for manual KOBA staff review — badge is never auto-granted even when all four thresholds are met. Auto-removal job: badge is stripped automatically if any threshold is breached, or on fraud/report-spike/rule-violation signals (ties into Phase 6's `Report` model and Phase 11's moderation actions).
 
 **Data models / entities**
+
 - `DevPortalAsset` (map builder projects, pack bundle definitions — bundles reference existing `Product`/`Cosmetic` ids, they don't create new asset types)
 - `DevApiCredential` (kobaid_owner [BZ], api_surface [ai_behavior|faction_sim|event_trigger|logistics|npc_personality|pack_metadata], key, sandbox boolean)
 - `BlueBadgeEligibilitySnapshot` (shop_id, followers, rating, account_age_days, gross_sales_30d, computed_at, meets_thresholds boolean)
@@ -262,6 +288,7 @@ transactional and permission-heavy (orders, bids, payouts, RBAC), and
 - `BlueBadgeGrant` (shop_id, granted_at, revoked_at, revoke_reason)
 
 **Dependencies**
+
 - Phase 2 (Business-mode gate), Phase 3 (packs bundle existing products/cosmetics, earnings from Order data), Phase 4 (shop rating/follower/sales figures feed badge eligibility), Phase 6 (fraud/report signals feed auto-removal), Phase 11 (staff review action).
 
 ---
@@ -269,6 +296,7 @@ transactional and permission-heavy (orders, bids, payouts, RBAC), and
 ## Phase 10 — Influencer System + Promo Page
 
 **Scope, as engineering deliverables**
+
 - Promo page: an Influencer-mode surface (gated by Phase 2) showing the influencer's active referral codes and stats.
 - Referral code generation: unique per product, and the code itself includes the influencer's username (format decision to confirm with client, e.g. `USERNAME-PRODUCTID` style).
 - Referral sales/earnings tracking: attribute an `Order` (Phase 3) to a referral code when present, compute influencer earnings from the shop's `ShopPromoConfig` payout terms (Phase 4).
@@ -277,12 +305,14 @@ transactional and permission-heavy (orders, bids, payouts, RBAC), and
 - Influencer tagging permissions (reads/extends Phase 6's tag privacy settings for the `IN` role).
 
 **Data models / entities**
+
 - `ReferralCode` (id, code, influencer_kobaid_id, product_id, shop_id, created_at, active boolean)
 - `ReferralAttribution` (order_id, referral_code_id) — links back to Phase 3's `Order`
 - `InfluencerEarning` (influencer_kobaid_id, referral_code_id, order_id, amount, payout_status, stripe_transfer_id)
 - `InfluencerAnalyticsSnapshot` (influencer_kobaid_id, period, clicks, conversions, earnings)
 
 **Dependencies**
+
 - Phase 1 (Influencer KOBAID), Phase 2 (mode gate), Phase 3 (Order/Stripe plumbing), Phase 4 (shop-side promo config sets the payout terms this phase reads).
 
 ---
@@ -290,19 +320,22 @@ transactional and permission-heavy (orders, bids, payouts, RBAC), and
 ## Phase 11 — Role System (RBAC)
 
 **Scope, as engineering deliverables**
+
 - Formalize the three internal staff roles as an RBAC system: Superadmin (full control including global financials), Admin (high-level management, explicitly excluding core system settings and global financials), Moderator (reports/warnings/suspensions only).
 - All three are staff roles with **no badge icon** (per Phase 1) — they are distinguished only by KOBAID format (`SA`/`AD`/`MD`) and by which sections of the admin panel they can see/act in. This phase builds the actual permission-check middleware/guards (NestJS guards, per the chosen stack) that enforce that distinction server-side.
-- Admin action: manually issue a new KOBAID to a role (this is the implementation of Phase 1's `StaffIssuanceLog` concept as a real admin-panel feature, with its own permission check — e.g., does issuing a Superadmin code require an existing Superadmin, not just any Admin?  Flag as a decision).
+- Admin action: manually issue a new KOBAID to a role (this is the implementation of Phase 1's `StaffIssuanceLog` concept as a real admin-panel feature, with its own permission check — e.g., does issuing a Superadmin code require an existing Superadmin, not just any Admin? Flag as a decision).
 - Moderator actions scoped narrowly to: acting on `Report`s (Phase 6), issuing warnings, and suspending accounts — explicitly no access to financials or core settings.
 - Admin actions: broader account/content/shop management, but still no access to global financial reporting or core system configuration (only Superadmin gets that).
 
 **Data models / entities**
+
 - `StaffRole` enum (superadmin|admin|moderator) — kept structurally separate from Phase 5's `community_role` enum, as noted there.
 - `Permission` / `RolePermission` (staff_role → allowed permission keys) — the actual RBAC table the guards read.
 - `ModerationAction` (moderator_kobaid_id, target_id, target_type, action_type [warning|suspension|report_resolution], reason, created_at)
 - Extends Phase 1's `StaffIssuanceLog` with the concrete admin-panel action and its own permission check.
 
 **Dependencies**
+
 - Phase 1 (staff KOBAID format), Phase 6 (Report model that Moderators act on).
 
 ---
@@ -312,6 +345,7 @@ transactional and permission-heavy (orders, bids, payouts, RBAC), and
 **This phase is deliberately the integration checkpoint.** Per the client's explicit instruction, Phase 12 is "the only session where full schema context is pasted" — i.e., don't try to design the unified schema piecemeal inside earlier phases; each earlier phase above proposes its own entities in isolation, and Phase 12 is where all of them get reconciled into one coherent Prisma schema in a single sitting with full context loaded.
 
 **Scope, as engineering deliverables**
+
 - Unify every model proposed in Phases 1-11 into one schema: Users, KOBAID ledger, Products, Cosmetics, Auctions, Bids, Orders, Shops, Groups, LFG posts, SocialActions, TagActions, Ads (KCUs), Feed units, Developer portal assets, Influencer promo codes, Influencer earnings, Role permissions.
 - Resolve naming collisions flagged in earlier phases (e.g., `community_role` vs `staff_role` must remain distinct tables/enums, not merged for "consistency").
 - Foreign key / referential integrity pass across all domains (e.g., `Order.referral_code_id` nullable FK to `ReferralCode`, `Order.buyer_kobaid_id`/`seller_kobaid_id` FKs, cascade/restrict rules for deletes — especially around KOBAID immutability from Phase 1, which implies most FKs to `KobaId` should be `RESTRICT`, not `CASCADE`).
@@ -320,6 +354,7 @@ transactional and permission-heavy (orders, bids, payouts, RBAC), and
 - Produce the actual Prisma schema file(s) and initial migration as the deliverable of this phase.
 
 **Dependencies**
+
 - Phases 1-11 (this phase only reconciles what they've each proposed — it should not introduce new product requirements).
 
 ---
@@ -327,14 +362,17 @@ transactional and permission-heavy (orders, bids, payouts, RBAC), and
 ## Phase 13 — API Routes
 
 **Scope, as engineering deliverables**
+
 - Implement the full REST (or REST+RPC, per NestJS conventions) surface over the Phase 12 schema: auth, KOBAID, marketplace, cosmetic, shop, Stripe connection, group, LFG, social, tagging (`/tags/create`, `/tags/delete`, `/tags/settings`, `/tags/suggestions`), ads, feed, developer portal, influencer promo, role management, settings routes.
 - Each route group maps to a NestJS module, each guarded by the RBAC guards built in Phase 11 and the capability-flag checks from Phase 1/2.
 - API contract (OpenAPI/Swagger, generated from NestJS decorators) as a deliverable, so the frontend and any future third-party developer-portal consumers (Phase 9) have a single source of truth.
 
 **Data models / entities**
+
 - No new entities — this phase is the HTTP surface over Phase 12's schema.
 
 **Dependencies**
+
 - Phase 12 (full schema must exist first, per the client's explicit sequencing).
 
 ---
@@ -395,7 +433,7 @@ Phase 9  Developer Portal      Phase 10  Influencer System
 4. **Phase 6 (Social layer)** is a natural join point — it needs Phase 5's group tag rules and Phase 2's mode-based tag rules, so schedule it after both land.
 5. **Phase 7 (Ads) and Phase 8 (Feed)** are tightly coupled (KCU spec, then the engine that ranks KCUs) — treat as one continuous work block, in that order.
 6. **Phase 9 (Dev Portal) and Phase 10 (Influencer)** are independent of each other and can run in parallel — different bounded contexts, both only need Phases 1-4 (+6 for Phase 9's fraud signals) as inputs.
-7. **Phase 11 (RBAC)** has the fewest cross-dependencies of any phase after Phase 1 — it could be started as early as right after Phase 1 and developed in parallel with Phases 3-8 by a separate track, since it's mostly self-contained (staff roles, permissions, moderation actions) and only needs to *exist* by the time Phase 9's badge auto-removal and Phase 12's integration land.
+7. **Phase 11 (RBAC)** has the fewest cross-dependencies of any phase after Phase 1 — it could be started as early as right after Phase 1 and developed in parallel with Phases 3-8 by a separate track, since it's mostly self-contained (staff roles, permissions, moderation actions) and only needs to _exist_ by the time Phase 9's badge auto-removal and Phase 12's integration land.
 8. **Phase 12 is a hard serialization point** — do not start it until Phases 1-11 are functionally complete; it is explicitly scoped as a single-session, full-context integration pass, not an incremental migration process.
 9. **Phase 13** starts only after Phase 12 is done.
 
@@ -411,7 +449,7 @@ Flagging rather than guessing on anything with real product/cost/legal consequen
 4. **Voice/video call provider** (Phase 6 DMs) — hand-rolled WebRTC vs. a managed SFU (LiveKit, Twilio Video, Agora, Daily). This is a real cost and complexity decision, not a style choice; needs to be picked before Phase 6 is scoped in detail.
 5. **Rarity tier naming** (Phase 3) — outline specifies "6-tier, common → relic" but only names the two endpoints. Roadmap above proposes common/uncommon/rare/epic/legendary/relic as a working default; needs client confirmation before schema/UI copy is finalized.
 6. **Moderation tooling scope** (Phase 11) — outline gives Moderators "reports/warnings/suspensions only," but doesn't specify tooling depth (e.g., is there a queue/dashboard, bulk actions, appeal workflow, audit log retention requirements?). Needs scoping before Phase 11 can be estimated with confidence.
-7. **Blue Badge manual review workflow** (Phase 9) — thresholds are fully specified, but the *manual KOBA staff review* step's process (who reviews, SLA, what "manual" means operationally — a queue in the admin panel? external ticketing?) is not. Needs a decision to scope the `BlueBadgeReviewQueueEntry` workflow.
+7. **Blue Badge manual review workflow** (Phase 9) — thresholds are fully specified, but the _manual KOBA staff review_ step's process (who reviews, SLA, what "manual" means operationally — a queue in the admin panel? external ticketing?) is not. Needs a decision to scope the `BlueBadgeReviewQueueEntry` workflow.
 8. **Platform fee schedule** (Phase 3) — outline confirms "KOBA takes a platform fee" but not the rate, whether it's flat or tiered, or whether it differs by product type (skins vs. cosmetics vs. maps) or rarity tier. Needed before checkout/settlement logic is finalized.
 9. **Search** — tech stack above defaults to Postgres full-text to avoid a premature second system, but if catalog size/complexity is expected to be large at launch, a dedicated search engine (Meilisearch/Typesense/Algolia) might be worth building in from Phase 3 rather than retrofitting. Needs a call on expected catalog scale.
 10. **Console platforms and payments** — README's console list is kits/cosmetics-only (no modding/spawning). Confirm this doesn't imply a separate console storefront/app requirement (e.g., PlayStation/Xbox store compliance for in-app purchases) that would materially change Phase 3/4's payment integration scope.
@@ -419,4 +457,4 @@ Flagging rather than guessing on anything with real product/cost/legal consequen
 
 ---
 
-*This roadmap is planning only — no code, schema, or scaffolding has been created as part of producing this document.*
+_This roadmap is planning only — no code, schema, or scaffolding has been created as part of producing this document._

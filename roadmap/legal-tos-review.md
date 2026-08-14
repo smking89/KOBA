@@ -23,6 +23,7 @@ exactly this reason.
 
 **CurseForge's ARK Premium Mods policy** (the specific FAQ page governing
 paid mods):
+
 > "Premium mods for ARK SA can only be sold through CurseForge. You are
 > not allowed to sell your premium mods on your own, nor through any
 > other third-party vendor."
@@ -36,10 +37,11 @@ paid mods):
 
 > "Currently no. The only game on CurseForge with premium mods is ARK:
 > Survival Ascended."
-[Source](https://support.curseforge.com/support/solutions/articles/9000235469-ark-premium-mods)
+> [Source](https://support.curseforge.com/support/solutions/articles/9000235469-ark-premium-mods)
 
 **CurseForge's ARK:SA Moderation Guidelines** (the document that actually
 establishes whose rule this is):
+
 > "Any mod that involves any monetary transaction in order to acquire,
 > operate or function with full features is not allowed." (stated
 > separately for PC/Windows, Xbox Series X/S, and PS5)
@@ -51,7 +53,7 @@ establishes whose rule this is):
 > "To the extent these Moderation Guidelines conflict with CurseForge's
 > moderation guidelines and/or policies, the Moderation Guidelines in
 > this document will take precedent."
-[Source](https://support.curseforge.com/support/solutions/articles/9000232898-moderation-guidelines-for-ark-survival-ascended)
+> [Source](https://support.curseforge.com/support/solutions/articles/9000232898-moderation-guidelines-for-ark-survival-ascended)
 
 That last clause is the load-bearing sentence for the risk-attribution
 question below: this document is explicitly framed as **Studio
@@ -62,6 +64,7 @@ platform-specific rule Wildcard is indifferent to.
 
 **ARK's Code of Conduct** (survivetheark.com/support, applies to
 official/BattlEye-protected servers):
+
 > "ARK items, creatures, or services must only be exchanged for other
 > items, creatures, or services within the game. Trading for real-world
 > currency (real money) is not an accepted form of trading."
@@ -70,7 +73,7 @@ official/BattlEye-protected servers):
 > appealed," alongside hacking, exploiting, and meshing. "Servers found
 > advertising real-money trades or real-money purchases are subject to
 > termination without warning."
-[Source](https://support.survivetheark.com/hc/en-us/articles/220278968-Code-of-Conduct)
+> [Source](https://support.survivetheark.com/hc/en-us/articles/220278968-Code-of-Conduct)
 
 Note the scope on this last one: it's explicitly about the **Official
 Network** (Wildcard-hosted official servers), not a blanket rule against
@@ -82,7 +85,7 @@ above.
 
 **This is Wildcard's rule, not just CurseForge's.** The moderation
 guidelines document is explicit that it's Studio Wildcard's own
-requirement, presented *through* CurseForge, and that it overrides
+requirement, presented _through_ CurseForge, and that it overrides
 CurseForge's generic policy when the two disagree. This matters for risk
 level: it is not a case of "a distribution platform enforcing a rule the
 publisher is indifferent to outside that channel" (the narrower, lower-risk
@@ -122,11 +125,12 @@ through Steam Workshop, not CurseForge's premium-mod pipeline, and no
 CurseForge premium-mods program exists for ASE.
 
 However, ASE is **not therefore clear**:
+
 - The same Code of Conduct RMT ban found for ASA appears to be a
   shared, studio-wide policy applying to "the Official Network" across
   ARK titles (Steam's 2018-era "Overseer's Code of Conduct" announcement
   for ARK: Survival Evolved covers the same real-money-trading
-  prohibition). This wasn't found as a *title-specific* separate ASE
+  prohibition). This wasn't found as a _title-specific_ separate ASE
   document, so treat the RMT-on-official-servers ban as applying to ASE
   too, with the caveat that it's explicitly about official servers, not
   a blanket ban on private-server economies.
@@ -170,12 +174,12 @@ patch:
 
 ### 1e. Recommendation
 
-| Scope | Recommendation |
-|---|---|
-| ARK: Survival Ascended — marketplace listings of paid mods/CurseForge content | **Full exclusion.** Direct, sourced conflict with Wildcard's own stated policy; no compliant path compatible with KOBA's Stripe Connect architecture exists. |
+| Scope                                                                                                                                       | Recommendation                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| ------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| ARK: Survival Ascended — marketplace listings of paid mods/CurseForge content                                                               | **Full exclusion.** Direct, sourced conflict with Wildcard's own stated policy; no compliant path compatible with KOBA's Stripe Connect architecture exists.                                                                                                                                                                                                                                                                                                                                                                                                 |
 | ARK: Survival Ascended — cosmetics that are not CurseForge mods (e.g., a cosmetic skin pack sold and delivered entirely outside CurseForge) | **Cosmetics-only inclusion is a plausible narrower path, not a cleared one.** The Tebex/CurseForge requirement is scoped to CurseForge-distributed mods; it's not clearly established that a non-CurseForge cosmetic item is caught by it. But Wildcard's Code of Conduct RMT ban is broader in scope and could still reach real-money item trading depending on how "item" is defined and whether it touches official servers. **Needs actual legal counsel before treating this as safe** — this is a genuine gap in the desk research, not a green light. |
-| ARK: Survival Evolved (ASE) | **Unresolved, not cleared.** Lower-risk than ASA on the specific Tebex/CurseForge axis (that policy doesn't apply to ASE), but no explicit private-server monetization sanction was found either — silence, not permission. Recommend the same "needs legal counsel before non-cosmetics inclusion" treatment as ASA's cosmetics carve-out, one tier less urgent. |
-| Both ARK titles — full marketplace inclusion (maps/mods/assets as scoped in the original 14-title plan) | **No-go.** Confirmed by this deeper review, not weakened — if anything the "whose rule is this" analysis (§1b) makes the risk *higher* than market-research.md's initial framing left open, since this is Wildcard's rule, not a narrow CurseForge-only channel restriction. |
+| ARK: Survival Evolved (ASE)                                                                                                                 | **Unresolved, not cleared.** Lower-risk than ASA on the specific Tebex/CurseForge axis (that policy doesn't apply to ASE), but no explicit private-server monetization sanction was found either — silence, not permission. Recommend the same "needs legal counsel before non-cosmetics inclusion" treatment as ASA's cosmetics carve-out, one tier less urgent.                                                                                                                                                                                            |
+| Both ARK titles — full marketplace inclusion (maps/mods/assets as scoped in the original 14-title plan)                                     | **No-go.** Confirmed by this deeper review, not weakened — if anything the "whose rule is this" analysis (§1b) makes the risk _higher_ than market-research.md's initial framing left open, since this is Wildcard's rule, not a narrow CurseForge-only channel restriction.                                                                                                                                                                                                                                                                                 |
 
 ---
 
@@ -293,7 +297,7 @@ patch:
   to "Garry's Mod, Rust, Clatter, Chippy, Facepunch prototype games as
   well as our other games, services and products."
   [Source](https://facepunch.com/legal/modding) (Steam Workshop
-  specifically prohibits *paywalling* Workshop-distributed addons —
+  specifically prohibits _paywalling_ Workshop-distributed addons —
   "Malicious Code" rules bar blocking non-payers from using an addon —
   but this is a Workshop-channel-specific restriction, not a ban on
   selling mods through other channels; the long-running, openly-operated
@@ -324,7 +328,7 @@ patch:
   products" broadly, and the servers document names s&box in its scope.
   But S&Box also has its **own, separate EULA** with its own
   monetization model layered on top.
-- **RMT of items/currency:** S&Box's own EULA restricts *Facepunch's*
+- **RMT of items/currency:** S&Box's own EULA restricts _Facepunch's_
   own Virtual Goods specifically: they "cannot be 'bought', 'sold',
   gifted, transferred, traded or redeemed in any way." This is about
   Facepunch's first-party store items, not user-created content.
@@ -391,7 +395,7 @@ patch:
 - **Selling custom content/mods:** Eco has its own first-party
   "Registered Mods" system where mods registered by Strange Loop
   automatically earn **in-game Eco Credits** (not real money) whenever a
-  world spends credits using them — this is explicitly *not* a real
+  world spends credits using them — this is explicitly _not_ a real
   revenue-share mechanism (per Strange Loop's own CEO commentary: "no
   real revenue sharing with Eco Credits, and there is no way to redeem
   virtual currency"). This tells us Strange Loop has built an in-game
@@ -414,7 +418,7 @@ patch:
   framework) addresses IP infringement on the Mod Browser but contains
   no explicit clause permitting or prohibiting charging money for mods.
   [Source](https://store.steampowered.com/eula/1281930_eula_0)
-  General reporting establishes Re-Logic has a *permissive, pro-modding*
+  General reporting establishes Re-Logic has a _permissive, pro-modding_
   reputation (explicitly cited as one of the industry's few developers
   actively encouraging modding) and has publicly framed continued
   Terraria updates as funded by base-game sales rather than
@@ -439,7 +443,7 @@ patch:
   the creator to end users. The terms do grant Chucklefish itself an
   "exclusive... right and licence... to make commercial use of your Mod
   in connection with physical products" (i.e., merchandise), which
-  implies Chucklefish reserves *physical* commercialization rights to
+  implies Chucklefish reserves _physical_ commercialization rights to
   itself, but says nothing about a modder selling a digital copy of
   their own mod to players. [Source](https://community.playstarbound.com/help/mod-terms/)
 - **Cosmetics-only on private servers:** No policy found.
@@ -453,23 +457,23 @@ patch:
 
 ## Summary Table — All 14 Titles
 
-| Title | Publisher | Classification | One-line reason | Source |
-|---|---|---|---|---|
-| Minecraft | Mojang | **Compatible** (cosmetics), **grey zone** (maps/mods) | EULA bans currency-for-cash and pay-to-win explicitly; cosmetics/social perks are the sanctioned path; maps/mods for money tolerated in practice (BuiltByBit) but no explicit written carve-out | [Usage Guidelines](https://www.minecraft.net/en-us/usage-guidelines) |
-| Rust | Facepunch | **Compatible** | Permanent-store items non-tradeable by rule (skins out of scope), but server cosmetics/maps/monuments explicitly sanctioned; direct real-world precedent (Codefling) | [Facepunch legal/servers](https://facepunch.com/legal/servers), [Facepunch legal/modding](https://facepunch.com/legal/modding) |
-| ARK: Survival Ascended | Studio Wildcard | **Conflicting** | Wildcard's own moderation guidelines mandate Tebex-wallet-only payout for monetized mods via CurseForge; incompatible with KOBA's Stripe Connect architecture | [CurseForge ARK Premium Mods](https://support.curseforge.com/support/solutions/articles/9000235469-ark-premium-mods) |
-| ARK: Survival Evolved | Studio Wildcard | **Unresolved** (lower risk than ASA, not cleared) | Tebex/CurseForge premium-mod requirement doesn't apply (ASA-only), but no affirmative private-server RMT sanction found either; official-server RMT ban applies | [CurseForge FAQ](https://support.curseforge.com/support/solutions/articles/9000235469-ark-premium-mods), [ARK Code of Conduct](https://support.survivetheark.com/hc/en-us/articles/220278968-Code-of-Conduct) |
-| DayZ | Bohemia Interactive | **Compatible** | Explicit official server monetization policy allowing cosmetics/perks on private shards, banning gameplay-affecting items/currency | [Bohemia server monetization rules](https://www.bohemia.net/monetization/dev) |
-| Valheim | Iron Gate/Coffee Stain | **Conflicting** (mods/maps), **unresolved** (cosmetics — no applicable system) | Official Iron Gate Steam post explicitly opposes paid mods; no server-cosmetics system exists to map KOBA's cosmetics pillar onto | [PC Gamer](https://www.pcgamer.com/valheim-developer-believes-paid-mods-are-against-the-creative-and-open-spirit-of-modding/) |
-| Conan Exiles | Funcom | **Conflicting** | Funcom EULA explicitly bans selling Virtual Goods/Game Currency and "secondary markets," no cosmetics carve-out found | [Funcom EULA](https://www.funcom.com/da-eula-en-us/) |
-| 7 Days to Die | The Fun Pimps | **Conflicting** | EULA explicitly bars server owners from charging hard/soft currency or items; donation-only model sanctioned | [Steam EULA](https://store.steampowered.com/eula/251570_eula_0) |
-| Unturned | Smartly Dressed Games | **Compatible** (with caveat) | Official server hosting rules explicitly permit selling custom/licensed cosmetics; vanilla/official content resale explicitly barred | [SDG Server Hosting Rules](https://docs.smartlydressedgames.com/en/stable/servers/server-hosting-rules.html) |
-| Garry's Mod | Facepunch | **Compatible** | Facepunch's own legal docs state directly "Can I sell a Mod I own? Yes," and server cosmetic sales explicitly permitted | [Facepunch legal/modding](https://facepunch.com/legal/modding), [Facepunch legal/servers](https://facepunch.com/legal/servers) |
-| S&Box | Facepunch | **Unresolved** | Covered nominally by Facepunch's general modding/server policy, but S&Box's own Play Fund monetization model is structurally different from direct-sale, creating ambiguity no explicit clause resolves | [S&Box EULA](https://facepunch.com/legal/sbox/eula) |
-| Project Zomboid | The Indie Stone | **Conflicting** | Blanket no-monetization-of-mods policy per Indie Stone's modding policy (secondary-sourced — primary page blocked, see caveat above) | [Modding policy, secondary-sourced](https://projectzomboid.com/blog/modding-policy/) |
-| Eco | Strange Loop Games | **Unresolved** | No clear public policy on third-party real-money content sales; official in-game (non-cash) Eco Credits system exists but doesn't resolve the question either way | [Registered Mods](https://wiki.play.eco/en/Registered_Mods) |
-| Terraria | Re-Logic | **Unresolved — explicitly** | No published policy found on real-money mod/map sales; general pro-modding reputation is not a sourced policy | [tModLoader ToS](https://store.steampowered.com/eula/1281930_eula_0) |
-| Starbound | Chucklefish | **Unresolved** | Chucklefish's Mod Terms are silent on digital real-money mod sales by creators | [Chucklefish Mod Terms](https://community.playstarbound.com/help/mod-terms/) |
+| Title                  | Publisher              | Classification                                                                 | One-line reason                                                                                                                                                                                         | Source                                                                                                                                                                                                        |
+| ---------------------- | ---------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Minecraft              | Mojang                 | **Compatible** (cosmetics), **grey zone** (maps/mods)                          | EULA bans currency-for-cash and pay-to-win explicitly; cosmetics/social perks are the sanctioned path; maps/mods for money tolerated in practice (BuiltByBit) but no explicit written carve-out         | [Usage Guidelines](https://www.minecraft.net/en-us/usage-guidelines)                                                                                                                                          |
+| Rust                   | Facepunch              | **Compatible**                                                                 | Permanent-store items non-tradeable by rule (skins out of scope), but server cosmetics/maps/monuments explicitly sanctioned; direct real-world precedent (Codefling)                                    | [Facepunch legal/servers](https://facepunch.com/legal/servers), [Facepunch legal/modding](https://facepunch.com/legal/modding)                                                                                |
+| ARK: Survival Ascended | Studio Wildcard        | **Conflicting**                                                                | Wildcard's own moderation guidelines mandate Tebex-wallet-only payout for monetized mods via CurseForge; incompatible with KOBA's Stripe Connect architecture                                           | [CurseForge ARK Premium Mods](https://support.curseforge.com/support/solutions/articles/9000235469-ark-premium-mods)                                                                                          |
+| ARK: Survival Evolved  | Studio Wildcard        | **Unresolved** (lower risk than ASA, not cleared)                              | Tebex/CurseForge premium-mod requirement doesn't apply (ASA-only), but no affirmative private-server RMT sanction found either; official-server RMT ban applies                                         | [CurseForge FAQ](https://support.curseforge.com/support/solutions/articles/9000235469-ark-premium-mods), [ARK Code of Conduct](https://support.survivetheark.com/hc/en-us/articles/220278968-Code-of-Conduct) |
+| DayZ                   | Bohemia Interactive    | **Compatible**                                                                 | Explicit official server monetization policy allowing cosmetics/perks on private shards, banning gameplay-affecting items/currency                                                                      | [Bohemia server monetization rules](https://www.bohemia.net/monetization/dev)                                                                                                                                 |
+| Valheim                | Iron Gate/Coffee Stain | **Conflicting** (mods/maps), **unresolved** (cosmetics — no applicable system) | Official Iron Gate Steam post explicitly opposes paid mods; no server-cosmetics system exists to map KOBA's cosmetics pillar onto                                                                       | [PC Gamer](https://www.pcgamer.com/valheim-developer-believes-paid-mods-are-against-the-creative-and-open-spirit-of-modding/)                                                                                 |
+| Conan Exiles           | Funcom                 | **Conflicting**                                                                | Funcom EULA explicitly bans selling Virtual Goods/Game Currency and "secondary markets," no cosmetics carve-out found                                                                                   | [Funcom EULA](https://www.funcom.com/da-eula-en-us/)                                                                                                                                                          |
+| 7 Days to Die          | The Fun Pimps          | **Conflicting**                                                                | EULA explicitly bars server owners from charging hard/soft currency or items; donation-only model sanctioned                                                                                            | [Steam EULA](https://store.steampowered.com/eula/251570_eula_0)                                                                                                                                               |
+| Unturned               | Smartly Dressed Games  | **Compatible** (with caveat)                                                   | Official server hosting rules explicitly permit selling custom/licensed cosmetics; vanilla/official content resale explicitly barred                                                                    | [SDG Server Hosting Rules](https://docs.smartlydressedgames.com/en/stable/servers/server-hosting-rules.html)                                                                                                  |
+| Garry's Mod            | Facepunch              | **Compatible**                                                                 | Facepunch's own legal docs state directly "Can I sell a Mod I own? Yes," and server cosmetic sales explicitly permitted                                                                                 | [Facepunch legal/modding](https://facepunch.com/legal/modding), [Facepunch legal/servers](https://facepunch.com/legal/servers)                                                                                |
+| S&Box                  | Facepunch              | **Unresolved**                                                                 | Covered nominally by Facepunch's general modding/server policy, but S&Box's own Play Fund monetization model is structurally different from direct-sale, creating ambiguity no explicit clause resolves | [S&Box EULA](https://facepunch.com/legal/sbox/eula)                                                                                                                                                           |
+| Project Zomboid        | The Indie Stone        | **Conflicting**                                                                | Blanket no-monetization-of-mods policy per Indie Stone's modding policy (secondary-sourced — primary page blocked, see caveat above)                                                                    | [Modding policy, secondary-sourced](https://projectzomboid.com/blog/modding-policy/)                                                                                                                          |
+| Eco                    | Strange Loop Games     | **Unresolved**                                                                 | No clear public policy on third-party real-money content sales; official in-game (non-cash) Eco Credits system exists but doesn't resolve the question either way                                       | [Registered Mods](https://wiki.play.eco/en/Registered_Mods)                                                                                                                                                   |
+| Terraria               | Re-Logic               | **Unresolved — explicitly**                                                    | No published policy found on real-money mod/map sales; general pro-modding reputation is not a sourced policy                                                                                           | [tModLoader ToS](https://store.steampowered.com/eula/1281930_eula_0)                                                                                                                                          |
+| Starbound              | Chucklefish            | **Unresolved**                                                                 | Chucklefish's Mod Terms are silent on digital real-money mod sales by creators                                                                                                                          | [Chucklefish Mod Terms](https://community.playstarbound.com/help/mod-terms/)                                                                                                                                  |
 
 ---
 
@@ -477,6 +481,7 @@ patch:
 
 **Safe to include in the marketplace pillar (maps/mods/custom content)
 at launch:**
+
 - **Rust** — already the flagship wedge per `unified-thesis.md` §4;
   confirmed compatible, no change from prior research.
 - **Garry's Mod** — newly confirmed as the most explicitly compatible
@@ -486,6 +491,7 @@ at launch:**
   everything else checked.
 
 **Cosmetics-only (do not include maps/mods/custom paid content):**
+
 - **Minecraft** — per existing research, cosmetics/social perks are the
   sanctioned path; maps/mods remain a tolerated-not-explicit grey zone.
 - **Unturned** — cosmetics explicitly sanctioned if custom/licensed
@@ -494,6 +500,7 @@ at launch:**
   only.
 
 **Excluded entirely (do not include in any form pending resolution):**
+
 - **ARK: Survival Ascended** — confirmed blocker; no compliant path
   compatible with KOBA's Stripe Connect architecture exists.
 - **Conan Exiles** — explicit, broadly-worded RMT/secondary-market ban.
@@ -506,6 +513,7 @@ at launch:**
 
 **Needs actual legal counsel before any decision (desk research
 genuinely insufficient, not just cautious):**
+
 - **ARK: Survival Evolved** — narrower risk than ASA, but not cleared;
   a lawyer should confirm whether the general RMT Code of Conduct
   reaches private/unofficial servers before treating any ASE inclusion
