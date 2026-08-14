@@ -34,6 +34,11 @@ enum AuditAction {
   PRODUCT_APPROVED
   BID_PLACED
   AUCTION_SETTLED
+  CHECKOUT_CREATED
+  ORDER_PAID
+  ORDER_REFUNDED
+  ORDER_FULFILLED
+  CONNECT_ONBOARDED
 }
 
 model User {
@@ -308,6 +313,9 @@ model Shop {
   ownerUserId          String                 @unique
   verificationStatus   ShopVerificationStatus @default(UNVERIFIED)
   verificationNote     String?
+  stripeAccountId      String?                @unique
+  chargesEnabled       Boolean                @default(false)
+  payoutsEnabled       Boolean                @default(false)
   createdAt            DateTime               @default(now())
   updatedAt            DateTime               @updatedAt
 
@@ -359,15 +367,30 @@ model ShopReview {
   @@index([shopId])
 }
 
+enum OrderKind {
+  FIXED
+  AUCTION
+}
+
 model Order {
-  id           String      @id @default(cuid())
-  shopId       String
-  buyerUserId  String
-  status       OrderStatus @default(PENDING)
-  totalCents   Int
-  currency     String      @default("USD")
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+  id                      String      @id @default(cuid())
+  publicRef               String      @unique
+  shopId                  String
+  buyerUserId             String
+  status                  OrderStatus @default(PENDING)
+  kind                    OrderKind   @default(FIXED)
+  totalCents              Int
+  applicationFeeCents     Int         @default(0)
+  sellerPayoutCents       Int
+  currency                String      @default("USD")
+  stripeCheckoutSessionId String?     @unique
+  stripePaymentIntentId   String?
+  idempotencyKey          String      @unique
+  auctionId               String?
+  paidAt                  DateTime?
+  refundedAt              DateTime?
+  createdAt               DateTime    @default(now())
+  updatedAt               DateTime    @updatedAt
 
   shop  Shop        @relation(fields: [shopId], references: [id], onDelete: Restrict)
   buyer User        @relation("OrderBuyer", fields: [buyerUserId], references: [id], onDelete: Restrict)
@@ -375,6 +398,13 @@ model Order {
 
   @@index([shopId, createdAt])
   @@index([buyerUserId])
+  @@index([status])
+}
+
+model ProcessedStripeEvent {
+  eventId   String   @id
+  type      String
+  createdAt DateTime @default(now())
 }
 
 model OrderItem {
