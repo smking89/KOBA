@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { AuctionCountdown } from "@/features/auctions/components/auction-countdown";
 import type { PublicAuction } from "@/features/auctions/services/auction.service";
 import { formatPrice } from "@/features/marketplace/lib/catalog";
+import { CheckoutButton } from "@/features/payments/components/checkout-button";
 
 export function AuctionPanel({
   slug,
@@ -97,11 +98,14 @@ export function AuctionPanel({
         </div>
       </div>
 
-      {auction.youAreWinning ? (
+      {auction.youAreWinning && live ? (
         <p className="text-sm text-neon-lime">You are the leading bid.</p>
       ) : null}
-      {auction.status === "RESERVED" && auction.winnerDisplay ? (
-        <p className="text-sm">Reserved for {auction.winnerDisplay}. Checkout ships in Phase 8.</p>
+      {auction.status === "RESERVED" && auction.youAreWinning ? (
+        <CheckoutButton slug={slug} signedIn={signedIn} label="Pay now" />
+      ) : null}
+      {auction.status === "RESERVED" && auction.winnerDisplay && !auction.youAreWinning ? (
+        <p className="text-sm">Reserved for {auction.winnerDisplay}.</p>
       ) : null}
       {auction.status === "ENDED" ? (
         <p className="text-sm text-muted">Auction ended with no bids.</p>

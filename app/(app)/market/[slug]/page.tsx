@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { Button } from "@/components/ui/button";
 import { FavoriteButton } from "@/features/marketplace/components/favorite-button";
+import { CheckoutButton } from "@/features/payments/components/checkout-button";
 import { RarityChip } from "@/features/marketplace/components/rarity-chip";
 import { formatPrice, PLATFORM_LABEL } from "@/features/marketplace/lib/catalog";
 import { getPublicProduct } from "@/features/marketplace/services/product.service";
@@ -89,7 +89,14 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
           </ul>
         ) : null}
         <div className="flex flex-wrap gap-2">
-          {auction ? null : <Button disabled>{sold ? "Sold" : "Buy · Phase 8"}</Button>}
+          {auction ? null : (
+            <CheckoutButton
+              slug={product.slug}
+              signedIn={signedIn}
+              label={sold ? "Sold" : "Buy now"}
+              disabled={sold}
+            />
+          )}
           <FavoriteButton
             slug={product.slug}
             initialFavorited={product.favorited}

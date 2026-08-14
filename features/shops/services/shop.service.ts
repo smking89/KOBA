@@ -331,13 +331,24 @@ export async function getShopAnalytics(userId: string) {
     _count: { _all: true },
   });
 
+  const orderCounts = {
+    PENDING: 0,
+    PAID: 0,
+    FULFILLED: 0,
+    CANCELLED: 0,
+    REFUNDED: 0,
+  };
+  for (const row of orders) {
+    orderCounts[row.status] = row._count._all;
+  }
+
   return {
     shop,
     listings: { approved, pending, draft },
     followers: shop._count.follows,
     reviews: shop._count.reviews,
     inventoryQty: inventory._sum.inventoryQty ?? 0,
-    orders: Object.fromEntries(orders.map((row) => [row.status, row._count._all])),
+    orders: orderCounts,
   };
 }
 

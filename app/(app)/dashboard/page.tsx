@@ -62,6 +62,9 @@ export default async function PlayerDashboardPage() {
         <Link href="/market" className={cn(buttonVariants({ variant: "primary" }))}>
           Explore Market
         </Link>
+        <Link href="/orders" className={cn(buttonVariants({ variant: "secondary" }))}>
+          Orders
+        </Link>
         <Link href="/lfg" className={cn(buttonVariants({ variant: "secondary" }))}>
           Open LFG
         </Link>

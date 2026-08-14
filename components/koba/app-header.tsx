@@ -49,6 +49,12 @@ export function AppHeader() {
           {isLoggedIn ? (
             <>
               <Link
+                href="/orders"
+                className="text-sm font-medium text-muted transition-colors hover:text-foreground"
+              >
+                Orders
+              </Link>
+              <Link
                 href="/settings"
                 className="hidden font-mono text-xs text-muted transition-colors hover:text-foreground sm:inline"
               >

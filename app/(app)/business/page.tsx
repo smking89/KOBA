@@ -75,7 +75,7 @@ export default async function BusinessDashboardPage() {
           <CardTitle>Orders</CardTitle>
           <p className="mt-2 font-mono text-2xl">{shop._count.orders}</p>
           <CardDescription>
-            Checkout ships in Phase 8. No revenue is estimated here.
+            {data.orders.PAID + data.orders.FULFILLED} paid · {data.orders.PENDING} pending
           </CardDescription>
         </Card>
       </div>
@@ -89,6 +89,9 @@ export default async function BusinessDashboardPage() {
       <div className="flex flex-wrap items-center gap-3">
         <Link href="/business/orders" className={cn(buttonVariants({ variant: "secondary" }))}>
           Order inbox
+        </Link>
+        <Link href="/business/payouts" className={cn(buttonVariants({ variant: "secondary" }))}>
+          Payouts
         </Link>
         <RequestVerificationButton status={shop.verificationStatus} />
         <Link href="/settings" className={cn(buttonVariants({ variant: "ghost" }))}>

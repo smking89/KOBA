@@ -1,10 +1,12 @@
 import Link from "next/link";
+import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { requireBusinessDashboard } from "@/features/shops/lib/require-business";
 import { listShopOrders } from "@/features/shops/services/shop.service";
 import { ShopError } from "@/features/shops/services/shop.service";
 import { formatPrice } from "@/features/marketplace/lib/catalog";
+import { OrderActionButton } from "@/features/payments/components/order-action-button";
 
 export const metadata = { title: "Orders" };
 
@@ -19,7 +21,8 @@ export default async function BusinessOrdersPage() {
         <div>
           <h1 className="text-3xl font-semibold tracking-tight">Orders</h1>
           <p className="mt-1 text-sm text-muted">
-            Checkout and payments land in Phase 8. This inbox stays empty until then.
+            Paid status comes from signed Stripe webhooks. Fulfill after you deliver. Refunds
+            reverse the Connect transfer and the platform fee.
           </p>
         </div>
         {orders.length === 0 ? (
@@ -27,11 +30,40 @@ export default async function BusinessOrdersPage() {
         ) : (
           <ul className="divide-y divide-border rounded-lg border border-border">
             {orders.map((order) => (
-              <li key={order.id} className="flex items-center justify-between p-4 text-sm">
-                <span>{order.buyer.name ?? "Buyer"}</span>
-                <span className="font-mono">
-                  {formatPrice(order.totalCents, order.currency)} · {order.status}
-                </span>
+              <li
+                key={order.publicRef}
+                className="flex flex-wrap items-center justify-between gap-3 p-4"
+              >
+                <div>
+                  <Link
+                    href={`/orders/${order.publicRef}`}
+                    className="font-mono text-sm hover:text-neon-lime"
+                  >
+                    {order.publicRef}
+                  </Link>
+                  <p className="text-xs text-muted">
+                    {order.buyer.name ?? "Buyer"} · {order.kind} ·{" "}
+                    {order.items
+                      .map((item) => `${item.titleSnapshot} × ${item.quantity}`)
+                      .join(", ")}
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <Badge>{order.status}</Badge>
+                  <span className="font-mono text-sm">
+                    {formatPrice(order.totalCents, order.currency)}
+                  </span>
+                  {order.status === "PAID" ? (
+                    <OrderActionButton
+                      publicRef={order.publicRef}
+                      action="fulfill"
+                      label="Fulfill"
+                    />
+                  ) : null}
+                  {order.status === "PAID" || order.status === "FULFILLED" ? (
+                    <OrderActionButton publicRef={order.publicRef} action="refund" label="Refund" />
+                  ) : null}
+                </div>
               </li>
             ))}
           </ul>

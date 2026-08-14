@@ -34,6 +34,7 @@ export const NETWORK_FIRST_PATH_PREFIXES = [
   "/lfg",
   "/messages",
   "/settings",
+  "/orders",
   "/api/",
 ] as const;
 

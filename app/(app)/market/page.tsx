@@ -35,7 +35,7 @@ export default async function MarketPage({
         <h1 className="mt-3 text-3xl font-semibold tracking-tight">Trade what you build</h1>
         <p className="mt-2 max-w-2xl text-muted">
           Skins, maps, monuments, kits, and cosmetics. Only approved listings appear here. Place
-          bids on live auctions. Checkout for buy-now listings is Phase 8.
+          bids on live auctions, then pay reserved wins through Stripe Checkout.
         </p>
       </div>
 

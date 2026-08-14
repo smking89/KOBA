@@ -33,7 +33,9 @@ export default async function AdminPlaceholderPage() {
         <h1 className="mt-3 text-3xl font-semibold tracking-tight">KOBA staff</h1>
         <p className="mt-2 max-w-2xl text-muted">
           Staff KOBAIDs are issued by Superadmin/Admin only. The full admin console lands in a later
-          phase. Issuance API: <span className="font-mono text-xs">POST /api/admin/kobaid</span>
+          phase. Issuance API: <span className="font-mono text-xs">POST /api/admin/kobaid</span>.
+          Staff refunds:{" "}
+          <span className="font-mono text-xs">POST /api/admin/orders/[ref]/refund</span>
         </p>
       </div>
       <Card>
