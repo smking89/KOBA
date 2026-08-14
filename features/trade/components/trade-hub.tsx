@@ -5,22 +5,98 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { StatusPill } from "@/components/koba/status-pill";
+import type { InventoryItemPublicView } from "@/features/inventory/services/inventory.service";
 import { MOCK_TRADE_INVENTORY } from "@/features/trade/lib/catalog";
 import {
+  RARITY_VALUE_WARNING,
   sameRarityTier,
   tradeStateLabel,
   type TradeOfferView,
 } from "@/features/trade/lib/types";
 import { RARITY_LABEL } from "@/features/marketplace/lib/catalog";
 
-export function TradeHub({ initialTrades = [] }: { initialTrades?: TradeOfferView[] }) {
+type ComposerItem = {
+  id: string;
+  title: string;
+  game: string;
+  platform: string;
+  rarity: InventoryItemPublicView["rarity"] | (typeof MOCK_TRADE_INVENTORY)[number]["rarity"];
+  ownerHandle: string;
+  locked: boolean;
+  eligible: boolean;
+  eligibilityNote: string;
+};
+
+function toComposerItem(item: InventoryItemPublicView): ComposerItem {
+  return {
+    id: item.publicRef,
+    title: item.title,
+    game: item.game,
+    platform: item.platform,
+    rarity: item.rarity,
+    ownerHandle: item.ownerHandle,
+    locked: item.locked,
+    eligible: !item.locked && item.transferable && item.status === "ACTIVE",
+    eligibilityNote: item.locked
+      ? "Locked for an active trade."
+      : item.listedForTrade
+        ? `Listed — ${item.rarity} tier.`
+        : "In your inventory (not publicly listed).",
+  };
+}
+
+function toComposerFromMock(item: (typeof MOCK_TRADE_INVENTORY)[number]): ComposerItem {
+  return {
+    id: item.inventoryPublicRef ?? item.id,
+    title: item.title,
+    game: item.game,
+    platform: item.platform,
+    rarity: item.rarity,
+    ownerHandle: item.ownerHandle,
+    locked: item.locked,
+    eligible: item.eligible,
+    eligibilityNote: item.eligibilityNote,
+  };
+}
+
+export function TradeHub({
+  initialTrades = [],
+  listedInventory = [],
+  myInventory = [],
+}: {
+  initialTrades?: TradeOfferView[];
+  listedInventory?: InventoryItemPublicView[];
+  myInventory?: InventoryItemPublicView[];
+}) {
   const [query, setQuery] = useState("");
   const [rarity, setRarity] = useState<string>("ALL");
-  const [offerIds, setOfferIds] = useState<string[]>(["inv-1"]);
-  const [requestIds, setRequestIds] = useState<string[]>(["inv-2"]);
+
+  const catalog = useMemo(() => {
+    if (listedInventory.length > 0 || myInventory.length > 0) {
+      const byRef = new Map<string, ComposerItem>();
+      for (const item of listedInventory) {
+        byRef.set(item.publicRef, toComposerItem(item));
+      }
+      for (const item of myInventory) {
+        byRef.set(item.publicRef, toComposerItem(item));
+      }
+      return [...byRef.values()];
+    }
+    return MOCK_TRADE_INVENTORY.map(toComposerFromMock);
+  }, [listedInventory, myInventory]);
+
+  const myRefs = useMemo(() => new Set(myInventory.map((item) => item.publicRef)), [myInventory]);
+
+  const defaultOffer = myInventory[0]?.publicRef ?? catalog.find((item) => myRefs.has(item.id))?.id;
+  const defaultRequest =
+    listedInventory.find((item) => !myRefs.has(item.publicRef))?.publicRef ??
+    catalog.find((item) => !myRefs.has(item.id))?.id;
+
+  const [offerIds, setOfferIds] = useState<string[]>(defaultOffer ? [defaultOffer] : []);
+  const [requestIds, setRequestIds] = useState<string[]>(defaultRequest ? [defaultRequest] : []);
 
   const inventory = useMemo(() => {
-    return MOCK_TRADE_INVENTORY.filter((item) => {
+    return catalog.filter((item) => {
       const matchesQuery =
         !query ||
         item.title.toLowerCase().includes(query.toLowerCase()) ||
@@ -28,10 +104,10 @@ export function TradeHub({ initialTrades = [] }: { initialTrades?: TradeOfferVie
       const matchesRarity = rarity === "ALL" || item.rarity === rarity;
       return matchesQuery && matchesRarity;
     });
-  }, [query, rarity]);
+  }, [catalog, query, rarity]);
 
-  const offered = MOCK_TRADE_INVENTORY.filter((item) => offerIds.includes(item.id));
-  const requested = MOCK_TRADE_INVENTORY.filter((item) => requestIds.includes(item.id));
+  const offered = catalog.filter((item) => offerIds.includes(item.id));
+  const requested = catalog.filter((item) => requestIds.includes(item.id));
   const rarityOk = sameRarityTier(offered, requested);
 
   function toggle(list: string[], id: string, setter: (next: string[]) => void) {
@@ -44,13 +120,14 @@ export function TradeHub({ initialTrades = [] }: { initialTrades?: TradeOfferVie
         <h1 className="text-3xl font-semibold tracking-tight">Trade</h1>
         <p className="mt-2 max-w-2xl text-sm text-muted">
           Peer item swaps. Owner rule: only the same rarity tier may be traded. Ownership, rarity,
-          and locks must be validated on the server before settle — this UI is presentation only.
+          and locks are validated on the server before settle.
         </p>
+        <p className="mt-2 max-w-2xl text-xs text-muted">{RARITY_VALUE_WARNING}</p>
       </div>
 
       <Card>
         <CardTitle>Discovery</CardTitle>
-        <CardDescription>Search available items and inspect eligibility.</CardDescription>
+        <CardDescription>Search listed inventory and inspect eligibility.</CardDescription>
         <div className="mt-4 flex flex-col gap-3 sm:flex-row">
           <label className="flex-1 text-sm">
             <span className="mb-1 block text-muted">Search</span>
@@ -78,45 +155,52 @@ export function TradeHub({ initialTrades = [] }: { initialTrades?: TradeOfferVie
           </label>
         </div>
         <ul className="mt-4 grid gap-3 sm:grid-cols-2">
-          {inventory.map((item) => (
-            <li key={item.id} className="rounded-md border border-border bg-surface-2 p-3">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <p className="font-medium">{item.title}</p>
-                  <p className="text-xs text-muted">
-                    {item.game} · {item.platform} · {RARITY_LABEL[item.rarity]} · @
-                    {item.ownerHandle}
-                  </p>
+          {inventory.length === 0 ? (
+            <li className="text-sm text-muted">No tradeable inventory found.</li>
+          ) : (
+            inventory.map((item) => (
+              <li key={item.id} className="rounded-md border border-border bg-surface-2 p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="font-medium">{item.title}</p>
+                    <p className="text-xs text-muted">
+                      {item.game} · {item.platform} · {RARITY_LABEL[item.rarity]} · @
+                      {item.ownerHandle}
+                    </p>
+                    <p className="mt-1 font-mono text-[10px] text-neon-lime">{item.id}</p>
+                  </div>
+                  <StatusPill tone={item.eligible && !item.locked ? "success" : "warning"}>
+                    {item.locked ? "Locked" : item.eligible ? "Eligible" : "Blocked"}
+                  </StatusPill>
                 </div>
-                <StatusPill tone={item.eligible && !item.locked ? "success" : "warning"}>
-                  {item.locked ? "Locked" : item.eligible ? "Eligible" : "Blocked"}
-                </StatusPill>
-              </div>
-              <p className="mt-2 text-xs text-muted">{item.eligibilityNote}</p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <Button
-                  size="sm"
-                  variant={offerIds.includes(item.id) ? "primary" : "secondary"}
-                  onClick={() => toggle(offerIds, item.id, setOfferIds)}
-                >
-                  Offer
-                </Button>
-                <Button
-                  size="sm"
-                  variant={requestIds.includes(item.id) ? "primary" : "ghost"}
-                  onClick={() => toggle(requestIds, item.id, setRequestIds)}
-                >
-                  Request
-                </Button>
-              </div>
-            </li>
-          ))}
+                <p className="mt-2 text-xs text-muted">{item.eligibilityNote}</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    variant={offerIds.includes(item.id) ? "primary" : "secondary"}
+                    onClick={() => toggle(offerIds, item.id, setOfferIds)}
+                  >
+                    Offer
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={requestIds.includes(item.id) ? "primary" : "ghost"}
+                    onClick={() => toggle(requestIds, item.id, setRequestIds)}
+                  >
+                    Request
+                  </Button>
+                </div>
+              </li>
+            ))
+          )}
         </ul>
       </Card>
 
       <Card>
         <CardTitle>Offer composer</CardTitle>
-        <CardDescription>Compare sides before sending. Actions are UI stubs.</CardDescription>
+        <CardDescription>
+          Compare sides before sending. Use inventory public refs when creating via API.
+        </CardDescription>
         <div className="mt-4 grid gap-4 md:grid-cols-2">
           <div>
             <h3 className="text-sm font-semibold text-neon-mint">You offer</h3>
@@ -127,6 +211,7 @@ export function TradeHub({ initialTrades = [] }: { initialTrades?: TradeOfferVie
                 offered.map((item) => (
                   <li key={item.id}>
                     {item.title} · {RARITY_LABEL[item.rarity]}
+                    <span className="ml-2 font-mono text-[10px] text-muted">{item.id}</span>
                   </li>
                 ))
               )}
@@ -141,6 +226,7 @@ export function TradeHub({ initialTrades = [] }: { initialTrades?: TradeOfferVie
                 requested.map((item) => (
                   <li key={item.id}>
                     {item.title} · {RARITY_LABEL[item.rarity]}
+                    <span className="ml-2 font-mono text-[10px] text-muted">{item.id}</span>
                   </li>
                 ))
               )}
@@ -153,20 +239,7 @@ export function TradeHub({ initialTrades = [] }: { initialTrades?: TradeOfferVie
             {rarityOk ? "Valid tier match" : "Invalid — tiers differ"}
           </StatusPill>
         </p>
-        <div className="mt-4 flex flex-wrap gap-2">
-          <Button size="sm" disabled={!rarityOk}>
-            Send offer
-          </Button>
-          <Button size="sm" variant="secondary">
-            Counteroffer
-          </Button>
-          <Button size="sm" variant="ghost">
-            Cancel
-          </Button>
-          <Button size="sm" variant="danger">
-            Report
-          </Button>
-        </div>
+        <p className="mt-2 text-xs text-muted">{RARITY_VALUE_WARNING}</p>
       </Card>
 
       <Card>
