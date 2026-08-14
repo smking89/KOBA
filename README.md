@@ -6,8 +6,8 @@ squads; all on one KOBAID.
 
 ## Status
 
-**Phase 13 — Production readiness** is complete. Brand icons and **8%/4% fee tiers**
-are on `feat/fee-tiers`.
+**Owner product expansion UI** is in progress on `feat/owner-product-expansion-ui`
+(Trade, Servers/RCON, Aiden, Plus, Wallet, Developers — presentation foundations).
 
 The HTML prototype remains the information-architecture reference:
 
@@ -16,6 +16,21 @@ The HTML prototype remains the information-architecture reference:
 Product visual identity for the app is **dark neon** (logo-inspired lime / mint
 gradient on black). The prototype documents screens and flows; production tokens
 live in `app/globals.css` and `lib/design-tokens.ts`.
+
+### Owner expansion routes (UI foundations)
+
+| Path                                                     | Purpose                                    |
+| -------------------------------------------------------- | ------------------------------------------ |
+| `/trade`, `/trade/[tradeId]`                             | Trade discovery, composer, history (mock)  |
+| `/servers`, `/servers/[serverId]`, `/servers/connect`    | Server directory + RCON connect wizard     |
+| `/plus`                                                  | KOBA Plus plans and subscription states    |
+| `/aiden`, `/aiden/generate`, `/aiden/library`            | Aiden creator, jobs, asset library         |
+| `/wallet`                                                | KOBA Coins buckets + ledger-shaped history |
+| `/developers`, `/developers/apps`, `/developers/plugins` | Developer apps/plugins marketplace         |
+
+This phase is **presentation only**: no AI providers, coin ledger writes, trade
+settlement, RCON command execution, subscription charges, or real API keys.
+No Prisma migration was added — domain contracts live under `features/*/lib`.
 
 ## Stack
 
@@ -387,8 +402,9 @@ self-registered. Group Admin/Moderator badges are community roles, not staff.
 13. **Staff admin** ✅
 14. **Production readiness** ✅
 15. **Brand icons (official logo)** ✅
-16. **Fee tiers (8% / 4% verified)** ← current
-17. Influencer / ads → developer portal (deferred until GMV)
+16. **Fee tiers (8% / 4% verified)** ✅
+17. **Owner product expansion UI** ← current (Trade, Servers, Aiden, Plus, Wallet, Developers)
+18. Influencer ads network / live backends for expansion features (deferred)
 
 ## License
 

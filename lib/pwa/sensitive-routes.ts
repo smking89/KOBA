@@ -41,6 +41,12 @@ export const NETWORK_FIRST_PATH_PREFIXES = [
   "/messages",
   "/settings",
   "/orders",
+  "/trade",
+  "/servers",
+  "/aiden",
+  "/plus",
+  "/wallet",
+  "/developers",
   "/api/",
 ] as const;
 
