@@ -18,6 +18,7 @@ describe("isSensitivePath", () => {
     expect(isSensitivePath("/api/checkout")).toBe(true);
     expect(isSensitivePath("/api/groups/rust-legacy-raiders/join")).toBe(true);
     expect(isSensitivePath("/api/lfg/KOBA-LFG-CAFEBABE/join")).toBe(true);
+    expect(isSensitivePath("/api/social/posts")).toBe(true);
   });
 
   it("allows public routes", () => {
@@ -35,6 +36,7 @@ describe("prefersNetworkFirst", () => {
     expect(prefersNetworkFirst("/market")).toBe(true);
     expect(prefersNetworkFirst("/shops/ironwright-trading-co")).toBe(true);
     expect(prefersNetworkFirst("/feed")).toBe(true);
+    expect(prefersNetworkFirst("/u/maxbuilds")).toBe(true);
     expect(prefersNetworkFirst("/orders")).toBe(true);
   });
 
