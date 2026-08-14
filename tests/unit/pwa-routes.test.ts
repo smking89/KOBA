@@ -12,6 +12,8 @@ describe("isSensitivePath", () => {
     expect(isSensitivePath("/api/accounts/switch")).toBe(true);
     expect(isSensitivePath("/api/admin/kobaid")).toBe(true);
     expect(isSensitivePath("/api/market/favorites")).toBe(true);
+    expect(isSensitivePath("/api/shops/ironwright/follow")).toBe(true);
+    expect(isSensitivePath("/api/business/products")).toBe(true);
   });
 
   it("allows public routes", () => {
@@ -27,6 +29,7 @@ describe("isSensitivePath", () => {
 describe("prefersNetworkFirst", () => {
   it("marks dynamic surfaces as network-first", () => {
     expect(prefersNetworkFirst("/market")).toBe(true);
+    expect(prefersNetworkFirst("/shops/ironwright-trading-co")).toBe(true);
     expect(prefersNetworkFirst("/feed")).toBe(true);
   });
 
