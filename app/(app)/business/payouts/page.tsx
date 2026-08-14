@@ -21,8 +21,9 @@ export default async function BusinessPayoutsPage() {
         <div>
           <h1 className="text-3xl font-semibold tracking-tight">Payouts</h1>
           <p className="mt-1 text-sm text-muted">
-            Stripe Connect (test mode) sends seller payouts after KOBA takes its platform fee.
-            Charges never trust a browser “paid” flag.
+            Stripe Connect (test mode) sends seller payouts after KOBA takes its platform fee (8%
+            standard, 4% when the shop is Blue-Badge verified). Charges never trust a browser “paid”
+            flag.
           </p>
         </div>
         <Card>

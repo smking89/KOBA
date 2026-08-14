@@ -1,15 +1,43 @@
-export const DEFAULT_COMMISSION_BPS = 1000;
+export const DEFAULT_COMMISSION_BPS = 800;
+export const DEFAULT_VERIFIED_COMMISSION_BPS = 400;
 export const MAX_COMMISSION_BPS = 2500;
 
-export function parseCommissionBps(raw: string | undefined): number {
+export function parseCommissionBps(
+  raw: string | undefined,
+  fallback: number = DEFAULT_COMMISSION_BPS,
+): number {
   if (!raw) {
-    return DEFAULT_COMMISSION_BPS;
+    return fallback;
   }
   const parsed = Number.parseInt(raw, 10);
   if (!Number.isFinite(parsed) || parsed < 0 || parsed > MAX_COMMISSION_BPS) {
-    return DEFAULT_COMMISSION_BPS;
+    return fallback;
   }
   return parsed;
+}
+
+/** Unverified / pending / rejected shops: standard take rate (default 8%). */
+export function unverifiedCommissionBps(): number {
+  return parseCommissionBps(process.env.KOBA_COMMISSION_BPS, DEFAULT_COMMISSION_BPS);
+}
+
+/** Blue-Badge verified shops: reduced take rate (default 4%). */
+export function verifiedCommissionBps(): number {
+  return parseCommissionBps(
+    process.env.KOBA_COMMISSION_BPS_VERIFIED,
+    DEFAULT_VERIFIED_COMMISSION_BPS,
+  );
+}
+
+/**
+ * Platform fee in basis points from shop verification status.
+ * Only VERIFIED shops get the reduced Blue-Badge rate.
+ */
+export function resolveCommissionBps(verificationStatus: string | null | undefined): number {
+  if (verificationStatus === "VERIFIED") {
+    return verifiedCommissionBps();
+  }
+  return unverifiedCommissionBps();
 }
 
 export function splitPayment(totalCents: number, commissionBps: number) {

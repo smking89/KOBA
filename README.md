@@ -6,8 +6,8 @@ squads; all on one KOBAID.
 
 ## Status
 
-**Phase 13 — Production readiness** is complete on `feat/prod-readiness`.
-Brand install icons use the official logo on `feat/brand-icons`.
+**Phase 13 — Production readiness** is complete. Brand icons and **8%/4% fee tiers**
+are on `feat/fee-tiers`.
 
 The HTML prototype remains the information-architecture reference:
 
@@ -176,8 +176,10 @@ service worker.
 
 ### Payments (Phase 8)
 
-Stripe Connect **test mode** only. Destination charges take a platform fee
-(`KOBA_COMMISSION_BPS`, default 1000 = 10%, cap 2500). Hosted Checkout is the
+Stripe Connect **test mode** only. Destination charges take a platform fee of
+**8%** unverified / **4%** Blue-Badge verified
+(`KOBA_COMMISSION_BPS` default 800, `KOBA_COMMISSION_BPS_VERIFIED` default 400,
+cap 2500). Hosted Checkout is the
 payment UI. **Paid status comes only from signed webhooks** — the browser cannot
 mark an order paid (`?checkout=success` is ignored).
 
@@ -384,8 +386,9 @@ self-registered. Group Admin/Moderator badges are community roles, not staff.
 12. **Direct messaging** ✅
 13. **Staff admin** ✅
 14. **Production readiness** ✅
-15. **Brand icons (official logo)** ← current
-16. Influencer / ads → developer portal (deferred until GMV)
+15. **Brand icons (official logo)** ✅
+16. **Fee tiers (8% / 4% verified)** ← current
+17. Influencer / ads → developer portal (deferred until GMV)
 
 ## License
 

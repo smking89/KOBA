@@ -1,5 +1,5 @@
 import Stripe from "stripe";
-import { parseCommissionBps } from "@/features/payments/lib/money";
+import { resolveCommissionBps, unverifiedCommissionBps } from "@/features/payments/lib/money";
 
 function isPlaceholder(value: string | undefined): boolean {
   if (!value) {
@@ -21,9 +21,12 @@ export function stripeWebhookSecret(): string | null {
   return secret;
 }
 
+/** Standard (unverified) take rate — prefer resolveCommissionBps for checkout. */
 export function commissionBps(): number {
-  return parseCommissionBps(process.env.KOBA_COMMISSION_BPS);
+  return unverifiedCommissionBps();
 }
+
+export { resolveCommissionBps };
 
 let client: Stripe | null = null;
 

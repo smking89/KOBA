@@ -7,9 +7,10 @@ import { generateOrderRef } from "@/features/payments/lib/order-ref";
 import {
   canCheckoutListing,
   canPayReservedAuction,
+  resolveCommissionBps,
   splitPayment,
 } from "@/features/payments/lib/money";
-import { commissionBps, getStripe, isStripeConfigured } from "@/features/payments/lib/stripe";
+import { getStripe, isStripeConfigured } from "@/features/payments/lib/stripe";
 import type { CheckoutInput } from "@/features/payments/schemas/checkout.schemas";
 
 async function allocateOrderRef(): Promise<string> {
@@ -125,7 +126,8 @@ export async function createCheckoutSession(
   }
 
   const totalCents = unitPriceCents * quantity;
-  const split = splitPayment(totalCents, commissionBps());
+  const feeBps = resolveCommissionBps(shop.verificationStatus);
+  const split = splitPayment(totalCents, feeBps);
   const publicRef = existing?.publicRef ?? (await allocateOrderRef());
   const buyer = await prisma.user.findUnique({
     where: { id: buyerUserId },

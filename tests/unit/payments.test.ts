@@ -8,6 +8,7 @@ import {
   canPayReservedAuction,
   paidStatusFromClient,
   parseCommissionBps,
+  resolveCommissionBps,
   splitPayment,
 } from "@/features/payments/lib/money";
 import { generateOrderRef } from "@/features/payments/lib/order-ref";
@@ -20,22 +21,41 @@ function bytesFromHex(hex: string): Uint8Array {
 }
 
 describe("commission split", () => {
-  it("takes 10% by default and leaves the rest for the seller", () => {
-    expect(parseCommissionBps(undefined)).toBe(1000);
-    expect(splitPayment(10_000, 1000)).toEqual({
+  const previousBps = process.env.KOBA_COMMISSION_BPS;
+  const previousVerified = process.env.KOBA_COMMISSION_BPS_VERIFIED;
+
+  afterEach(() => {
+    process.env.KOBA_COMMISSION_BPS = previousBps;
+    process.env.KOBA_COMMISSION_BPS_VERIFIED = previousVerified;
+  });
+
+  it("defaults to 8% unverified and 4% verified (Blue Badge)", () => {
+    delete process.env.KOBA_COMMISSION_BPS;
+    delete process.env.KOBA_COMMISSION_BPS_VERIFIED;
+    expect(parseCommissionBps(undefined)).toBe(800);
+    expect(resolveCommissionBps("UNVERIFIED")).toBe(800);
+    expect(resolveCommissionBps("PENDING")).toBe(800);
+    expect(resolveCommissionBps("REJECTED")).toBe(800);
+    expect(resolveCommissionBps("VERIFIED")).toBe(400);
+    expect(splitPayment(10_000, 800)).toEqual({
       totalCents: 10_000,
-      applicationFeeCents: 1000,
-      sellerPayoutCents: 9000,
+      applicationFeeCents: 800,
+      sellerPayoutCents: 9200,
+    });
+    expect(splitPayment(10_000, 400)).toEqual({
+      totalCents: 10_000,
+      applicationFeeCents: 400,
+      sellerPayoutCents: 9600,
     });
   });
 
   it("rounds fees down but never takes more than the total", () => {
-    expect(splitPayment(1, 1000)).toEqual({
+    expect(splitPayment(1, 800)).toEqual({
       totalCents: 1,
       applicationFeeCents: 1,
       sellerPayoutCents: 0,
     });
-    expect(splitPayment(0, 1000)).toEqual({
+    expect(splitPayment(0, 800)).toEqual({
       totalCents: 0,
       applicationFeeCents: 0,
       sellerPayoutCents: 0,
@@ -43,8 +63,8 @@ describe("commission split", () => {
   });
 
   it("rejects out-of-range commission env and allows a zero fee", () => {
-    expect(parseCommissionBps("99999")).toBe(1000);
-    expect(parseCommissionBps("-1")).toBe(1000);
+    expect(parseCommissionBps("99999")).toBe(800);
+    expect(parseCommissionBps("-1")).toBe(800);
     expect(parseCommissionBps("0")).toBe(0);
     expect(splitPayment(5000, 0).applicationFeeCents).toBe(0);
   });
