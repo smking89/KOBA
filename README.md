@@ -6,7 +6,7 @@ squads; all on one KOBAID.
 
 ## Status
 
-**Phase 4 — Account types & KOBAID** is in progress on `feat/kobaid`.
+**Phase 5 — Marketplace foundation** is in progress on `feat/marketplace`.
 
 The HTML prototype remains the information-architecture reference:
 
@@ -50,6 +50,7 @@ Open [http://localhost:3000](http://localhost:3000).
 ```bash
 docker compose up -d
 pnpm db:migrate
+pnpm db:seed
 ```
 
 Default URL (also in `.env.example`):
@@ -131,6 +132,16 @@ Public minting accepts Player, Business, and Influencer only. Superadmin may
 issue SA/AD/MD; Admin may issue MD. Group Admin/Moderator badges remain
 community roles, not staff.
 
+### Marketplace (Phase 5)
+
+Public catalog at `/market` and `/market/[slug]`. Listings are visible only when
+`moderationStatus` is `APPROVED` and `publishedAt` is set.
+
+Filters: `q`, `game`, `category`, `rarity`, `platform`, `sort`, `page`.
+Signed-in users can save listings (`POST /api/market/favorites`). Buy/Bid
+actions are placeholders until auctions (Phase 7) and payments (Phase 8). Seller
+shop tools are Phase 6.
+
 ## Visual identity
 
 | Token          | Value                                  |
@@ -169,11 +180,12 @@ self-registered. Group Admin/Moderator badges are community roles, not staff.
 2. ~~Application foundation~~ ✅
 3. **PWA foundation** ✅
 4. ~~Database + Auth.js~~ ✅
-5. **Account types + KOBAID** ← current
-6. Marketplace → shops → auctions → payments
-7. Groups / LFG → social → DMs
-8. Influencer / ads → developer portal → staff admin
-9. Production readiness
+5. ~~Account types + KOBAID~~ ✅
+6. **Marketplace** ← current
+7. Shops → auctions → payments
+8. Groups / LFG → social → DMs
+9. Influencer / ads → developer portal → staff admin
+10. Production readiness
 
 ## License
 
