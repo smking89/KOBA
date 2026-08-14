@@ -44,6 +44,8 @@ model User {
   profile        AccountProfile?
   kobaIdentities KobaIdentity[]
   auditLogs      AuditLog[]     @relation("AuditActor")
+  products       Product[]
+  favorites      ProductFavorite[]
 }
 
 model Account {
@@ -120,4 +122,141 @@ model AuditLog {
   @@index([actorUserId])
   @@index([action])
   @@index([createdAt])
+}
+
+enum ProductRarity {
+  COMMON
+  UNCOMMON
+  RARE
+  EPIC
+  LEGENDARY
+  RELIC
+}
+
+enum ProductCategoryKind {
+  SKINS
+  MAPS
+  MONUMENTS
+  KITS
+  COSMETICS
+  SERVER_ASSETS
+}
+
+enum GamePlatform {
+  PC
+  STEAM
+  XBOX
+  PLAYSTATION
+}
+
+enum ModerationStatus {
+  DRAFT
+  PENDING
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
+enum ListingType {
+  FIXED
+  AUCTION
+}
+
+enum ProductMediaKind {
+  IMAGE
+  VIDEO
+}
+
+model Game {
+  id        String    @id @default(cuid())
+  slug      String    @unique
+  name      String
+  createdAt DateTime  @default(now())
+  products  Product[]
+}
+
+model Category {
+  id        String              @id @default(cuid())
+  slug      String              @unique
+  name      String
+  kind      ProductCategoryKind
+  createdAt DateTime            @default(now())
+  products  Product[]
+}
+
+model Product {
+  id                 String           @id @default(cuid())
+  slug               String           @unique
+  title              String
+  description        String           @db.Text
+  rarity             ProductRarity
+  rarityRank         Int
+  listingType        ListingType      @default(FIXED)
+  moderationStatus   ModerationStatus @default(DRAFT)
+  priceCents         Int
+  currency           String           @default("USD")
+  inventoryQty       Int              @default(0)
+  platforms          GamePlatform[]
+  sellerUserId       String
+  gameId             String
+  categoryId         String
+  publishedAt        DateTime?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  seller    User              @relation(fields: [sellerUserId], references: [id], onDelete: Cascade)
+  game      Game              @relation(fields: [gameId], references: [id], onDelete: Restrict)
+  category  Category          @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  variants  ProductVariant[]
+  media     ProductMedia[]
+  favorites ProductFavorite[]
+
+  @@index([moderationStatus, publishedAt])
+  @@index([gameId])
+  @@index([categoryId])
+  @@index([rarity])
+  @@index([sellerUserId])
+  @@index([priceCents])
+  @@index([rarityRank])
+}
+
+model ProductVariant {
+  id           String   @id @default(cuid())
+  productId    String
+  sku          String   @unique
+  name         String
+  priceCents   Int?
+  inventoryQty Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+}
+
+model ProductMedia {
+  id        String           @id @default(cuid())
+  productId String
+  url       String
+  alt       String
+  sortOrder Int              @default(0)
+  kind      ProductMediaKind @default(IMAGE)
+  createdAt DateTime         @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId, sortOrder])
+}
+
+model ProductFavorite {
+  userId    String
+  productId String
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@id([userId, productId])
+  @@index([productId])
 }
