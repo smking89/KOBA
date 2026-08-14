@@ -15,6 +15,10 @@ export class InMemoryProductRepository implements ProductRepository {
     return product;
   }
 
+  async findByShopId(shopId: string): Promise<Product[]> {
+    return [...this.byId.values()].filter((product) => product.shopId === shopId);
+  }
+
   /** Test/dev helper — not part of the repository interface. */
   clear(): void {
     this.byId.clear();

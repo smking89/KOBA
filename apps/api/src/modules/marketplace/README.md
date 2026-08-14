@@ -45,6 +45,8 @@ math — no real Stripe API calls).
     (`CosmeticTypeRequiredError` if `category === cosmetic` and no
     `cosmeticType`; `CosmeticTypeNotAllowedError` the other way around).
   - `getById()` / `findById()`.
+  - `listByShopId()` — additive (Phase 4/Shops): all products attributed
+    to a given shop via `Product.shopId`. See "Phase 4 additions" below.
   - `setDelisted(productId, callerKobaId, delisted)` — the soft delist
     toggle. Delist ≠ delete: the product stays fetchable and its order
     history stays intact; there is deliberately no hard-delete method
@@ -76,6 +78,8 @@ math — no real Stripe API calls).
     (`NotHighestBidderError` otherwise), and requires the seller's
     Stripe Connect account to be `active`. On success it marks the
     auction `ended` and creates an `Order` with `source: 'auction'`.
+  - `listBySellerKobaId()` — additive (Phase 4/Shops): all settled Orders
+    for a seller KOBAID. See "Phase 4 additions" below.
 - `stripe-connect.service.ts` / `stripe-account.repository.ts` /
   `stripe-connect.types.ts` — `StripeConnectService`: structural-only
   Stripe Connect model.
@@ -164,11 +168,37 @@ wiring Prisma-backed repositories is a later-phase follow-up.
   Both are follow-ups once Redis/BullMQ are wired up (Phase 8's
   infrastructure).
 - **Shops-module seller identity** — `sellerId`/`sellerKobaId` here are
-  plain KOBAID strings (a Business or Player KOBAID, per ROADMAP.md
-  Phase 0 showing both selling). Phase 4 (Shops) will introduce a `Shop`
-  entity as an additional seller identity — this module does not
-  anticipate that shape; Phase 4 is expected to extend, not replace,
-  these fields.
+  still plain KOBAID strings (a Business or Player KOBAID, per
+  ROADMAP.md Phase 0 showing both selling); this module never validates
+  them against a real `Shop` or `KobaId` record. Phase 4 (Shops, see
+  `apps/api/src/modules/shops/`) extended (not replaced) this shape with
+  the additive `Product.shopId` pointer below — a shop's products still
+  carry `sellerId === shop.ownerKobaId`, `shopId` is purely additional
+  attribution.
+
+## Phase 4 additions (Shops)
+
+`apps/api/src/modules/shops/` needed a small, additive-only extension of
+this module rather than reimplementing Product/Order storage — see that
+module's README for the full shops-side design. Exactly these changes
+were made here:
+
+- `marketplace.types.ts` — `Product.shopId: string | null` (and
+  `CreateProductParams.shopId?`), optional and defaulting to `null` for
+  every product not created through a shop. This module does not
+  validate `shopId` against a real `Shop` record — that's the shops
+  module's job.
+- `product.repository.ts` / `in-memory-product.repository.ts` — added
+  `findByShopId(shopId)`.
+- `product.service.ts` — added `listByShopId(shopId)` (thin wrapper).
+- `order.repository.ts` / `in-memory-order.repository.ts` — added
+  `findBySellerKobaId(sellerKobaId)`.
+- `order.service.ts` — added `listBySellerKobaId(sellerKobaId)` (thin
+  wrapper) — feeds shops' `ShopAnalyticsService` revenue/order-count
+  computation.
+
+No other file in this module was touched; every existing test in this
+module (51 of them) still passes unmodified.
 - **HTTP controllers/routes** — same as kobaid: Phase 13 decides the
   route surface (`/marketplace/products`, `/marketplace/auctions`,
   `/marketplace/orders`, ...), gated by Phase 11's RBAC / Phase 1-2's

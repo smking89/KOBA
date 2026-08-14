@@ -110,6 +110,15 @@ export interface Product {
   readonly cosmeticType: CosmeticType | null;
   readonly delisted: boolean;
   readonly createdAt: Date;
+  /**
+   * Additive (Phase 4/Shops): set when this product was created "through"
+   * a shop — see apps/api/src/modules/shops/. Null for products listed
+   * directly by a KOBAID with no shop attribution. This module does not
+   * validate the shopId against a real Shop record (the shops module owns
+   * that) — it is stored as an opaque pointer here, same posture as
+   * `sellerId` being a plain KOBAID string.
+   */
+  readonly shopId: string | null;
 }
 
 export interface CreateProductParams {
@@ -121,6 +130,8 @@ export interface CreateProductParams {
   rarity: RarityTier;
   priceCents: number;
   cosmeticType?: CosmeticType | null;
+  /** See `Product.shopId` — optional, defaults to null. */
+  shopId?: string | null;
 }
 
 export enum AuctionStatus {

@@ -10,4 +10,6 @@ export const PRODUCT_REPOSITORY = Symbol('PRODUCT_REPOSITORY');
 export interface ProductRepository {
   findById(id: string): Promise<Product | null>;
   save(product: Product): Promise<Product>;
+  /** Additive (Phase 4/Shops) — see `Product.shopId`. */
+  findByShopId(shopId: string): Promise<Product[]>;
 }

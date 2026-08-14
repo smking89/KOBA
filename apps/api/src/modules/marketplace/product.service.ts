@@ -64,6 +64,7 @@ export class ProductService {
       cosmeticType,
       delisted: false,
       createdAt: new Date(),
+      shopId: params.shopId ?? null,
     };
 
     return this.repository.save(product);
@@ -71,6 +72,16 @@ export class ProductService {
 
   async findById(id: string): Promise<Product | null> {
     return this.repository.findById(id);
+  }
+
+  /**
+   * Additive (Phase 4/Shops): all products attributed to a given shop
+   * (`Product.shopId`), including delisted ones — callers that need only
+   * active listings must filter on `delisted` themselves, same posture as
+   * `getById()`/`findById()` not filtering delisted either.
+   */
+  async listByShopId(shopId: string): Promise<Product[]> {
+    return this.repository.findByShopId(shopId);
   }
 
   async getById(id: string): Promise<Product> {

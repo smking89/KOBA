@@ -109,6 +109,14 @@ model KobaId {
   ordersAsSeller    Order[]          @relation("OrderSeller")
   stripeAccount     StripeAccount?
 
+  /// Phase 4 (Shops + Business Tools) back-relations — additive only,
+  /// same "validated ahead of Phase 12" posture as the Phase 3 relations
+  /// above. `apps/api`'s shops module still stores everything behind
+  /// in-memory repositories this phase (see
+  /// apps/api/src/modules/shops/README.md).
+  shopsOwned  Shop[]         @relation("ShopOwner")
+  shopFollows ShopFollower[] @relation("ShopFollowerKobaId")
+
   /// One KOBAID per (deviceId, role) pair.
   @@unique([deviceId, role])
   @@index([userId])
@@ -263,11 +271,19 @@ model Product {
   delisted  Boolean  @default(false)
   createdAt DateTime @default(now())
 
+  /// Phase 4 (Shops) — set when this product was created "through" a
+  /// shop (see apps/api/src/modules/shops/shop-product.service.ts). Null
+  /// for products listed directly by a KOBAID with no shop attribution.
+  /// Additive-only column on this already-existing model.
+  shopId String?
+  shop   Shop?   @relation(fields: [shopId], references: [id])
+
   auctions Auction[]
   orders   Order[]
 
   @@index([sellerId])
   @@index([game])
+  @@index([shopId])
 }
 
 /// One active auction per product at a time — enforced at the
@@ -354,4 +370,83 @@ model StripeAccount {
 
   status    StripeAccountStatus @default(notConnected)
   updatedAt DateTime            @updatedAt
+}
+
+// ---------------------------------------------------------------------
+// Phase 4 — Shops + Business Tools
+//
+// apps/api/src/modules/shops currently stores all of this behind
+// in-memory repositories (ShopRepository/ShopFollowerRepository) — same
+// storage decision and rationale as Phase 1/3 above (see that module's
+// README). These models are added here now, ahead of Phase 12, so the
+// target shape is validated early ("prisma validate").
+//
+// Business info/identity (KYC) still lives entirely in Stripe's own
+// dashboard, per ROADMAP.md Phase 4's hard constraint — no
+// government-ID or business-legal-name field exists on this model, and
+// none should ever be added here. Stripe Connect *status* (per-KOBAID)
+// is already modeled by `StripeAccount` above; a shop's Stripe status is
+// resolved by key (`Shop.ownerKobaId`), not a separate column here — see
+// apps/api/src/modules/shops/shop-stripe-connect.service.ts.
+// ---------------------------------------------------------------------
+
+/// A shop profile. `ownerKobaId`/`createdAt` are immutable once created
+/// (no update path for them anywhere in the shops module) — but
+/// name/bio/bannerUrl/avatarUrl ARE editable, unlike KobaId's full
+/// immutability. See apps/api/src/modules/shops/shop.types.ts's `Shop`
+/// docstring.
+model Shop {
+  id String @id @default(uuid())
+
+  /// Must be a Business-role (BZ) KOBAID — enforced at the application
+  /// layer (ShopOwnerMustBeBusinessRoleError), not a DB constraint, since
+  /// role validation reads the KOBAID's encoded role segment.
+  ownerKobaId String
+  owner       KobaId @relation("ShopOwner", fields: [ownerKobaId], references: [id])
+
+  name      String
+  bio       String  @default("")
+  bannerUrl String?
+  avatarUrl String?
+
+  /// Owner-controlled shop-level tag-permission flag — Phase 6's
+  /// shop-level analogue to accounts/tagging-permission.service.ts's
+  /// role-level rules. No enforcement yet (Phase 6); flag + query only.
+  allowTagging Boolean @default(true)
+
+  /// Owner-controlled influencer-eligibility flag — config only, actual
+  /// referral-code generation/payout execution is Phase 10.
+  promoEligible Boolean @default(false)
+
+  /// Exactly one of these two is set once the owner configures a payout
+  /// rate (see shop.types.ts's `PromoPayoutConfig` discriminated union) —
+  /// enforced at the application layer (InvalidPromoPayoutConfigError),
+  /// not a DB constraint; Prisma has no native XOR check across nullable
+  /// columns. Both null means "not yet configured".
+  promoPayoutPercent    Float?
+  promoPayoutFixedCents Int?
+
+  createdAt DateTime @default(now())
+
+  products  Product[]
+  followers ShopFollower[]
+
+  @@index([ownerKobaId])
+}
+
+/// Shop-follow relationship. A KOBAID can follow a shop once — the
+/// composite primary key below is what makes `follow()` idempotent at
+/// the storage layer (a second follow() is just an upsert onto the same
+/// row, never a second record).
+model ShopFollower {
+  shopId String
+  shop   Shop   @relation(fields: [shopId], references: [id])
+
+  followerKobaId String
+  follower       KobaId @relation("ShopFollowerKobaId", fields: [followerKobaId], references: [id])
+
+  followedAt DateTime @default(now())
+
+  @@id([shopId, followerKobaId])
+  @@index([followerKobaId])
 }

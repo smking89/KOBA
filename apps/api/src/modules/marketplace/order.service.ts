@@ -99,4 +99,14 @@ export class OrderService {
   async findById(id: string): Promise<Order | null> {
     return this.repository.findById(id);
   }
+
+  /**
+   * Additive (Phase 4/Shops): all settled Orders for a seller KOBAID —
+   * feeds shop analytics' revenue/order-count read-model. See
+   * `OrderRepository#findBySellerKobaId` for why "settled" already
+   * describes every `Order` row in this module.
+   */
+  async listBySellerKobaId(sellerKobaId: string): Promise<Order[]> {
+    return this.repository.findBySellerKobaId(sellerKobaId);
+  }
 }
