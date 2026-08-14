@@ -273,7 +273,95 @@ async function main() {
     });
   }
 
-  console.info("KOBA shops, catalog, and auctions seeded.");
+  const player = await prisma.user.upsert({
+    where: { email: "maxbuilds@koba.local" },
+    update: {},
+    create: {
+      email: "maxbuilds@koba.local",
+      name: "maxbuilds",
+      emailVerified: new Date(),
+      passwordHash,
+      profile: {
+        create: {
+          displayName: "maxbuilds",
+          activeAccountType: "PLAYER",
+          kobaIdRevealedAt: new Date(),
+        },
+      },
+    },
+  });
+  const playerIdentities = await prisma.kobaIdentity.findMany({ where: { userId: player.id } });
+  if (!playerIdentities.some((row) => row.accountType === "PLAYER")) {
+    await prisma.kobaIdentity.create({
+      data: {
+        userId: player.id,
+        accountType: "PLAYER",
+        code: generateKobaIdCode("PLAYER", (size) => randomBytes(size)),
+      },
+    });
+  }
+
+  const group = await prisma.group.upsert({
+    where: { slug: "rust-legacy-raiders" },
+    update: {
+      name: "Rust Legacy Raiders",
+      bio: "Wipe-day raids, monument kits, and legacy skin restoration. Public group — tagging allowed.",
+      visibility: "PUBLIC",
+    },
+    create: {
+      slug: "rust-legacy-raiders",
+      name: "Rust Legacy Raiders",
+      bio: "Wipe-day raids, monument kits, and legacy skin restoration. Public group — tagging allowed.",
+      visibility: "PUBLIC",
+      ownerUserId: seller.id,
+      members: {
+        create: [
+          { userId: seller.id, role: "OWNER" },
+          { userId: player.id, role: "MODERATOR" },
+        ],
+      },
+    },
+  });
+  await prisma.groupMember.upsert({
+    where: { groupId_userId: { groupId: group.id, userId: seller.id } },
+    update: { role: "OWNER" },
+    create: { groupId: group.id, userId: seller.id, role: "OWNER" },
+  });
+  await prisma.groupMember.upsert({
+    where: { groupId_userId: { groupId: group.id, userId: player.id } },
+    update: { role: "MODERATOR" },
+    create: { groupId: group.id, userId: player.id, role: "MODERATOR" },
+  });
+
+  await prisma.lfgPost.upsert({
+    where: { publicRef: "KOBA-LFG-WIPE0001" },
+    update: {
+      title: "Wipe Day Squad",
+      body: "Full wipe, official-rate, mic required. Need two more for vanilla+.",
+      expiresAt: new Date(Date.now() + 4 * 60 * 60 * 1000),
+      status: "OPEN",
+      slotsFilled: 3,
+      slotsTotal: 5,
+    },
+    create: {
+      publicRef: "KOBA-LFG-WIPE0001",
+      authorUserId: player.id,
+      title: "Wipe Day Squad",
+      body: "Full wipe, official-rate, mic required. Need two more for vanilla+.",
+      gameId: rust.id,
+      platform: "STEAM",
+      region: "NA",
+      timezone: "America/New_York",
+      skillLevel: "INTERMEDIATE",
+      mic: "REQUIRED",
+      availability: "Wipe night 8PM EST",
+      slotsTotal: 5,
+      slotsFilled: 3,
+      expiresAt: new Date(Date.now() + 4 * 60 * 60 * 1000),
+    },
+  });
+
+  console.info("KOBA shops, catalog, auctions, groups, and LFG seeded.");
 }
 
 main()

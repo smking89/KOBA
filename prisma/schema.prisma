@@ -39,6 +39,13 @@ enum AuditAction {
   ORDER_REFUNDED
   ORDER_FULFILLED
   CONNECT_ONBOARDED
+  GROUP_CREATED
+  GROUP_JOINED
+  GROUP_LEFT
+  GROUP_MODERATED
+  LFG_CREATED
+  LFG_JOIN_REQUESTED
+  LFG_SETTLED
 }
 
 model User {
@@ -65,6 +72,15 @@ model User {
   ordersBought   Order[]          @relation("OrderBuyer")
   bids           Bid[]
   wonAuctions    Auction[]        @relation("AuctionWinner")
+  ownedGroups    Group[]          @relation("GroupOwner")
+  groupMemberships GroupMember[]
+  groupJoinRequests GroupJoinRequest[]
+  groupInvitesSent GroupInvitation[] @relation("GroupInviteSender")
+  groupInvitesReceived GroupInvitation[] @relation("GroupInvitee")
+  groupBansIssued GroupBan[]      @relation("GroupBanActor")
+  groupBans       GroupBan[]      @relation("GroupBanTarget")
+  lfgPosts        LfgPost[]
+  lfgRequests     LfgRequest[]
 }
 
 model Account {
@@ -192,6 +208,7 @@ model Game {
   name      String
   createdAt DateTime  @default(now())
   products  Product[]
+  lfgPosts  LfgPost[]
 }
 
 model Category {
@@ -474,4 +491,189 @@ model Bid {
 
   @@index([auctionId, amountCents])
   @@index([bidderUserId, createdAt])
+}
+
+enum GroupVisibility {
+  PUBLIC
+  PRIVATE
+}
+
+enum GroupMemberRole {
+  OWNER
+  ADMIN
+  MODERATOR
+  MEMBER
+}
+
+enum GroupRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum GroupInviteStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
+
+model Group {
+  id             String           @id @default(cuid())
+  slug           String           @unique
+  name           String
+  bio            String           @db.Text
+  visibility     GroupVisibility  @default(PUBLIC)
+  taggingAllowed Boolean          @default(true)
+  ownerUserId    String
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  owner         User                @relation("GroupOwner", fields: [ownerUserId], references: [id], onDelete: Cascade)
+  members       GroupMember[]
+  joinRequests  GroupJoinRequest[]
+  invitations   GroupInvitation[]
+  bans          GroupBan[]
+
+  @@index([visibility, createdAt])
+  @@index([ownerUserId])
+}
+
+model GroupMember {
+  groupId   String
+  userId    String
+  role      GroupMemberRole @default(MEMBER)
+  createdAt DateTime        @default(now())
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([groupId, userId])
+  @@index([userId])
+}
+
+model GroupJoinRequest {
+  id        String             @id @default(cuid())
+  groupId   String
+  userId    String
+  status    GroupRequestStatus @default(PENDING)
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+  @@index([groupId, status])
+}
+
+model GroupInvitation {
+  id            String            @id @default(cuid())
+  groupId       String
+  invitedUserId String
+  invitedByUserId String
+  status        GroupInviteStatus @default(PENDING)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  group     Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  invitee   User  @relation("GroupInvitee", fields: [invitedUserId], references: [id], onDelete: Cascade)
+  invitedBy User  @relation("GroupInviteSender", fields: [invitedByUserId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, invitedUserId])
+  @@index([invitedUserId, status])
+}
+
+model GroupBan {
+  groupId       String
+  userId        String
+  bannedByUserId String
+  reason        String?
+  createdAt     DateTime @default(now())
+
+  group    Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user     User  @relation("GroupBanTarget", fields: [userId], references: [id], onDelete: Cascade)
+  bannedBy User  @relation("GroupBanActor", fields: [bannedByUserId], references: [id], onDelete: Restrict)
+
+  @@id([groupId, userId])
+  @@index([userId])
+}
+
+enum LfgRegion {
+  NA
+  EU
+  SA
+  AS
+  OC
+  AF
+  ANY
+}
+
+enum LfgSkill {
+  CASUAL
+  INTERMEDIATE
+  COMPETITIVE
+  ANY
+}
+
+enum LfgMic {
+  REQUIRED
+  OPTIONAL
+  NO_MIC
+}
+
+enum LfgStatus {
+  OPEN
+  FULL
+  EXPIRED
+  CANCELLED
+}
+
+enum LfgRequestStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
+
+model LfgPost {
+  id             String      @id @default(cuid())
+  publicRef      String      @unique
+  authorUserId   String
+  title          String
+  body           String      @db.Text
+  gameId         String
+  platform       GamePlatform
+  region         LfgRegion
+  timezone       String
+  skillLevel     LfgSkill
+  mic            LfgMic
+  availability   String
+  slotsTotal     Int
+  slotsFilled    Int         @default(1)
+  status         LfgStatus   @default(OPEN)
+  expiresAt      DateTime
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  author   User         @relation(fields: [authorUserId], references: [id], onDelete: Cascade)
+  game     Game         @relation(fields: [gameId], references: [id], onDelete: Restrict)
+  requests LfgRequest[]
+
+  @@index([status, expiresAt])
+  @@index([gameId, createdAt])
+  @@index([authorUserId])
+}
+
+model LfgRequest {
+  id        String           @id @default(cuid())
+  postId    String
+  userId    String
+  status    LfgRequestStatus @default(PENDING)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  post LfgPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@index([postId, status])
 }
