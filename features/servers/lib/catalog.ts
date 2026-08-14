@@ -1,0 +1,61 @@
+import type { GameServerView } from "@/features/servers/lib/types";
+
+export const MOCK_SERVERS: GameServerView[] = [
+  {
+    publicRef: "KOBA-SRV-RUST0001",
+    slug: "legacy-raiders-us",
+    name: "Legacy Raiders US",
+    game: "Rust",
+    platformFamily: "PC",
+    region: "US-East",
+    tags: ["modded", "weekly-wipe"],
+    ownerHandle: "ironwright",
+    linkedShopSlug: "ironwright-trading-co",
+    joinInfo: "connect 203.0.113.10:28015",
+    lastRefreshAt: "2026-08-14T20:00:00.000Z",
+    capabilities: ["STATUS", "PLAYER_COUNT", "QUEUE_COUNT", "MAP_INFO", "RCON_READ", "PC"],
+    status: "ONLINE",
+    livePlayers: 142,
+    maxPlayers: 200,
+    queue: 12,
+    mapName: "Procedural",
+    mapSize: "4250",
+    pingMs: 38,
+  },
+  {
+    publicRef: "KOBA-SRV-MC0001",
+    slug: "blockforge-survival",
+    name: "Blockforge Survival",
+    game: "Minecraft",
+    platformFamily: "PC",
+    region: "EU-West",
+    tags: ["survival", "whitelist"],
+    ownerHandle: "raidmaps",
+    linkedShopSlug: null,
+    joinInfo: "play.blockforge.example",
+    lastRefreshAt: "2026-08-14T19:55:00.000Z",
+    capabilities: ["STATUS", "PLAYER_COUNT", "PC"],
+    status: "ONLINE",
+    livePlayers: 48,
+    maxPlayers: 100,
+  },
+  {
+    publicRef: "KOBA-SRV-CON0001",
+    slug: "console-dayz-eu",
+    name: "Console DayZ EU",
+    game: "DayZ",
+    platformFamily: "CONSOLE",
+    region: "EU",
+    tags: ["official-style"],
+    ownerHandle: "maxbuilds",
+    linkedShopSlug: null,
+    joinInfo: null,
+    lastRefreshAt: null,
+    capabilities: ["CONSOLE", "STATUS"],
+    status: "UNKNOWN",
+  },
+];
+
+export function getMockServer(slug: string): GameServerView | undefined {
+  return MOCK_SERVERS.find((server) => server.slug === slug);
+}

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { FavoriteButton } from "@/features/marketplace/components/favorite-button";
 import { RarityChip, rarityAccentClass } from "@/features/marketplace/components/rarity-chip";
+import { AuctionCountdown } from "@/features/auctions/components/auction-countdown";
 import { formatPrice, PLATFORM_LABEL } from "@/features/marketplace/lib/catalog";
 import type { PublicProductCard } from "@/features/marketplace/lib/product-dto";
 import { cn } from "@/lib/utils";
@@ -15,6 +16,10 @@ export function ProductCard({
 }) {
   const sold = !product.inStock;
   const actionLabel = sold ? "Sold" : product.listingType === "AUCTION" ? "Bid" : "Buy";
+  const displayCents =
+    product.listingType === "AUCTION"
+      ? (product.auction?.highBidCents ?? product.priceCents)
+      : product.priceCents;
 
   return (
     <article
@@ -44,7 +49,15 @@ export function ProductCard({
           {product.title}
         </Link>
         <p className="text-xs text-muted">
-          {product.game.name} · {product.seller.displayName}
+          {product.game.name} ·{" "}
+          {product.seller.shopSlug ? (
+            <Link href={`/shops/${product.seller.shopSlug}`} className="hover:text-neon-lime">
+              {product.seller.displayName}
+              {product.seller.verified ? " · Verified" : ""}
+            </Link>
+          ) : (
+            product.seller.displayName
+          )}
           {product.seller.kobaId ? (
             <span className="mt-0.5 block font-mono">{product.seller.kobaId}</span>
           ) : null}
@@ -53,9 +66,16 @@ export function ProductCard({
           {product.platforms.map((platform) => PLATFORM_LABEL[platform]).join(" · ")}
         </p>
         <div className="mt-auto flex items-center justify-between gap-3 pt-2">
-          <span className={cn("font-mono text-lg", sold && "text-muted line-through")}>
-            {formatPrice(product.priceCents, product.currency)}
-          </span>
+          <div>
+            <span className={cn("font-mono text-lg", sold && "text-muted line-through")}>
+              {formatPrice(displayCents, product.currency)}
+            </span>
+            {product.auction && product.listingType === "AUCTION" ? (
+              <p className="font-mono text-[0.65rem] text-neon-lime">
+                <AuctionCountdown endsAt={product.auction.endsAt} />
+              </p>
+            ) : null}
+          </div>
           {sold ? (
             <Button variant="secondary" size="sm" disabled>
               {actionLabel}

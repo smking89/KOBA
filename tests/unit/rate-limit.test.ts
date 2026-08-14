@@ -6,18 +6,18 @@ describe("rateLimit", () => {
     resetRateLimitStore();
   });
 
-  it("allows requests under the limit", () => {
-    const first = rateLimit("test-key", 2, 60_000);
-    const second = rateLimit("test-key", 2, 60_000);
+  it("allows requests under the limit", async () => {
+    const first = await rateLimit("test-key", 2, 60_000);
+    const second = await rateLimit("test-key", 2, 60_000);
 
     expect(first.success).toBe(true);
     expect(second.success).toBe(true);
     expect(second.remaining).toBe(0);
   });
 
-  it("blocks requests over the limit", () => {
-    rateLimit("blocked-key", 1, 60_000);
-    const blocked = rateLimit("blocked-key", 1, 60_000);
+  it("blocks requests over the limit", async () => {
+    await rateLimit("blocked-key", 1, 60_000);
+    const blocked = await rateLimit("blocked-key", 1, 60_000);
 
     expect(blocked.success).toBe(false);
     expect(blocked.remaining).toBe(0);

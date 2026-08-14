@@ -9,6 +9,8 @@ describe("protected routes", () => {
     expect(isProtectedPath("/business")).toBe(true);
     expect(isProtectedPath("/influencer")).toBe(true);
     expect(isProtectedPath("/admin")).toBe(true);
+    expect(isProtectedPath("/orders")).toBe(true);
+    expect(isProtectedPath("/messages")).toBe(true);
   });
 
   it("recognizes auth routes", () => {

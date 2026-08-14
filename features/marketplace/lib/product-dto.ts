@@ -3,6 +3,15 @@ import type { GamePlatform, ListingType, ProductRarity } from "@/features/market
 export type PublicSeller = {
   displayName: string;
   kobaId: string | null;
+  shopSlug: string | null;
+  verified: boolean;
+};
+
+export type PublicAuctionSummary = {
+  status: string;
+  endsAt: string;
+  highBidCents: number | null;
+  minIncrementCents: number;
 };
 
 export type PublicProductCard = {
@@ -19,6 +28,7 @@ export type PublicProductCard = {
   seller: PublicSeller;
   thumbnailAlt: string;
   favorited: boolean;
+  auction: PublicAuctionSummary | null;
 };
 
 export type PublicProductDetail = PublicProductCard & {

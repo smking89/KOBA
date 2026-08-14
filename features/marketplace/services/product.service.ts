@@ -16,11 +16,14 @@ const productInclude = {
   category: { select: { slug: true, name: true } },
   media: { orderBy: { sortOrder: "asc" as const } },
   variants: { orderBy: { createdAt: "asc" as const } },
+  shop: { select: { slug: true, verificationStatus: true } },
+  auction: true,
   seller: {
     select: {
       name: true,
       profile: { select: { displayName: true } },
       kobaIdentities: { select: { accountType: true, code: true } },
+      ownedShop: { select: { slug: true, verificationStatus: true } },
     },
   },
 } satisfies Record<string, unknown>;
@@ -40,6 +43,8 @@ function sellerFrom(product: NonNullable<ProductRecord>): PublicSeller {
   return {
     displayName: product.seller.profile?.displayName ?? product.seller.name ?? "KOBA seller",
     kobaId,
+    shopSlug: product.seller.ownedShop?.slug ?? product.shop?.slug ?? null,
+    verified: product.seller.ownedShop?.verificationStatus === "VERIFIED",
   };
 }
 
@@ -65,11 +70,26 @@ function toCard(product: NonNullable<ProductRecord>, favorited: boolean): Public
     seller: sellerFrom(product),
     thumbnailAlt: product.media[0]?.alt ?? product.title,
     favorited,
+    auction: product.auction
+      ? {
+          status: product.auction.status,
+          endsAt: product.auction.endsAt.toISOString(),
+          highBidCents: product.auction.highBidCents,
+          minIncrementCents: product.auction.minIncrementCents,
+        }
+      : null,
   };
 }
 
-export async function listPublicProducts(query: MarketQuery, viewerUserId?: string | null) {
+export async function listPublicProducts(
+  query: MarketQuery,
+  viewerUserId?: string | null,
+  options?: { shopSlug?: string },
+) {
   const where = buildPublicProductWhere(query);
+  if (options?.shopSlug) {
+    where.shop = { slug: options.shopSlug };
+  }
   const skip = (query.page - 1) * query.pageSize;
 
   const [total, rows] = await Promise.all([
@@ -149,6 +169,14 @@ export async function getPublicProduct(
       kind: item.kind,
     })),
   };
+}
+
+export async function listPublicProductsForShop(shopSlug: string, viewerUserId?: string | null) {
+  return listPublicProducts(
+    { sort: "newest", page: 1, pageSize: 24, game: undefined, category: undefined, q: undefined },
+    viewerUserId,
+    { shopSlug },
+  );
 }
 
 export async function listGames() {

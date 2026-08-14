@@ -6,7 +6,8 @@ squads; all on one KOBAID.
 
 ## Status
 
-**Phase 5 — Marketplace foundation** is in progress on `feat/marketplace`.
+**Phase 14B — KOBA Coins ledger** is in progress on `feat/koba-coins-ledger`
+(double-entry BigInt ledger, reservations, wallet APIs — no live Coin purchases).
 
 The HTML prototype remains the information-architecture reference:
 
@@ -15,6 +16,19 @@ The HTML prototype remains the information-architecture reference:
 Product visual identity for the app is **dark neon** (logo-inspired lime / mint
 gradient on black). The prototype documents screens and flows; production tokens
 live in `app/globals.css` and `lib/design-tokens.ts`.
+
+### Owner expansion routes (UI foundations)
+
+| Path                                                     | Purpose                                    |
+| -------------------------------------------------------- | ------------------------------------------ |
+| `/trade`, `/trade/[tradeId]`                             | Trade discovery, composer, history (mock)  |
+| `/servers`, `/servers/[serverId]`, `/servers/connect`    | Server directory + RCON connect wizard     |
+| `/plus`                                                  | KOBA Plus plans and subscription states    |
+| `/aiden`, `/aiden/generate`, `/aiden/library`            | Aiden creator, jobs, asset library         |
+| `/wallet`                                                | KOBA Coins wallet (ledger-backed)          |
+
+See [docs/wallet-ledger.md](docs/wallet-ledger.md) for the Phase 14B accounting model.
+Coin purchases, live AI capture, and cash withdrawal remain deferred.
 
 ## Stack
 
@@ -137,10 +151,204 @@ community roles, not staff.
 Public catalog at `/market` and `/market/[slug]`. Listings are visible only when
 `moderationStatus` is `APPROVED` and `publishedAt` is set.
 
-Filters: `q`, `game`, `category`, `rarity`, `platform`, `sort`, `page`.
-Signed-in users can save listings (`POST /api/market/favorites`). Buy/Bid
-actions are placeholders until auctions (Phase 7) and payments (Phase 8). Seller
-shop tools are Phase 6.
+Filters: `q`, `game`, `category`, `rarity`, `platform`, `listing`, `sort`, `page`.
+Signed-in users can save listings (`POST /api/market/favorites`). Buy-now listings
+check out through Stripe (test mode). Live auctions accept bids, then the winner
+pays the reserved amount.
+
+### Shops (Phase 6)
+
+Public shop profiles at `/shops/[slug]`. A Business KOBAID may own one shop.
+Shop Owner and Shop Moderator are community roles on the shop, not KOBA staff
+(SA/AD/MD).
+
+Listings start as `DRAFT`. Sellers submit to `PENDING`. Only KOBA staff can
+approve (`POST /api/admin/products/[slug]/approve`) and set `publishedAt`.
+Sellers cannot self-approve. Editing a live listing returns it to pending.
+
+Staff (SA/AD) verify shops at `POST /api/admin/shops/[slug]/verify`. Follows and
+reviews require a signed-in user who is not the shop owner.
+
+Business dashboard analytics count live listings, drafts, followers, reviews,
+inventory, and orders. Connect payouts at `/business/payouts` before buyers can
+check out.
+
+### Auctions (Phase 7)
+
+Auction listings expose a live clock, current bid, minimum increment, and bid
+history on `/market/[slug]`. `POST /api/auctions/[slug]/bids` is transactional
+(`SELECT … FOR UPDATE` plus serializable isolation, retried on conflict).
+Sellers and shop members cannot bid on their own listings. Bids in the last two
+minutes extend the clock by two minutes.
+
+When time expires the highest bid is reserved for checkout. The winner pays via
+Stripe Checkout (`Pay now` on the listing). No charge is taken at bid time.
+Updates stream over `GET /api/auctions/[slug]/stream` (SSE).
+Idempotency keys prevent duplicate submissions. Bid APIs are never cached by the
+service worker.
+
+### Payments (Phase 8)
+
+Stripe Connect **test mode** only. Destination charges take a platform fee of
+**8%** unverified / **4%** Blue-Badge verified
+(`KOBA_COMMISSION_BPS` default 800, `KOBA_COMMISSION_BPS_VERIFIED` default 400,
+cap 2500). Hosted Checkout is the
+payment UI. **Paid status comes only from signed webhooks** — the browser cannot
+mark an order paid (`?checkout=success` is ignored).
+
+| Path                                      | Purpose                                |
+| ----------------------------------------- | -------------------------------------- |
+| `POST /api/checkout`                      | Create a Checkout Session (idempotent) |
+| `POST /api/stripe/webhook`                | Signed Stripe events                   |
+| `GET`/`POST /api/business/connect`        | Express onboarding                     |
+| `POST /api/business/orders/[ref]/fulfill` | Shop owner fulfill                     |
+| `POST /api/business/orders/[ref]/refund`  | Shop owner refund                      |
+| `POST /api/admin/orders/[ref]/refund`     | Staff (SA/AD) refund                   |
+| `/orders` · `/orders/[ref]`               | Buyer history and receipts             |
+| `/business/payouts`                       | Connect charges/payouts status         |
+
+Sellers and shop members cannot buy their own listings. Auction checkout requires
+`RESERVED`, the winning bidder, and a future `reservedUntil`. Inventory decrements
+when checkout starts and restores if the session expires or the order is refunded.
+Refunds reverse the Connect transfer and the application fee.
+
+Placeholder Stripe keys (`sk_test_replace_me`) fail closed — checkout returns 503
+instead of faking paid. Forward webhooks locally with:
+
+```bash
+stripe listen --forward-to localhost:3000/api/stripe/webhook
+```
+
+### Groups and LFG (Phase 9)
+
+Public and private groups at `/groups` and `/groups/[slug]`. Anyone with a KOBAID
+can create a group. **Group Owner / Admin / Moderator are community roles**, not
+KOBA staff (SA/AD/MD).
+
+Public groups join immediately. Private groups need a request or an invite by
+KOBAID. Moderators can approve requests, kick, and ban. Admins can invite and
+assign Moderator/Member. The owner can assign Admin.
+
+LFG at `/lfg` filters by game, platform, region, skill, mic, and availability.
+Posts expire; authors accept requests until the roster is full. Self-join is
+blocked. Group feeds are live on each group page.
+
+| Path                               | Purpose                           |
+| ---------------------------------- | --------------------------------- |
+| `POST /api/groups`                 | Create a group                    |
+| `POST /api/groups/[slug]/join`     | Join public or request private    |
+| `POST /api/groups/[slug]/leave`    | Leave (owner cannot)              |
+| `POST /api/groups/[slug]/moderate` | Invite, approve, kick, ban, roles |
+| `POST /api/lfg`                    | Create an LFG post                |
+| `POST /api/lfg/[ref]/join`         | Request a seat                    |
+| `POST /api/lfg/[ref]/moderate`     | Accept, deny, or cancel           |
+
+Seeded examples: `/groups/rust-legacy-raiders` and `KOBA-LFG-WIPE0001`.
+
+### Social (Phase 10)
+
+Public profiles at `/u/[handle]`. Follows and blocks are user-to-user (shop follows
+stay separate). Blocking removes both follow directions and blocks tagging,
+comments, and feed visibility.
+
+Posts use `KOBA-PST-` public refs. Visibility is public or followers-only.
+Mentions (`@handle`) and explicit shop/group/product tags respect tag privacy
+(`EVERYONE` / `FOLLOWERS` / `NO_ONE`), shop `taggingAllowed`, and group
+`taggingAllowed`. Blocked accounts can never tag. Stories expire after 24 hours
+(`KOBA-STY-`). Reports (`KOBA-RPT-`) go to staff. KOBA staff (SA/AD/MD) can hide
+posts — group Owner/Admin/Moderator cannot. Sponsored is a boolean hook with a
+“Sponsored” label; full ads land in Phase 12.
+
+Signed-in feed is self plus following. Signed-out feed is public live posts.
+Pagination is `page` / `pageSize` (default 8).
+
+| Path                                    | Purpose                      |
+| --------------------------------------- | ---------------------------- |
+| `GET /api/social/feed`                  | Paginated home or group feed |
+| `POST /api/social/posts`                | Create a post                |
+| `POST /api/social/posts/[ref]/like`     | Toggle like                  |
+| `POST /api/social/posts/[ref]/save`     | Toggle save                  |
+| `POST /api/social/posts/[ref]/comments` | Add a comment                |
+| `POST /api/social/stories`              | Create a 24h story           |
+| `POST /api/social/follow/[handle]`      | Toggle follow                |
+| `POST /api/social/block/[handle]`       | Toggle block                 |
+| `POST /api/social/report`               | File a content report        |
+| `POST /api/social/settings`             | Tag privacy and bio          |
+| `POST /api/groups/[slug]/tagging`       | Owner tagging toggle         |
+| `POST /api/business/tagging`            | Shop tagging toggle          |
+| `POST /api/admin/posts/[ref]/hide`      | Staff hide                   |
+
+Seeded examples: `/u/maxbuilds`, `/u/ironwright`, `KOBA-PST-FEED0001`,
+`KOBA-STY-WIPE0001`.
+
+### Direct messaging (Phase 11)
+
+Private 1:1 conversations at `/messages` and `/messages/[ref]`. Blocked accounts
+cannot open or continue a chat. Read state, typing signals, and live updates use
+SSE. Voice notes and attachments accept **https URLs only** in this phase (no
+binary upload yet). Call buttons are UI stubs.
+
+**Vanish mode** marks new messages as vanish and purges them when a participant
+leaves the thread (`pagehide` or explicit leave). Vanish cannot prevent
+screenshots, screen recordings, notification previews, or copies made before
+purge — do not advertise otherwise.
+
+| Path                              | Purpose                     |
+| --------------------------------- | --------------------------- |
+| `GET /api/messages`               | Inbox                       |
+| `POST /api/messages`              | Open/create chat by handle  |
+| `GET /api/messages/[ref]`         | Thread snapshot             |
+| `POST /api/messages/[ref]`        | Send message                |
+| `GET /api/messages/[ref]/stream`  | Live SSE updates            |
+| `POST /api/messages/[ref]/read`   | Mark read                   |
+| `POST /api/messages/[ref]/typing` | Typing signal               |
+| `POST /api/messages/[ref]/vanish` | Toggle vanish mode          |
+| `POST /api/messages/[ref]/leave`  | Purge vanish messages       |
+| `POST /api/messages/[ref]/report` | Report conversation/message |
+
+Seeded example: `KOBA-DM-WIPE0001` between maxbuilds and ironwright.
+
+### Staff admin (Phase 12)
+
+Staff console at `/admin` for Superadmin / Admin / Moderator KOBAIDs. Queues cover
+pending listings, pending shop verification, and open content reports. Staff can
+approve or reject listings, verify or reject shops (SA/AD), resolve reports (and
+hide posts), issue staff KOBAIDs, and refund orders by public ref (SA/AD).
+
+| Path                                      | Purpose                            |
+| ----------------------------------------- | ---------------------------------- |
+| `GET /api/admin/overview`                 | Counts + recent audit              |
+| `GET /api/admin/products/pending`         | Listing moderation queue           |
+| `POST /api/admin/products/[slug]/approve` | Approve listing                    |
+| `POST /api/admin/products/[slug]/reject`  | Reject listing                     |
+| `GET /api/admin/shops/pending`            | Shop verification queue            |
+| `POST /api/admin/shops/[slug]/verify`     | Verify or reject shop              |
+| `GET /api/admin/reports`                  | Open content reports               |
+| `POST /api/admin/reports/[ref]/resolve`   | Review / dismiss (+ optional hide) |
+| `POST /api/admin/kobaid`                  | Issue staff KOBAID                 |
+| `POST /api/admin/orders/[ref]/refund`     | Staff refund                       |
+| `POST /api/admin/posts/[ref]/hide`        | Hide a live post                   |
+
+Local seed staff: `staff@koba.local` / `KobaStaff1!` (SUPERADMIN). Queues include
+`pending-oil-rig-kit`, shop `raid-ready-maps`, and report `KOBA-RPT-STAFF001`.
+
+### Production readiness (Phase 13)
+
+Ops hardening for a community launch (not ads / influencer / developer portal).
+
+| Area        | Behavior                                                                                                                  |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Email       | Resend when `RESEND_API_KEY` + `EMAIL_FROM` are set; otherwise terminal links in non-prod; **fails closed in production** |
+| Rate limits | In-memory by default; Upstash Redis REST when `UPSTASH_REDIS_REST_*` is set                                               |
+| Health      | `GET /api/health` (add `?deep=1` for a DB ping)                                                                           |
+| Media       | `POST /api/media/presign` for S3/R2/MinIO; optional `MEDIA_ALLOWED_HOSTS` / `S3_PUBLIC_BASE_URL` allowlist                |
+| Stripe      | Test mode only — `sk_live_` stays blocked; readiness notes via health checks                                              |
+
+```bash
+# Example health
+curl -s http://localhost:3000/api/health
+curl -s "http://localhost:3000/api/health?deep=1"
+```
 
 ## Visual identity
 
@@ -157,8 +365,9 @@ shop tools are Phase 6.
 Use CSS theme tokens (`bg-background`, `text-neon-lime`, `bg-brand-gradient`) —
 do not scatter raw hex in feature components.
 
-> Official logo assets are not in the repo yet. `BrandMark` is a temporary
-> geometric placeholder for Phase 1–2 until the logo file is supplied.
+Official mark: `public/brand/koba-logo.png` (used by `BrandMark`). Refresh install
+icons with `pnpm icons:generate` (writes `public/icons/*` and `apple-touch-icon.png`
+from that asset). Favicon: `app/icon.png`.
 
 ## KOBAID (product rules)
 
@@ -181,11 +390,21 @@ self-registered. Group Admin/Moderator badges are community roles, not staff.
 3. **PWA foundation** ✅
 4. ~~Database + Auth.js~~ ✅
 5. ~~Account types + KOBAID~~ ✅
-6. **Marketplace** ← current
-7. Shops → auctions → payments
-8. Groups / LFG → social → DMs
-9. Influencer / ads → developer portal → staff admin
-10. Production readiness
+6. **Marketplace** ✅
+7. **Shops** ✅
+8. **Auctions** ✅
+9. **Payments** ✅
+10. **Groups / LFG** ✅
+11. **Social** ✅
+12. **Direct messaging** ✅
+13. **Staff admin** ✅
+14. **Production readiness** ✅
+15. **Brand icons (official logo)** ✅
+16. **Fee tiers (8% / 4% verified)** ✅
+17. **Owner product expansion UI** ✅
+18. **Owner expansion backends** ✅
+19. **KOBA Coins double-entry ledger** ← current
+20. Influencer ads network / live Coin purchases (deferred)
 
 ## License
 

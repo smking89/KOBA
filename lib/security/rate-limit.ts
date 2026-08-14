@@ -9,11 +9,7 @@ export type RateLimitResult = {
   retryAfterSeconds?: number;
 };
 
-/**
- * Simple in-memory sliding window limiter for auth endpoints.
- * Replace with Redis / Upstash in production multi-instance deployments.
- */
-export function rateLimit(key: string, limit: number, windowMs: number): RateLimitResult {
+function memoryRateLimit(key: string, limit: number, windowMs: number): RateLimitResult {
   const now = Date.now();
   const bucket = buckets.get(key);
 
@@ -34,6 +30,82 @@ export function rateLimit(key: string, limit: number, windowMs: number): RateLim
   bucket.count += 1;
   buckets.set(key, bucket);
   return { success: true, limit, remaining: limit - bucket.count };
+}
+
+export function isUpstashConfigured(): boolean {
+  return Boolean(
+    process.env.UPSTASH_REDIS_REST_URL?.trim() && process.env.UPSTASH_REDIS_REST_TOKEN?.trim(),
+  );
+}
+
+async function upstashRateLimit(
+  key: string,
+  limit: number,
+  windowMs: number,
+): Promise<RateLimitResult> {
+  const base = process.env.UPSTASH_REDIS_REST_URL!.replace(/\/$/, "");
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN!;
+  const redisKey = `rl:${key}`;
+  const windowSeconds = Math.max(1, Math.ceil(windowMs / 1000));
+
+  const response = await fetch(`${base}/pipeline`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify([
+      ["INCR", redisKey],
+      ["EXPIRE", redisKey, windowSeconds, "NX"],
+      ["TTL", redisKey],
+    ]),
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    console.error(`[KOBA] Upstash rate limit failed (${response.status}); falling back to memory.`);
+    return memoryRateLimit(key, limit, windowMs);
+  }
+
+  const payload = (await response.json()) as Array<{ result: number }>;
+  const count = Number(payload[0]?.result ?? 0);
+  const ttl = Number(payload[2]?.result ?? windowSeconds);
+
+  if (count > limit) {
+    return {
+      success: false,
+      limit,
+      remaining: 0,
+      retryAfterSeconds: ttl > 0 ? ttl : windowSeconds,
+    };
+  }
+
+  return {
+    success: true,
+    limit,
+    remaining: Math.max(0, limit - count),
+  };
+}
+
+/**
+ * Sliding / fixed-window rate limiter.
+ * Uses Upstash Redis REST when configured; otherwise in-memory (single instance).
+ */
+export async function rateLimit(
+  key: string,
+  limit: number,
+  windowMs: number,
+): Promise<RateLimitResult> {
+  if (isUpstashConfigured()) {
+    try {
+      return await upstashRateLimit(key, limit, windowMs);
+    } catch (error) {
+      console.error("[KOBA] Upstash rate limit error; falling back to memory.", error);
+      return memoryRateLimit(key, limit, windowMs);
+    }
+  }
+
+  return memoryRateLimit(key, limit, windowMs);
 }
 
 export function resetRateLimitStore(): void {

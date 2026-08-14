@@ -14,7 +14,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Sign in to save listings." }, { status: 401 });
   }
 
-  const limited = rateLimit(`favorite:${session.user.id}`, 40, 15 * 60 * 1000);
+  const limited = await rateLimit(`favorite:${session.user.id}`, 40, 15 * 60 * 1000);
   if (!limited.success) {
     return NextResponse.json({ error: "Too many save attempts." }, { status: 429 });
   }

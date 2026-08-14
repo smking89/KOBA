@@ -10,9 +10,17 @@ export const FEATURE_SCAFFOLDS = [
   "lfg",
   "social",
   "messages",
+  "trade",
+  "servers",
+  "plus",
+  "aiden",
+  "wallet",
   "influencers",
   "developer-portal",
   "admin",
+  "navigation",
+  "media",
+  "payments",
 ] as const;
 
 export type FeatureScaffold = (typeof FEATURE_SCAFFOLDS)[number];

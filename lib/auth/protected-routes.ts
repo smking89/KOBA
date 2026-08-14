@@ -6,6 +6,12 @@ export const PROTECTED_PATH_PREFIXES = [
   "/business",
   "/influencer",
   "/admin",
+  "/orders",
+  "/messages",
+  "/wallet",
+  "/servers/connect",
+  "/aiden/generate",
+  "/aiden/library",
 ] as const;
 
 export function isProtectedPath(pathname: string): boolean {

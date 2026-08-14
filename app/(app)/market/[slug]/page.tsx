@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { Button } from "@/components/ui/button";
 import { FavoriteButton } from "@/features/marketplace/components/favorite-button";
+import { CheckoutButton } from "@/features/payments/components/checkout-button";
 import { RarityChip } from "@/features/marketplace/components/rarity-chip";
 import { formatPrice, PLATFORM_LABEL } from "@/features/marketplace/lib/catalog";
 import { getPublicProduct } from "@/features/marketplace/services/product.service";
+import { getPublicAuction } from "@/features/auctions/services/auction.service";
+import { AuctionPanel } from "@/features/auctions/components/auction-panel";
 
 export const metadata = { title: "Product" };
 
@@ -18,12 +20,10 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
     notFound();
   }
 
+  const auction =
+    product.listingType === "AUCTION" ? await getPublicAuction(slug, session?.user.id) : null;
   const sold = !product.inStock;
-  const actionLabel = sold
-    ? "Sold"
-    : product.listingType === "AUCTION"
-      ? "Place bid · Phase 7"
-      : "Buy · Phase 8";
+  const signedIn = Boolean(session?.user.id);
 
   return (
     <div className="grid gap-8 md:grid-cols-2">
@@ -36,7 +36,15 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
         <RarityChip rarity={product.rarity} />
         <h1 className="text-3xl font-semibold tracking-tight">{product.title}</h1>
         <p className="text-sm text-muted">
-          {product.game.name} · {product.category.name} · {product.seller.displayName}
+          {product.game.name} · {product.category.name} ·{" "}
+          {product.seller.shopSlug ? (
+            <Link href={`/shops/${product.seller.shopSlug}`} className="hover:text-neon-lime">
+              {product.seller.displayName}
+            </Link>
+          ) : (
+            product.seller.displayName
+          )}
+          {product.seller.verified ? " · Verified" : ""}
           {product.seller.kobaId ? (
             <span className="ml-2 font-mono text-xs">{product.seller.kobaId}</span>
           ) : null}
@@ -45,17 +53,24 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
         <p className="text-xs tracking-wide text-muted uppercase">
           {product.platforms.map((platform) => PLATFORM_LABEL[platform]).join(" · ")}
         </p>
-        <div className="rounded-lg border border-border bg-surface p-4">
-          <p className="text-xs text-muted uppercase">
-            {product.listingType === "AUCTION" ? "Starting bid" : "Price"}
-          </p>
-          <p className="mt-1 font-mono text-3xl">
-            {formatPrice(product.priceCents, product.currency)}
-          </p>
-          <p className="mt-1 text-xs text-muted">
-            {sold ? "Out of stock" : `${product.inventoryQty} in inventory`}
-          </p>
-        </div>
+        {auction ? (
+          <AuctionPanel
+            slug={product.slug}
+            initial={auction}
+            signedIn={signedIn}
+            currency={product.currency}
+          />
+        ) : (
+          <div className="rounded-lg border border-border bg-surface p-4">
+            <p className="text-xs text-muted uppercase">Price</p>
+            <p className="mt-1 font-mono text-3xl">
+              {formatPrice(product.priceCents, product.currency)}
+            </p>
+            <p className="mt-1 text-xs text-muted">
+              {sold ? "Out of stock" : `${product.inventoryQty} in inventory`}
+            </p>
+          </div>
+        )}
         {product.variants.length > 0 ? (
           <ul className="space-y-2 text-sm">
             {product.variants.map((variant) => (
@@ -74,11 +89,18 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
           </ul>
         ) : null}
         <div className="flex flex-wrap gap-2">
-          <Button disabled>{actionLabel}</Button>
+          {auction ? null : (
+            <CheckoutButton
+              slug={product.slug}
+              signedIn={signedIn}
+              label={sold ? "Sold" : "Buy now"}
+              disabled={sold}
+            />
+          )}
           <FavoriteButton
             slug={product.slug}
             initialFavorited={product.favorited}
-            signedIn={Boolean(session?.user.id)}
+            signedIn={signedIn}
           />
           <Link
             href="/market"

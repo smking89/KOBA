@@ -48,7 +48,7 @@ export default async function InfluencerDashboardPage() {
         <Card>
           <CardTitle>Payout status</CardTitle>
           <p className="mt-2 text-lg">Not connected</p>
-          <CardDescription>Stripe Connect is Phase 8.</CardDescription>
+          <CardDescription>Influencer campaign payouts land later.</CardDescription>
         </Card>
       </div>
 

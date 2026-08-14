@@ -37,13 +37,14 @@ telegraphs this breadth; it isn't something I'm reading into an
 otherwise narrow pitch.
 
 **Where combined scope helps [INFERRED]:**
+
 - Marketplace + shops + influencer + dev-portal share one identity
   primitive (KOBAID) and one payments primitive (Stripe Connect via
   `StripeAccountLink`), which is architecturally sound — Phase 3's code
   already treats Stripe plumbing as shared infrastructure, not
   duplicated per phase. That's a real synergy, not just theory.
 - A feed that mixes organic social content with marketplace listings
-  genuinely can outperform a static storefront for *discovery* of
+  genuinely can outperform a static storefront for _discovery_ of
   cosmetics — this is the TikTok-Shop / Whatnot playbook, and it's not
   a crazy bet in principle.
 - Groups/LFG could be a real acquisition channel: gamers already
@@ -52,6 +53,7 @@ otherwise narrow pitch.
   hook.
 
 **Where combined scope hurts [INFERRED]:**
+
 - **Time-to-value for the first real user is long.** A buyer who wants
   to buy a Rust monument skin has to go through KOBAID creation,
   possibly account-mode concepts, and land in a UI that's simultaneously
@@ -87,21 +89,21 @@ otherwise narrow pitch.
 
 **Core vs. scope-creep phases, specifically [INFERRED]:**
 
-| Phase | Core to "trade game-server assets"? | Verdict |
-|---|---|---|
-| 1 KOBAID/accounts | Yes — needed for any identity | Core |
-| 2 Account switching | Partial — only needed once >1 role exists | Core-adjacent, could be simpler |
-| 3 Marketplace core | Yes — this *is* the product | Core |
-| 4 Shops | Yes, once sellers exist | Core |
-| 5 Groups/LFG | No — community tooling, not trading | Scope creep (defer) |
-| 6 Social layer (feed/DM/tagging) | Partial — discovery help, but DMs/calls/vanish mode are a full chat app | Mostly scope creep |
-| 7 KOBA Ads | No | Scope creep (defer indefinitely until there's traffic worth monetizing) |
-| 8 Feed engine | No, if catalog is small; Yes eventually for discovery at scale | Defer |
-| 9 Developer portal | No — separate product | Scope creep (spin out or defer) |
-| 10 Influencer system | No, until organic sales exist to attribute against | Defer |
-| 11 RBAC | Yes, but only needs to be as deep as moderation actually requires early | Core-lite |
-| 12 Schema integration | Process step, not a product phase | N/A |
-| 13 API routes | Process step | N/A |
+| Phase                            | Core to "trade game-server assets"?                                     | Verdict                                                                 |
+| -------------------------------- | ----------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| 1 KOBAID/accounts                | Yes — needed for any identity                                           | Core                                                                    |
+| 2 Account switching              | Partial — only needed once >1 role exists                               | Core-adjacent, could be simpler                                         |
+| 3 Marketplace core               | Yes — this _is_ the product                                             | Core                                                                    |
+| 4 Shops                          | Yes, once sellers exist                                                 | Core                                                                    |
+| 5 Groups/LFG                     | No — community tooling, not trading                                     | Scope creep (defer)                                                     |
+| 6 Social layer (feed/DM/tagging) | Partial — discovery help, but DMs/calls/vanish mode are a full chat app | Mostly scope creep                                                      |
+| 7 KOBA Ads                       | No                                                                      | Scope creep (defer indefinitely until there's traffic worth monetizing) |
+| 8 Feed engine                    | No, if catalog is small; Yes eventually for discovery at scale          | Defer                                                                   |
+| 9 Developer portal               | No — separate product                                                   | Scope creep (spin out or defer)                                         |
+| 10 Influencer system             | No, until organic sales exist to attribute against                      | Defer                                                                   |
+| 11 RBAC                          | Yes, but only needs to be as deep as moderation actually requires early | Core-lite                                                               |
+| 12 Schema integration            | Process step, not a product phase                                       | N/A                                                                     |
+| 13 API routes                    | Process step                                                            | N/A                                                                     |
 
 That's roughly 4 of 11 product phases that are unambiguously core to
 the stated premise; the rest are either community/social features that
@@ -141,6 +143,7 @@ migrate.** Everything else — Influencer program, Groups/LFG, feed,
 ads — is downstream of "does KOBA have anything worth browsing."
 
 **Secondary / can-wait, ranked:**
+
 1. **Server/community owners (Groups)** — valuable eventually as a
    distribution channel ("buy the skin pack for the server you're
    already in"), but not needed to prove the core trade loop. Can be
@@ -184,7 +187,7 @@ building more phases against it.
    current scope. Sellers already have payment infra, an existing
    audience, and (often) a direct relationship with a server's playerbase
    that doesn't transfer automatically to a new marketplace's audience.
-   *Cheap test:* Manually recruit 5-10 sellers from Rust/Minecraft
+   _Cheap test:_ Manually recruit 5-10 sellers from Rust/Minecraft
    server communities before writing Phase 4 code; ask them to
    cross-list 3-5 items via a spreadsheet + manual Stripe payment link
    flow. If they won't do that for free with zero engineering built,
@@ -195,7 +198,7 @@ building more phases against it.
    Tebex, or a server's own store).
    Trust is usually the binding constraint in P2P marketplaces for
    collectibles-adjacent goods, more than supply or UX.
-   *Cheap test:* Run the manual cross-listing above as an actual paid
+   _Cheap test:_ Run the manual cross-listing above as an actual paid
    pilot (real Stripe checkout, no marketplace UI) and measure
    conversion from a small paid-traffic or community-post sample —
    don't wait for Phase 3's full checkout UI to learn this.
@@ -208,7 +211,7 @@ building more phases against it.
    less useful than a simple filterable grid, and building the feed
    ranking engine (Phase 8) before there's enough content to rank is
    solving a problem that doesn't exist yet.
-   *Cheap test:* Ship a plain sortable/filterable catalog page first (no
+   _Cheap test:_ Ship a plain sortable/filterable catalog page first (no
    feed engine); instrument search vs. browse vs. "would a feed even
    have surfaced this" behavior once there's real catalog volume, and
    only build Phase 8 if catalog size and session data justify it.
@@ -219,7 +222,7 @@ building more phases against it.
    organic baseline to compare against (the influencer gets paid for
    sales that would have happened anyway), and this risk is structural,
    not an execution detail.
-   *Cheap test:* Don't build Phase 10's infrastructure until there are
+   _Cheap test:_ Don't build Phase 10's infrastructure until there are
    several months of organic sales data from a handful of shops; then
    run one shop's referral program manually (a discount code tracked in
    a spreadsheet) and compare lift against that shop's own organic
@@ -235,7 +238,7 @@ building more phases against it.
    of the target playerbase for a game like Rust Console Edition, the
    product's most differentiated inventory (custom maps/monuments) is
    invisible to them.
-   *Cheap test:* Before investing in Map Builder (Phase 9) or the full
+   _Cheap test:_ Before investing in Map Builder (Phase 9) or the full
    4-type product taxonomy, check actual sell-through mix once the
    marketplace is live: is revenue coming from cosmetics (works on all
    platforms) or maps/monuments/assets (PC-only)? That answer should
@@ -254,7 +257,7 @@ building more phases against it.
    Business seller," a chunk of Phase 1/2's engineering (mode-switching
    UI, Influencer-mode gating, capability-flag generality) was spent
    servicing personas that didn't materialize.
-   *Cheap test:* This one's harder to cheaply test pre-build since it's
+   _Cheap test:_ This one's harder to cheaply test pre-build since it's
    foundational, which is exactly why it's worth flagging now rather
    than after Phase 2 ships — at minimum, defer any Influencer-specific
    capability-flag work until Assumption 4 has been validated.
@@ -268,7 +271,7 @@ building more phases against it.
    serve. The platform fee on marketplace orders (already scoped in
    Phase 3) is a simpler, already-proven monetization model for a
    marketplace; ads are additive, not necessary, at launch.
-   *Cheap test:* None needed pre-build — just defer Phase 7 until
+   _Cheap test:_ None needed pre-build — just defer Phase 7 until
    organic DAU/session data justifies it; treat "do we have enough
    attention to sell ads against" as a launch-readiness gate, not a
    roadmap phase with a fixed position.
@@ -289,15 +292,15 @@ hard dependencies, parallelization notes, a dedicated integration
 checkpoint at Phase 12). That's a real strength of the planning
 artifact.
 
-But judged as *speed-to-validation* rather than *engineering
-completeness*, it optimizes for the wrong thing:
+But judged as _speed-to-validation_ rather than _engineering
+completeness_, it optimizes for the wrong thing:
 
 - The plan doesn't have a **validation checkpoint** anywhere before
   Phase 12-13 (schema integration and API routes, i.e., essentially
   "everything is built"). There's no explicit "ship phase 3+4 alone,
   get real sellers/buyers, decide whether to proceed" gate written into
-  the roadmap. The sequencing tells you what can be *built* in what
-  order; it doesn't tell you what should be *shipped and learned from*
+  the roadmap. The sequencing tells you what can be _built_ in what
+  order; it doesn't tell you what should be _shipped and learned from_
   before building more.
 - Phases 5 through 10 (Groups, Social, Ads, Feed, Dev Portal, Influencer)
   are all engineering-dependency-valid to build in that order, but none
@@ -320,6 +323,7 @@ completeness*, it optimizes for the wrong thing:
 
 **Phases that could be deferred without blocking a real, usable v1
 [INFERRED]:**
+
 - Auctions/bidding (fixed-price only ships a usable v1 much sooner;
   auction engine's optimistic-concurrency/auto-extend logic is real
   engineering weight for a feature that matters more to collectors than
@@ -416,6 +420,7 @@ untested until Phase 12-13.
 
 **Recommendation: cut down before building further, don't abandon.**
 Specifically:
+
 1. Treat Phases 1-4 as the real MVP boundary, and strip even that down
    further per Section 5 (one game, cosmetics-only, fixed-price-only,
    hand-recruited sellers) before writing more Phase-4-and-later code.

@@ -33,6 +33,7 @@ describe("marketplace filters", () => {
       category: "monuments",
       rarity: "LEGENDARY",
       platform: "STEAM",
+      listing: "AUCTION",
       sort: "price_desc",
       page: "2",
     });
@@ -40,6 +41,7 @@ describe("marketplace filters", () => {
     expect(query.game).toBe("rust");
     expect(query.rarity).toBe("LEGENDARY");
     expect(query.platform).toBe("STEAM");
+    expect(query.listing).toBe("AUCTION");
     expect(query.sort).toBe("price_desc");
     expect(query.page).toBe(2);
 
@@ -48,6 +50,7 @@ describe("marketplace filters", () => {
     expect(where.category).toEqual({ slug: "monuments" });
     expect(where.rarity).toBe("LEGENDARY");
     expect(where.platforms).toEqual({ has: "STEAM" });
+    expect(where.listingType).toBe("AUCTION");
   });
 
   it("rejects staff-like junk and unknown sort by falling back", () => {

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   GAME_PLATFORMS,
+  LISTING_TYPES,
   MARKET_SORTS,
   MAX_PAGE_SIZE,
   PAGE_SIZE,
@@ -13,6 +14,7 @@ export const marketQuerySchema = z.object({
   category: z.string().trim().max(64).optional(),
   rarity: z.enum(PRODUCT_RARITIES).optional(),
   platform: z.enum(GAME_PLATFORMS).optional(),
+  listing: z.enum(LISTING_TYPES).optional(),
   sort: z.enum(MARKET_SORTS).default("newest"),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(MAX_PAGE_SIZE).default(PAGE_SIZE),
@@ -32,6 +34,7 @@ export function parseMarketQuery(
     category: scalar(input.category) || undefined,
     rarity: scalar(input.rarity) || undefined,
     platform: scalar(input.platform) || undefined,
+    listing: scalar(input.listing) || undefined,
     sort: scalar(input.sort) || "newest",
     page: scalar(input.page) || 1,
     pageSize: scalar(input.pageSize) || PAGE_SIZE,

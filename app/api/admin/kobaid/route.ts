@@ -13,7 +13,7 @@ export async function POST(request: Request) {
   }
 
   const ip = clientIp(request) ?? "unknown";
-  const limited = rateLimit(`admin-kobaid:${session.user.id}`, 10, 15 * 60 * 1000);
+  const limited = await rateLimit(`admin-kobaid:${session.user.id}`, 10, 15 * 60 * 1000);
   if (!limited.success) {
     return NextResponse.json({ error: "Too many issuance attempts." }, { status: 429 });
   }

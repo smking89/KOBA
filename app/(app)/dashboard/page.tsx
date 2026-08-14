@@ -4,6 +4,8 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { auth } from "@/lib/auth";
 import { getAccountSnapshot } from "@/features/accounts/services/account.service";
+import { countActiveBids } from "@/features/auctions/services/auction.service";
+import { countJoinedGroups } from "@/features/groups/services/group.service";
 import { ACCOUNT_TYPE_LABEL } from "@/features/koba-id/lib/format";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -25,6 +27,11 @@ export default async function PlayerDashboardPage() {
     redirect("/enter");
   }
 
+  const [activeBids, groupsJoined] = await Promise.all([
+    countActiveBids(session.user.id),
+    countJoinedGroups(session.user.id),
+  ]);
+
   return (
     <div className="space-y-6">
       <div>
@@ -45,19 +52,31 @@ export default async function PlayerDashboardPage() {
         </Card>
         <Card>
           <CardTitle>Active bids</CardTitle>
-          <p className="mt-2 font-mono text-2xl">0</p>
-          <CardDescription>Auctions land in Phase 7.</CardDescription>
+          <p className="mt-2 font-mono text-2xl">{activeBids}</p>
+          <CardDescription>Live auctions where you are the leading bid.</CardDescription>
         </Card>
         <Card>
           <CardTitle>Groups joined</CardTitle>
-          <p className="mt-2 font-mono text-2xl">0</p>
-          <CardDescription>Groups land in Phase 9.</CardDescription>
+          <p className="mt-2 font-mono text-2xl">{groupsJoined}</p>
+          <CardDescription>Public and private groups you belong to.</CardDescription>
         </Card>
       </div>
 
       <div className="flex flex-wrap gap-3">
-        <Link href="/market" className={cn(buttonVariants({ variant: "primary" }))}>
+        <Link href={`/u/${snapshot.handle}`} className={cn(buttonVariants({ variant: "primary" }))}>
+          Your profile
+        </Link>
+        <Link href="/feed" className={cn(buttonVariants({ variant: "secondary" }))}>
+          Feed
+        </Link>
+        <Link href="/market" className={cn(buttonVariants({ variant: "secondary" }))}>
           Explore Market
+        </Link>
+        <Link href="/orders" className={cn(buttonVariants({ variant: "secondary" }))}>
+          Orders
+        </Link>
+        <Link href="/groups" className={cn(buttonVariants({ variant: "secondary" }))}>
+          Groups
         </Link>
         <Link href="/lfg" className={cn(buttonVariants({ variant: "secondary" }))}>
           Open LFG

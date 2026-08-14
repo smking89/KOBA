@@ -27,6 +27,44 @@ enum AuditAction {
   KOBAID_MINTED
   ACCOUNT_SWITCHED
   KOBAID_ISSUED_STAFF
+  SHOP_CREATED
+  SHOP_VERIFICATION_REQUESTED
+  SHOP_VERIFIED
+  PRODUCT_SUBMITTED
+  PRODUCT_APPROVED
+  PRODUCT_REJECTED
+  BID_PLACED
+  AUCTION_SETTLED
+  CHECKOUT_CREATED
+  ORDER_PAID
+  ORDER_REFUNDED
+  ORDER_FULFILLED
+  CONNECT_ONBOARDED
+  GROUP_CREATED
+  GROUP_JOINED
+  GROUP_LEFT
+  GROUP_MODERATED
+  LFG_CREATED
+  LFG_JOIN_REQUESTED
+  LFG_SETTLED
+  POST_CREATED
+  STORY_CREATED
+  CONTENT_REPORTED
+  CONTENT_HIDDEN
+  REPORT_RESOLVED
+  CONVERSATION_STARTED
+  MESSAGE_SENT
+  VANISH_PURGED
+  TRADE_CREATED
+  TRADE_UPDATED
+  SERVER_REGISTERED
+  SERVER_RCON_UPDATED
+  PLUS_CHECKOUT_STARTED
+  PLUS_CANCELLED
+  COIN_LEDGER_POSTED
+  AIDEN_JOB_CREATED
+  AIDEN_JOB_CANCELLED
+  DEV_PRODUCT_SUBMITTED
 }
 
 model User {
@@ -46,6 +84,45 @@ model User {
   auditLogs      AuditLog[]     @relation("AuditActor")
   products       Product[]
   favorites      ProductFavorite[]
+  ownedShop      Shop?            @relation("ShopOwner")
+  shopMemberships ShopMember[]
+  shopFollows    ShopFollow[]
+  shopReviews    ShopReview[]     @relation("ShopReviewAuthor")
+  ordersBought   Order[]          @relation("OrderBuyer")
+  bids           Bid[]
+  wonAuctions    Auction[]        @relation("AuctionWinner")
+  ownedGroups    Group[]          @relation("GroupOwner")
+  groupMemberships GroupMember[]
+  groupJoinRequests GroupJoinRequest[]
+  groupInvitesSent GroupInvitation[] @relation("GroupInviteSender")
+  groupInvitesReceived GroupInvitation[] @relation("GroupInvitee")
+  groupBansIssued GroupBan[]      @relation("GroupBanActor")
+  groupBans       GroupBan[]      @relation("GroupBanTarget")
+  lfgPosts        LfgPost[]
+  lfgRequests     LfgRequest[]
+  posts           Post[]
+  comments        PostComment[]
+  reactions       PostReaction[]
+  savedPosts      PostSave[]
+  stories         Story[]
+  storyViews      StoryView[]
+  follows         UserFollow[]     @relation("Followers")
+  following       UserFollow[]     @relation("Following")
+  blocks          UserBlock[]      @relation("Blocker")
+  blockedBy       UserBlock[]      @relation("Blocked")
+  reports         ContentReport[]
+  conversationMemberships ConversationParticipant[]
+  directMessages  DirectMessage[]
+  tradesProposed  TradeOffer[]      @relation("TradeProposer")
+  tradesReceived  TradeOffer[]      @relation("TradeCounterparty")
+  ownedServers    GameServer[]
+  plusSubscription PlusSubscription?
+  coinWallet      CoinWallet?
+  ledgerAccounts  LedgerAccount[]
+  aidenJobs       AidenJob[]
+  aidenAssets     AidenAsset[]
+  devProducts     DevProduct[]
+  devInstalls     DevInstall[]
 }
 
 model Account {
@@ -82,11 +159,20 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
+enum TagPrivacy {
+  EVERYONE
+  FOLLOWERS
+  NO_ONE
+}
+
 model AccountProfile {
   id                 String           @id @default(cuid())
   userId             String           @unique
+  handle             String           @unique
   displayName        String?
+  bio                String?
   activeAccountType  KobaAccountType  @default(PLAYER)
+  tagPrivacy         TagPrivacy       @default(FOLLOWERS)
   kobaIdRevealedAt   DateTime?
   createdAt          DateTime         @default(now())
   updatedAt          DateTime         @updatedAt
@@ -173,6 +259,7 @@ model Game {
   name      String
   createdAt DateTime  @default(now())
   products  Product[]
+  lfgPosts  LfgPost[]
 }
 
 model Category {
@@ -198,6 +285,7 @@ model Product {
   inventoryQty       Int              @default(0)
   platforms          GamePlatform[]
   sellerUserId       String
+  shopId             String?
   gameId             String
   categoryId         String
   publishedAt        DateTime?
@@ -205,17 +293,21 @@ model Product {
   updatedAt          DateTime         @updatedAt
 
   seller    User              @relation(fields: [sellerUserId], references: [id], onDelete: Cascade)
+  shop      Shop?             @relation(fields: [shopId], references: [id], onDelete: SetNull)
   game      Game              @relation(fields: [gameId], references: [id], onDelete: Restrict)
   category  Category          @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   variants  ProductVariant[]
   media     ProductMedia[]
   favorites ProductFavorite[]
+  orderItems OrderItem[]
+  auction    Auction?
 
   @@index([moderationStatus, publishedAt])
   @@index([gameId])
   @@index([categoryId])
   @@index([rarity])
   @@index([sellerUserId])
+  @@index([shopId])
   @@index([priceCents])
   @@index([rarityRank])
 }
@@ -259,4 +351,1119 @@ model ProductFavorite {
 
   @@id([userId, productId])
   @@index([productId])
+}
+
+enum ShopVerificationStatus {
+  UNVERIFIED
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum ShopMemberRole {
+  OWNER
+  MODERATOR
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  FULFILLED
+  CANCELLED
+  REFUNDED
+}
+
+model Shop {
+  id                   String                 @id @default(cuid())
+  slug                 String                 @unique
+  name                 String
+  bio                  String                 @db.Text
+  ownerUserId          String                 @unique
+  verificationStatus   ShopVerificationStatus @default(UNVERIFIED)
+  verificationNote     String?
+  stripeAccountId      String?                @unique
+  chargesEnabled       Boolean                @default(false)
+  payoutsEnabled       Boolean                @default(false)
+  taggingAllowed       Boolean                @default(true)
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+
+  owner    User         @relation("ShopOwner", fields: [ownerUserId], references: [id], onDelete: Cascade)
+  members  ShopMember[]
+  follows  ShopFollow[]
+  reviews  ShopReview[]
+  products Product[]
+  orders   Order[]
+  servers  GameServer[]
+}
+
+model ShopMember {
+  shopId    String
+  userId    String
+  role      ShopMemberRole
+  createdAt DateTime       @default(now())
+
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([shopId, userId])
+  @@index([userId])
+}
+
+model ShopFollow {
+  shopId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([shopId, userId])
+  @@index([userId])
+}
+
+model ShopReview {
+  id           String   @id @default(cuid())
+  shopId       String
+  authorUserId String
+  rating       Int
+  body         String   @db.Text
+  createdAt    DateTime @default(now())
+
+  shop   Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  author User @relation("ShopReviewAuthor", fields: [authorUserId], references: [id], onDelete: Cascade)
+
+  @@unique([shopId, authorUserId])
+  @@index([shopId])
+}
+
+enum OrderKind {
+  FIXED
+  AUCTION
+}
+
+model Order {
+  id                      String      @id @default(cuid())
+  publicRef               String      @unique
+  shopId                  String
+  buyerUserId             String
+  status                  OrderStatus @default(PENDING)
+  kind                    OrderKind   @default(FIXED)
+  totalCents              Int
+  applicationFeeCents     Int         @default(0)
+  sellerPayoutCents       Int
+  currency                String      @default("USD")
+  stripeCheckoutSessionId String?     @unique
+  stripePaymentIntentId   String?
+  idempotencyKey          String      @unique
+  auctionId               String?
+  paidAt                  DateTime?
+  refundedAt              DateTime?
+  createdAt               DateTime    @default(now())
+  updatedAt               DateTime    @updatedAt
+
+  shop  Shop        @relation(fields: [shopId], references: [id], onDelete: Restrict)
+  buyer User        @relation("OrderBuyer", fields: [buyerUserId], references: [id], onDelete: Restrict)
+  items OrderItem[]
+
+  @@index([shopId, createdAt])
+  @@index([buyerUserId])
+  @@index([status])
+}
+
+model ProcessedStripeEvent {
+  eventId   String   @id
+  type      String
+  createdAt DateTime @default(now())
+}
+
+model OrderItem {
+  id             String @id @default(cuid())
+  orderId        String
+  productId      String
+  titleSnapshot  String
+  quantity       Int
+  unitPriceCents Int
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+enum AuctionStatus {
+  SCHEDULED
+  LIVE
+  ENDED
+  RESERVED
+  CANCELLED
+}
+
+enum BidStatus {
+  ACTIVE
+  OUTBID
+  WON
+  VOID
+}
+
+model Auction {
+  id                String        @id @default(cuid())
+  productId         String        @unique
+  status            AuctionStatus @default(SCHEDULED)
+  startingBidCents  Int
+  minIncrementCents Int
+  highBidCents      Int?
+  bidCount          Int           @default(0)
+  startsAt          DateTime
+  endsAt            DateTime
+  winnerUserId      String?
+  reservedUntil     DateTime?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  winner  User?   @relation("AuctionWinner", fields: [winnerUserId], references: [id], onDelete: SetNull)
+  bids    Bid[]
+
+  @@index([status, endsAt])
+  @@index([winnerUserId])
+}
+
+model Bid {
+  id             String    @id @default(cuid())
+  auctionId      String
+  bidderUserId   String
+  amountCents    Int
+  status         BidStatus @default(ACTIVE)
+  idempotencyKey String    @unique
+  createdAt      DateTime  @default(now())
+
+  auction Auction @relation(fields: [auctionId], references: [id], onDelete: Cascade)
+  bidder  User    @relation(fields: [bidderUserId], references: [id], onDelete: Restrict)
+
+  @@index([auctionId, amountCents])
+  @@index([bidderUserId, createdAt])
+}
+
+enum GroupVisibility {
+  PUBLIC
+  PRIVATE
+}
+
+enum GroupMemberRole {
+  OWNER
+  ADMIN
+  MODERATOR
+  MEMBER
+}
+
+enum GroupRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum GroupInviteStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
+
+model Group {
+  id             String           @id @default(cuid())
+  slug           String           @unique
+  name           String
+  bio            String           @db.Text
+  visibility     GroupVisibility  @default(PUBLIC)
+  taggingAllowed Boolean          @default(true)
+  ownerUserId    String
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  owner         User                @relation("GroupOwner", fields: [ownerUserId], references: [id], onDelete: Cascade)
+  members       GroupMember[]
+  joinRequests  GroupJoinRequest[]
+  invitations   GroupInvitation[]
+  bans          GroupBan[]
+  posts         Post[]
+
+  @@index([visibility, createdAt])
+  @@index([ownerUserId])
+}
+
+model GroupMember {
+  groupId   String
+  userId    String
+  role      GroupMemberRole @default(MEMBER)
+  createdAt DateTime        @default(now())
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([groupId, userId])
+  @@index([userId])
+}
+
+model GroupJoinRequest {
+  id        String             @id @default(cuid())
+  groupId   String
+  userId    String
+  status    GroupRequestStatus @default(PENDING)
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+  @@index([groupId, status])
+}
+
+model GroupInvitation {
+  id            String            @id @default(cuid())
+  groupId       String
+  invitedUserId String
+  invitedByUserId String
+  status        GroupInviteStatus @default(PENDING)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  group     Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  invitee   User  @relation("GroupInvitee", fields: [invitedUserId], references: [id], onDelete: Cascade)
+  invitedBy User  @relation("GroupInviteSender", fields: [invitedByUserId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, invitedUserId])
+  @@index([invitedUserId, status])
+}
+
+model GroupBan {
+  groupId       String
+  userId        String
+  bannedByUserId String
+  reason        String?
+  createdAt     DateTime @default(now())
+
+  group    Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user     User  @relation("GroupBanTarget", fields: [userId], references: [id], onDelete: Cascade)
+  bannedBy User  @relation("GroupBanActor", fields: [bannedByUserId], references: [id], onDelete: Restrict)
+
+  @@id([groupId, userId])
+  @@index([userId])
+}
+
+enum LfgRegion {
+  NA
+  EU
+  SA
+  AS
+  OC
+  AF
+  ANY
+}
+
+enum LfgSkill {
+  CASUAL
+  INTERMEDIATE
+  COMPETITIVE
+  ANY
+}
+
+enum LfgMic {
+  REQUIRED
+  OPTIONAL
+  NO_MIC
+}
+
+enum LfgStatus {
+  OPEN
+  FULL
+  EXPIRED
+  CANCELLED
+}
+
+enum LfgRequestStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
+
+model LfgPost {
+  id             String      @id @default(cuid())
+  publicRef      String      @unique
+  authorUserId   String
+  title          String
+  body           String      @db.Text
+  gameId         String
+  platform       GamePlatform
+  region         LfgRegion
+  timezone       String
+  skillLevel     LfgSkill
+  mic            LfgMic
+  availability   String
+  slotsTotal     Int
+  slotsFilled    Int         @default(1)
+  status         LfgStatus   @default(OPEN)
+  expiresAt      DateTime
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  author   User         @relation(fields: [authorUserId], references: [id], onDelete: Cascade)
+  game     Game         @relation(fields: [gameId], references: [id], onDelete: Restrict)
+  requests LfgRequest[]
+
+  @@index([status, expiresAt])
+  @@index([gameId, createdAt])
+  @@index([authorUserId])
+}
+
+model LfgRequest {
+  id        String           @id @default(cuid())
+  postId    String
+  userId    String
+  status    LfgRequestStatus @default(PENDING)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  post LfgPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@index([postId, status])
+}
+
+enum PostVisibility {
+  PUBLIC
+  FOLLOWERS
+}
+
+enum PostModeration {
+  LIVE
+  HIDDEN
+  REMOVED
+}
+
+enum PostMediaKind {
+  IMAGE
+  VIDEO
+}
+
+enum TagTargetType {
+  USER
+  SHOP
+  GROUP
+  PRODUCT
+}
+
+enum ReportTargetType {
+  POST
+  COMMENT
+  STORY
+  USER
+  MESSAGE
+  CONVERSATION
+  TRADE
+  SERVER
+  AIDEN_ASSET
+  DEV_PRODUCT
+}
+
+enum MessageKind {
+  TEXT
+  VOICE
+  ATTACHMENT
+  PRODUCT
+}
+
+enum ReportStatus {
+  OPEN
+  REVIEWED
+  DISMISSED
+}
+
+model UserFollow {
+  followerUserId  String
+  followingUserId String
+  createdAt       DateTime @default(now())
+
+  follower  User @relation("Following", fields: [followerUserId], references: [id], onDelete: Cascade)
+  following User @relation("Followers", fields: [followingUserId], references: [id], onDelete: Cascade)
+
+  @@id([followerUserId, followingUserId])
+  @@index([followingUserId])
+}
+
+model UserBlock {
+  blockerUserId String
+  blockedUserId String
+  createdAt     DateTime @default(now())
+
+  blocker User @relation("Blocker", fields: [blockerUserId], references: [id], onDelete: Cascade)
+  blocked User @relation("Blocked", fields: [blockedUserId], references: [id], onDelete: Cascade)
+
+  @@id([blockerUserId, blockedUserId])
+  @@index([blockedUserId])
+}
+
+model Post {
+  id                String          @id @default(cuid())
+  publicRef         String          @unique
+  authorUserId      String
+  groupId           String?
+  body              String          @db.Text
+  visibility        PostVisibility  @default(PUBLIC)
+  moderationStatus  PostModeration  @default(LIVE)
+  sponsored         Boolean         @default(false)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  author    User           @relation(fields: [authorUserId], references: [id], onDelete: Cascade)
+  group     Group?         @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  media     SocialMedia[]
+  comments  PostComment[]
+  reactions PostReaction[]
+  saves     PostSave[]
+  tags      PostTag[]
+
+  @@index([authorUserId, createdAt])
+  @@index([groupId, createdAt])
+  @@index([moderationStatus, createdAt])
+}
+
+model SocialMedia {
+  id        String        @id @default(cuid())
+  postId    String
+  kind      PostMediaKind @default(IMAGE)
+  url       String
+  sortOrder Int           @default(0)
+  createdAt DateTime      @default(now())
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([postId, sortOrder])
+}
+
+model PostComment {
+  id           String         @id @default(cuid())
+  publicRef    String         @unique
+  postId       String
+  authorUserId String
+  body         String
+  moderationStatus PostModeration @default(LIVE)
+  createdAt    DateTime       @default(now())
+
+  post   Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author User @relation(fields: [authorUserId], references: [id], onDelete: Cascade)
+
+  @@index([postId, createdAt])
+}
+
+model PostReaction {
+  postId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([postId, userId])
+  @@index([userId])
+}
+
+model PostSave {
+  postId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([postId, userId])
+  @@index([userId])
+}
+
+model PostTag {
+  id         String        @id @default(cuid())
+  postId     String
+  targetType TagTargetType
+  targetSlug String
+  createdAt  DateTime      @default(now())
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, targetType, targetSlug])
+  @@index([targetType, targetSlug])
+}
+
+model Story {
+  id        String   @id @default(cuid())
+  publicRef String   @unique
+  authorUserId String
+  body      String
+  mediaUrl  String?
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  author User        @relation(fields: [authorUserId], references: [id], onDelete: Cascade)
+  views  StoryView[]
+
+  @@index([authorUserId, expiresAt])
+  @@index([expiresAt])
+}
+
+model StoryView {
+  storyId   String
+  userId    String
+  createdAt DateTime @default(now())
+
+  story Story @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([storyId, userId])
+}
+
+model ContentReport {
+  id             String           @id @default(cuid())
+  publicRef      String           @unique
+  reporterUserId String
+  targetType     ReportTargetType
+  targetRef      String
+  reason         String
+  status         ReportStatus     @default(OPEN)
+  createdAt      DateTime         @default(now())
+
+  reporter User @relation(fields: [reporterUserId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([targetType, targetRef])
+}
+
+model Conversation {
+  id            String    @id @default(cuid())
+  publicRef     String    @unique
+  pairKey       String    @unique
+  vanishMode    Boolean   @default(false)
+  lastMessageAt DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  participants ConversationParticipant[]
+  messages     DirectMessage[]
+
+  @@index([lastMessageAt])
+}
+
+model ConversationParticipant {
+  conversationId String
+  userId         String
+  lastReadAt     DateTime?
+  createdAt      DateTime  @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([conversationId, userId])
+  @@index([userId])
+}
+
+model DirectMessage {
+  id              String      @id @default(cuid())
+  publicRef       String      @unique
+  conversationId  String
+  senderUserId    String
+  kind            MessageKind @default(TEXT)
+  body            String?
+  vanish          Boolean     @default(false)
+  mediaUrl        String?
+  mediaDurationMs Int?
+  productSlug     String?
+  deletedAt       DateTime?
+  createdAt       DateTime    @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation(fields: [senderUserId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+  @@index([senderUserId])
+}
+
+// --- Owner expansion backends (Trade, Servers, Plus, Coins, Aiden, Developers) ---
+
+enum TradeState {
+  DRAFT
+  PENDING
+  ACCEPTED
+  REJECTED
+  CANCELLED
+  EXPIRED
+  COMPLETED
+  DISPUTED
+  COUNTERED
+}
+
+enum TradeItemSide {
+  OFFERED
+  REQUESTED
+}
+
+enum ServerPlatformFamily {
+  PC
+  CONSOLE
+}
+
+enum ServerCapability {
+  STATUS
+  PLAYER_COUNT
+  PLAYER_LIST
+  QUEUE_COUNT
+  MAP_INFO
+  RCON_READ
+  RCON_WRITE
+  PC
+  CONSOLE
+}
+
+enum ServerOnlineStatus {
+  ONLINE
+  OFFLINE
+  UNKNOWN
+}
+
+enum RconTestState {
+  IDLE
+  TESTING
+  SUCCESS
+  TIMEOUT
+  AUTH_FAILED
+  UNSUPPORTED
+}
+
+enum PlusPlanInterval {
+  MONTHLY
+  ANNUAL
+}
+
+enum PlusSubscriptionState {
+  NONE
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  EXPIRED
+}
+
+enum CoinBucket {
+  PURCHASED
+  PROMOTIONAL
+  EARNED
+  RESERVED
+}
+
+enum LedgerAccountKind {
+  USER_PURCHASED
+  USER_PROMOTIONAL
+  USER_EARNED
+  USER_RESERVED
+  PLATFORM_TREASURY
+  PLATFORM_PROMO_ISSUANCE
+  PLATFORM_REVENUE
+  REFUND_CLEARING
+  EXTERNAL
+}
+
+enum LedgerEntrySide {
+  DEBIT
+  CREDIT
+}
+
+enum CoinTxCategory {
+  ISSUANCE
+  PROMOTIONAL_GRANT
+  PURCHASE_CREDIT
+  RESERVATION
+  RESERVATION_CAPTURE
+  RESERVATION_RELEASE
+  MARKETPLACE_PURCHASE
+  SELLER_EARNING
+  PLATFORM_COMMISSION
+  REFUND
+  ADMIN_ADJUSTMENT
+  REVERSAL
+  PURCHASE
+  GENERATION_RESERVATION
+  CAPTURE
+  RELEASE
+  PLATFORM_FEE
+}
+
+enum LedgerTxStatus {
+  PENDING
+  POSTED
+  REVERSED
+}
+
+enum CoinWalletStatus {
+  ACTIVE
+  SUSPENDED
+  CLOSED
+}
+
+enum CoinReservationStatus {
+  PENDING
+  ACTIVE
+  CAPTURED
+  RELEASED
+  EXPIRED
+  CANCELLED
+}
+
+enum CoinCurrency {
+  KOBA_COIN
+}
+
+enum AidenAssetType {
+  CONCEPT_IMAGE
+  SKIN
+  TEXTURE
+  PROP
+  ANIMATION
+  TERRAIN
+  MAP
+}
+
+enum AidenTechnicalStatus {
+  CONCEPT_ONLY
+  PREVIEW
+  REQUIRES_CONVERSION
+  GAME_READY
+  VALIDATION_FAILED
+}
+
+enum AidenJobState {
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum AidenModerationState {
+  PRIVATE
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+  HIDDEN
+}
+
+enum DevProductKind {
+  APPLICATION
+  PLUGIN
+}
+
+enum DevPricing {
+  FREE
+  PAID
+}
+
+enum DevReviewState {
+  DRAFT
+  SUBMITTED
+  IN_REVIEW
+  SECURITY_REVIEW
+  APPROVED
+  REJECTED
+  REVOKED
+}
+
+model TradeOffer {
+  id                   String     @id @default(cuid())
+  publicRef            String     @unique
+  state                TradeState @default(PENDING)
+  proposerUserId       String
+  counterpartyUserId   String
+  note                 String?
+  expiresAt            DateTime?
+  createdAt            DateTime   @default(now())
+  updatedAt            DateTime   @updatedAt
+
+  proposer     User            @relation("TradeProposer", fields: [proposerUserId], references: [id], onDelete: Cascade)
+  counterparty User            @relation("TradeCounterparty", fields: [counterpartyUserId], references: [id], onDelete: Cascade)
+  items        TradeOfferItem[]
+
+  @@index([proposerUserId, createdAt])
+  @@index([counterpartyUserId, createdAt])
+  @@index([state, createdAt])
+}
+
+model TradeOfferItem {
+  id           String         @id @default(cuid())
+  tradeOfferId String
+  side         TradeItemSide
+  title        String
+  game         String
+  platform     GamePlatform
+  rarity       ProductRarity
+  locked       Boolean        @default(false)
+  eligible     Boolean        @default(true)
+  eligibilityNote String?
+  productId    String?
+  createdAt    DateTime       @default(now())
+
+  tradeOffer TradeOffer @relation(fields: [tradeOfferId], references: [id], onDelete: Cascade)
+
+  @@index([tradeOfferId, side])
+}
+
+model GameServer {
+  id              String                @id @default(cuid())
+  publicRef       String                @unique
+  slug            String                @unique
+  name            String
+  game            String
+  platformFamily  ServerPlatformFamily
+  region          String
+  tags            String[]
+  ownerUserId     String
+  shopId          String?
+  joinInfo        String?
+  lastRefreshAt   DateTime?
+  capabilities    ServerCapability[]
+  status          ServerOnlineStatus    @default(UNKNOWN)
+  livePlayers     Int?
+  maxPlayers      Int?
+  queue           Int?
+  mapName         String?
+  mapSize         String?
+  pingMs          Int?
+  host            String?
+  port            Int?
+  rconTestState   RconTestState         @default(IDLE)
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  owner       User             @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+  shop        Shop?            @relation(fields: [shopId], references: [id], onDelete: SetNull)
+  credential  ServerCredential?
+
+  @@index([ownerUserId])
+  @@index([game, region])
+  @@index([platformFamily])
+}
+
+model ServerCredential {
+  id                 String   @id @default(cuid())
+  serverId           String   @unique
+  ciphertext         String   @db.Text
+  iv                 String
+  authTag            String
+  rotatedAt          DateTime @default(now())
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  server GameServer @relation(fields: [serverId], references: [id], onDelete: Cascade)
+}
+
+model PlusSubscription {
+  id        String                @id @default(cuid())
+  userId    String                @unique
+  state     PlusSubscriptionState @default(NONE)
+  planId    String?
+  interval  PlusPlanInterval?
+  renewsAt  DateTime?
+  createdAt DateTime              @default(now())
+  updatedAt DateTime              @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model CoinWallet {
+  id                   String           @id @default(cuid())
+  userId               String           @unique
+  status               CoinWalletStatus @default(ACTIVE)
+  currency             CoinCurrency     @default(KOBA_COIN)
+  version              Int              @default(0)
+  /// Projection caches — ledger entries remain source of truth.
+  purchasedBalance     BigInt           @default(0)
+  promotionalBalance   BigInt           @default(0)
+  earnedBalance        BigInt           @default(0)
+  reservedBalance      BigInt           @default(0)
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+
+  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accounts      LedgerAccount[]
+  reservations  CoinReservation[]
+  transactions  LedgerTransaction[] @relation("WalletTransactions")
+}
+
+model LedgerAccount {
+  id        String            @id @default(cuid())
+  walletId  String?
+  userId    String?
+  kind      LedgerAccountKind
+  bucket    CoinBucket?
+  code      String
+  createdAt DateTime          @default(now())
+
+  wallet  CoinWallet?   @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  user    User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  entries LedgerEntry[]
+
+  @@unique([code])
+  @@index([walletId])
+  @@index([userId, kind])
+}
+
+model LedgerTransaction {
+  id                 String         @id @default(cuid())
+  publicRef          String         @unique
+  idempotencyKey     String         @unique
+  category           CoinTxCategory
+  status             LedgerTxStatus @default(POSTED)
+  memo               String
+  actorUserId        String?
+  walletId           String?
+  externalRef        String?
+  metadataJson       String?
+  createdAt          DateTime       @default(now())
+  postedAt           DateTime?
+  reversedAt         DateTime?
+  reversesTxId       String?        @unique
+  reversedByTxId     String?        @unique
+
+  wallet     CoinWallet?        @relation("WalletTransactions", fields: [walletId], references: [id], onDelete: SetNull)
+  reverses   LedgerTransaction? @relation("LedgerReversal", fields: [reversesTxId], references: [id], onDelete: SetNull)
+  reversedBy LedgerTransaction? @relation("LedgerReversal")
+  entries    LedgerEntry[]
+  reservationReserve  CoinReservation? @relation("ReservationReserveTx")
+  reservationCapture  CoinReservation? @relation("ReservationCaptureTx")
+  reservationRelease  CoinReservation? @relation("ReservationReleaseTx")
+
+  @@index([category, createdAt])
+  @@index([walletId, createdAt])
+  @@index([actorUserId, createdAt])
+  @@index([status, createdAt])
+}
+
+model LedgerEntry {
+  id            String          @id @default(cuid())
+  transactionId String
+  accountId     String
+  side          LedgerEntrySide
+  amount        BigInt
+  classification CoinBucket?
+  createdAt     DateTime        @default(now())
+
+  transaction LedgerTransaction @relation(fields: [transactionId], references: [id], onDelete: Restrict)
+  account     LedgerAccount     @relation(fields: [accountId], references: [id], onDelete: Restrict)
+
+  @@index([transactionId])
+  @@index([accountId])
+}
+
+model CoinReservation {
+  id                 String                @id @default(cuid())
+  publicRef          String                @unique
+  walletId           String
+  amount             BigInt
+  /// JSON array of { bucket, amount } source allocations (immutable after ACTIVE).
+  allocationsJson    String
+  purpose            String
+  status             CoinReservationStatus @default(PENDING)
+  idempotencyKey     String                @unique
+  expiresAt          DateTime?
+  metadataJson       String?
+  reserveTxId        String?               @unique
+  captureTxId        String?               @unique
+  releaseTxId        String?               @unique
+  capturedAt         DateTime?
+  releasedAt         DateTime?
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+
+  wallet     CoinWallet         @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  reserveTx  LedgerTransaction? @relation("ReservationReserveTx", fields: [reserveTxId], references: [id], onDelete: SetNull)
+  captureTx  LedgerTransaction? @relation("ReservationCaptureTx", fields: [captureTxId], references: [id], onDelete: SetNull)
+  releaseTx  LedgerTransaction? @relation("ReservationReleaseTx", fields: [releaseTxId], references: [id], onDelete: SetNull)
+
+  @@index([walletId, status])
+  @@index([status, expiresAt])
+}
+
+model AidenJob {
+  id              String         @id @default(cuid())
+  publicRef       String         @unique
+  userId          String
+  prompt          String         @db.Text
+  game            String
+  platform        String
+  assetType       AidenAssetType
+  state           AidenJobState  @default(QUEUED)
+  coinCostPreview Int
+  reservationTxId String?
+  failureReason   String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  user  User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  asset AidenAsset?
+
+  @@index([userId, createdAt])
+  @@index([state, createdAt])
+}
+
+model AidenAsset {
+  id               String                @id @default(cuid())
+  publicRef        String                @unique
+  userId           String
+  jobId            String?               @unique
+  title            String
+  assetType        AidenAssetType
+  technicalStatus  AidenTechnicalStatus  @default(CONCEPT_ONLY)
+  moderation       AidenModerationState  @default(PRIVATE)
+  game             String
+  previewLabel     String
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+
+  user User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job  AidenJob? @relation(fields: [jobId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([moderation])
+}
+
+model DevProduct {
+  id            String         @id @default(cuid())
+  publicRef     String         @unique
+  ownerUserId   String
+  kind          DevProductKind
+  name          String
+  pricing       DevPricing     @default(FREE)
+  priceCents    Int            @default(0)
+  version       String         @default("0.1.0")
+  compatibility String[]
+  scopes        String[]
+  reviewState   DevReviewState @default(DRAFT)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  owner    User         @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+  installs DevInstall[]
+
+  @@index([ownerUserId])
+  @@index([kind, reviewState])
+}
+
+model DevInstall {
+  id        String   @id @default(cuid())
+  productId String
+  userId    String
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+
+  product DevProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user    User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, userId])
+  @@index([userId])
 }

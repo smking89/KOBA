@@ -9,7 +9,7 @@ function clientIp(request: Request): string | null {
 
 export async function POST(request: Request) {
   const ip = clientIp(request) ?? "unknown";
-  const limited = rateLimit(`verify-email:${ip}`, 10, 15 * 60 * 1000);
+  const limited = await rateLimit(`verify-email:${ip}`, 10, 15 * 60 * 1000);
 
   if (!limited.success) {
     return NextResponse.json({ error: "Too many attempts." }, { status: 429 });

@@ -16,7 +16,7 @@ export async function POST(request: Request) {
   }
 
   const ip = clientIp(request) ?? "unknown";
-  const limited = rateLimit(`kobaid-mint:${session.user.id}`, 5, 15 * 60 * 1000);
+  const limited = await rateLimit(`kobaid-mint:${session.user.id}`, 5, 15 * 60 * 1000);
   if (!limited.success) {
     return NextResponse.json({ error: "Too many KOBAID creation attempts." }, { status: 429 });
   }

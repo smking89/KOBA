@@ -1,0 +1,64 @@
+import type { AidenAssetView, AidenJobView } from "@/features/aiden/lib/types";
+
+export const MOCK_AIDEN_JOBS: AidenJobView[] = [
+  {
+    publicRef: "KOBA-ADN-JOB0001",
+    prompt: "Weathered metal crate skin for Rust monuments, desaturated greens",
+    game: "Rust",
+    platform: "STEAM",
+    assetType: "SKIN",
+    state: "COMPLETED",
+    coinCostPreview: 40,
+    createdAt: "2026-08-14T10:00:00.000Z",
+  },
+  {
+    publicRef: "KOBA-ADN-JOB0002",
+    prompt: "Procedural canyon terrain blockout",
+    game: "ARK: SA",
+    platform: "STEAM",
+    assetType: "TERRAIN",
+    state: "PROCESSING",
+    coinCostPreview: 120,
+    createdAt: "2026-08-14T19:00:00.000Z",
+  },
+  {
+    publicRef: "KOBA-ADN-JOB0003",
+    prompt: "Neon nameplate concept",
+    game: "KOBA",
+    platform: "STEAM",
+    assetType: "CONCEPT_IMAGE",
+    state: "FAILED",
+    coinCostPreview: 15,
+    createdAt: "2026-08-13T16:00:00.000Z",
+  },
+];
+
+export const MOCK_AIDEN_LIBRARY: AidenAssetView[] = [
+  {
+    publicRef: "KOBA-ADN-AST0001",
+    title: "Oxide crate skin draft",
+    assetType: "SKIN",
+    technicalStatus: "REQUIRES_CONVERSION",
+    moderation: "PRIVATE",
+    game: "Rust",
+    previewLabel: "Preview still",
+  },
+  {
+    publicRef: "KOBA-ADN-AST0002",
+    title: "Canyon blockout",
+    assetType: "TERRAIN",
+    technicalStatus: "CONCEPT_ONLY",
+    moderation: "PRIVATE",
+    game: "ARK: SA",
+    previewLabel: "Concept board",
+  },
+  {
+    publicRef: "KOBA-ADN-AST0003",
+    title: "Raid prop kit",
+    assetType: "PROP",
+    technicalStatus: "GAME_READY",
+    moderation: "PENDING_REVIEW",
+    game: "Rust",
+    previewLabel: "FBX preview",
+  },
+];

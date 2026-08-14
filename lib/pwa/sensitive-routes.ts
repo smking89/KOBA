@@ -13,6 +13,19 @@ export const NEVER_CACHE_PATH_PREFIXES = [
   "/api/accounts",
   "/api/admin",
   "/api/market/favorites",
+  "/api/shops",
+  "/api/business",
+  "/api/auctions",
+  "/api/groups",
+  "/api/lfg",
+  "/api/social",
+  "/api/media",
+  "/api/wallet",
+  "/api/trade",
+  "/api/servers",
+  "/api/plus",
+  "/api/aiden",
+  "/api/developers",
 ] as const;
 
 export function isSensitivePath(pathname: string): boolean {
@@ -24,11 +37,22 @@ export function isSensitivePath(pathname: string): boolean {
  */
 export const NETWORK_FIRST_PATH_PREFIXES = [
   "/market",
+  "/shops",
+  "/business",
   "/feed",
+  "/u",
+  "/stories",
   "/groups",
   "/lfg",
   "/messages",
   "/settings",
+  "/orders",
+  "/trade",
+  "/servers",
+  "/aiden",
+  "/plus",
+  "/wallet",
+  "/developers",
   "/api/",
 ] as const;
 

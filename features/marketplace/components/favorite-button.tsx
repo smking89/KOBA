@@ -50,10 +50,7 @@ export function FavoriteButton({
         favorited && "border-neon-lime/50 text-neon-lime",
       )}
     >
-      <Bookmark
-        className={cn("h-4 w-4", favorited && "fill-current")}
-        suppressHydrationWarning
-      />
+      <Bookmark className={cn("h-4 w-4", favorited && "fill-current")} suppressHydrationWarning />
     </button>
   );
 }

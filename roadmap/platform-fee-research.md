@@ -17,21 +17,21 @@ figures are marked **(sourced)**; anything I could not pin to a primary
 source or that conflicted across secondary sources is marked
 **(unverified secondary)**.
 
-| Platform | Fee to seller/creator | Structure | Verified/tiered by status? | Source |
-|---|---|---|---|---|
-| **itch.io** | 0%–100%, creator-chosen; default 10% | Pure "pay what you want to the platform" — no platform-imposed floor beyond payment processing (~2.9%+$0.30) | No tiering — same slider for everyone | [itch.io Creator FAQ](https://itch.io/docs/creators/faq) |
-| **Gumroad** (direct/profile sales) | 10% + $0.50/txn | % + flat | No — flat-rate since 2025 (tiered Free/Creator/Pro plans retired) | [Gumroad fee breakdown](https://dodopayments.com/blogs/gumroad-fees-explained) |
-| **Gumroad Discover** (marketplace-driven sales) | 30% | % only | Yes — higher rate specifically for platform-sourced discovery traffic vs. seller's own traffic | [Gumroad pricing](https://cartmango.com/gumroad-pricing/) |
-| **Etsy** | ~6.5% transaction fee + $0.20 listing fee + 3%+$0.25 US payment processing (≈9.5–10% blended + fixed) | % + flat, itemized as separate line items (not absorbed into one blended rate) | No | [Etsy Fees & Payments Policy](https://www.etsy.com/legal/fees/), [eDesk breakdown](https://www.edesk.com/blog/etsy-seller-fees/) |
-| **Fiverr** | Flat 20% on every order, all seller levels | % only, flat | **No** — explicitly removed its old volume-tiered 7.5%/10%/20% structure in 2022; now uniform regardless of seller tenure/rating | [Fastlancer](https://www.fastlancer.org/en/fastlancer-blog/fiverr-review/) |
-| **Roblox Marketplace** | ~30% marketplace cut before DevEx cash-out (effective ~25% net after Robux→USD exchange rate) | % only, walled virtual-currency economy — not a direct real-money-per-item analogue | No | [Roblox 30% fee explainer](https://devexfire.com/marketplace-fee.html) |
-| **Steam Workshop (paid mods, where enabled)** | Creator gets 25% of Adjusted Gross Revenue in the standard model; publisher discretion for key-sale allocations | % revenue share, publisher-set per game | No published verified/unverified split | [Valve Supplemental Workshop Terms](https://steamcommunity.com/workshop/workshoplegalagreement/?appid=0), [GameSpot](https://www.gamespot.com/articles/steam-workshop-introduces-revenue-sharing/1100-6410859/) |
-| **Epic Games Store** | 12% (developer keeps 88%); 100% to developer on first $1M/product/year | % only, with a revenue-threshold carve-out (not identity-verification-based, but is a *scale-based* tiering precedent) | Yes, but by revenue scale not "verified" status | [9to5Mac](https://9to5mac.com/2024/03/20/epic-will-take-12-cut-of-epic-games-store-sales-when-it-launches-on-iphone-this-year/), [Businesswire launch announcement](https://www.businesswire.com/news/home/20181204005689/en/Epic-Games-Store-Launch-88-Revenue-Share) |
-| **Apple App Store Small Business Program** | 15% (vs. standard 30%) for developers under $1M/yr proceeds | % only | **Yes — the single cleanest "verified/qualifying tier gets exactly half the standard rate" precedent found** | [App Store Small Business Program, Apple Developer](https://developer.apple.com/app-store/small-business-program/) |
-| **Discord Server Subscriptions** | Creator gets 90%, Discord keeps 10% (before Apple's own 30% cut if purchased via iOS) | % only | No | [Discord Creator Revenue FAQ](https://creator-support.discord.com/hc/en-us/articles/10424143128343-Creator-Revenue-FAQ) |
-| **Patreon** (post-Aug 2025 structure) | New creators: flat 10%. Legacy creators: 5% (Premium, $2,500+/mo), 8% (Pro), 10% (Lite) | % only, tiered by plan/volume | Yes — explicitly tiered, higher-volume creators get materially lower rate | [Patreon Creator fees overview](https://support.patreon.com/hc/en-us/articles/11111747095181-Creator-fees-overview), [Patreon Aug 2025 fee change notice](https://support.patreon.com/hc/en-us/articles/36426991446797-A-standard-platform-fee-for-new-creators-effective-after-August-4-2025) |
-| **Twitch Affiliate/Partner (subs)** | Standard 50/50; Partner Plus Level 1 = 60/40; Partner Plus Level 2 = 70/30 (unlocked at ~300 "points," e.g. ~300 subs) | % revenue share, earned tiering (not a badge review, but an earned-threshold precedent) | Yes — explicitly earned, multi-tier, similar spirit to Blue Badge's earned-not-bought design | [Variety, Twitch Partner Plus](https://variety.com/2023/digital/news/twitch-partner-plus-70-percent-revenue-split-streamers-1235645488) |
-| **Stripe (payment processing, not a marketplace fee)** | 2.9% + $0.30 per US card transaction | % + flat | N/A — this stacks underneath *every* option above | Client-supplied figure, consistent with Stripe's public standard US pricing |
+| Platform                                               | Fee to seller/creator                                                                                                  | Structure                                                                                                              | Verified/tiered by status?                                                                                                       | Source                                                                                                                                                                                                                                                                                         |
+| ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **itch.io**                                            | 0%–100%, creator-chosen; default 10%                                                                                   | Pure "pay what you want to the platform" — no platform-imposed floor beyond payment processing (~2.9%+$0.30)           | No tiering — same slider for everyone                                                                                            | [itch.io Creator FAQ](https://itch.io/docs/creators/faq)                                                                                                                                                                                                                                       |
+| **Gumroad** (direct/profile sales)                     | 10% + $0.50/txn                                                                                                        | % + flat                                                                                                               | No — flat-rate since 2025 (tiered Free/Creator/Pro plans retired)                                                                | [Gumroad fee breakdown](https://dodopayments.com/blogs/gumroad-fees-explained)                                                                                                                                                                                                                 |
+| **Gumroad Discover** (marketplace-driven sales)        | 30%                                                                                                                    | % only                                                                                                                 | Yes — higher rate specifically for platform-sourced discovery traffic vs. seller's own traffic                                   | [Gumroad pricing](https://cartmango.com/gumroad-pricing/)                                                                                                                                                                                                                                      |
+| **Etsy**                                               | ~6.5% transaction fee + $0.20 listing fee + 3%+$0.25 US payment processing (≈9.5–10% blended + fixed)                  | % + flat, itemized as separate line items (not absorbed into one blended rate)                                         | No                                                                                                                               | [Etsy Fees & Payments Policy](https://www.etsy.com/legal/fees/), [eDesk breakdown](https://www.edesk.com/blog/etsy-seller-fees/)                                                                                                                                                               |
+| **Fiverr**                                             | Flat 20% on every order, all seller levels                                                                             | % only, flat                                                                                                           | **No** — explicitly removed its old volume-tiered 7.5%/10%/20% structure in 2022; now uniform regardless of seller tenure/rating | [Fastlancer](https://www.fastlancer.org/en/fastlancer-blog/fiverr-review/)                                                                                                                                                                                                                     |
+| **Roblox Marketplace**                                 | ~30% marketplace cut before DevEx cash-out (effective ~25% net after Robux→USD exchange rate)                          | % only, walled virtual-currency economy — not a direct real-money-per-item analogue                                    | No                                                                                                                               | [Roblox 30% fee explainer](https://devexfire.com/marketplace-fee.html)                                                                                                                                                                                                                         |
+| **Steam Workshop (paid mods, where enabled)**          | Creator gets 25% of Adjusted Gross Revenue in the standard model; publisher discretion for key-sale allocations        | % revenue share, publisher-set per game                                                                                | No published verified/unverified split                                                                                           | [Valve Supplemental Workshop Terms](https://steamcommunity.com/workshop/workshoplegalagreement/?appid=0), [GameSpot](https://www.gamespot.com/articles/steam-workshop-introduces-revenue-sharing/1100-6410859/)                                                                                |
+| **Epic Games Store**                                   | 12% (developer keeps 88%); 100% to developer on first $1M/product/year                                                 | % only, with a revenue-threshold carve-out (not identity-verification-based, but is a _scale-based_ tiering precedent) | Yes, but by revenue scale not "verified" status                                                                                  | [9to5Mac](https://9to5mac.com/2024/03/20/epic-will-take-12-cut-of-epic-games-store-sales-when-it-launches-on-iphone-this-year/), [Businesswire launch announcement](https://www.businesswire.com/news/home/20181204005689/en/Epic-Games-Store-Launch-88-Revenue-Share)                         |
+| **Apple App Store Small Business Program**             | 15% (vs. standard 30%) for developers under $1M/yr proceeds                                                            | % only                                                                                                                 | **Yes — the single cleanest "verified/qualifying tier gets exactly half the standard rate" precedent found**                     | [App Store Small Business Program, Apple Developer](https://developer.apple.com/app-store/small-business-program/)                                                                                                                                                                             |
+| **Discord Server Subscriptions**                       | Creator gets 90%, Discord keeps 10% (before Apple's own 30% cut if purchased via iOS)                                  | % only                                                                                                                 | No                                                                                                                               | [Discord Creator Revenue FAQ](https://creator-support.discord.com/hc/en-us/articles/10424143128343-Creator-Revenue-FAQ)                                                                                                                                                                        |
+| **Patreon** (post-Aug 2025 structure)                  | New creators: flat 10%. Legacy creators: 5% (Premium, $2,500+/mo), 8% (Pro), 10% (Lite)                                | % only, tiered by plan/volume                                                                                          | Yes — explicitly tiered, higher-volume creators get materially lower rate                                                        | [Patreon Creator fees overview](https://support.patreon.com/hc/en-us/articles/11111747095181-Creator-fees-overview), [Patreon Aug 2025 fee change notice](https://support.patreon.com/hc/en-us/articles/36426991446797-A-standard-platform-fee-for-new-creators-effective-after-August-4-2025) |
+| **Twitch Affiliate/Partner (subs)**                    | Standard 50/50; Partner Plus Level 1 = 60/40; Partner Plus Level 2 = 70/30 (unlocked at ~300 "points," e.g. ~300 subs) | % revenue share, earned tiering (not a badge review, but an earned-threshold precedent)                                | Yes — explicitly earned, multi-tier, similar spirit to Blue Badge's earned-not-bought design                                     | [Variety, Twitch Partner Plus](https://variety.com/2023/digital/news/twitch-partner-plus-70-percent-revenue-split-streamers-1235645488)                                                                                                                                                        |
+| **Stripe (payment processing, not a marketplace fee)** | 2.9% + $0.30 per US card transaction                                                                                   | % + flat                                                                                                               | N/A — this stacks underneath _every_ option above                                                                                | Client-supplied figure, consistent with Stripe's public standard US pricing                                                                                                                                                                                                                    |
 
 **Read on the data:** there is no single "industry standard." The real
 split is between (a) pure creator-tools with low/no platform take
@@ -62,7 +62,7 @@ picking one number for everyone.
 
 Where this lands against the comparator table (§1): below Etsy's ~9.5%
 blended rate and Gumroad's 10% direct rate at the unverified tier, and
-below itch.io's own 10% *default* slider at the verified tier — i.e.
+below itch.io's own 10% _default_ slider at the verified tier — i.e.
 deliberately cheaper than every real-money creator marketplace surveyed
 except itch.io's zero-floor option (which isn't a guaranteed-revenue
 model, so not viable as KOBA's actual rate, only as a positioning
@@ -82,6 +82,7 @@ on the gross order amount the buyer pays — the same base
 `stripe-connect.service.ts`'s `calculateFee(amountCents)` already takes.
 
 **Why these two specific numbers:**
+
 - 12% for unverified sits between Etsy's ~9.5% blended rate and
   Fiverr's flat 20% — appropriate because KOBA unverified sellers carry
   Etsy-like discovery/feed benefits but, unlike Etsy, are largely
@@ -91,7 +92,7 @@ on the gross order amount the buyer pays — the same base
   KOBA doesn't look punitive to a new seller comparing platforms.
 - 6% for Blue Badge sits below Etsy's blended rate and below Gumroad's
   direct 10%, positioning verified KOBA shops among the cheapest
-  *real-money* marketplace rates researched — deliberately competitive
+  _real-money_ marketplace rates researched — deliberately competitive
   since Blue Badge shops are, by definition, already meeting a
   $2,500/30-day gross-sales floor, so KOBA's absolute dollar take stays
   meaningful even at a low percentage.
@@ -105,6 +106,7 @@ to do two things simultaneously, consistent with how Twitch's earned
 Partner Plus tiers (50/50 → 70/30, also roughly a 1.7-2x swing in
 creator take) and Patreon's volume tiers (10% → 5%, also 2x) use rate
 compression as a retention lever:
+
 1. **Reward retention/loyalty and reduce platform risk.** Blue Badge
    requires 30+ days tenure, a proven 4.0★+ rating, real sustained sales
    volume, and passed manual staff review — this is a materially lower
@@ -152,7 +154,7 @@ Reasoning, given the $2.50 nameplate → $300+ relic range:
   Gumroad, Roblox, Patreon are all uncapped percentages) — this is my
   own synthesis, drawing loosely on the general marketplace pattern of
   insertion-fee caps some auction platforms have historically used for
-  high-value listings. Recommend: cap the *dollar amount* of the
+  high-value listings. Recommend: cap the _dollar amount_ of the
   platform fee at a fixed ceiling (e.g., $75 unverified / $40 verified)
   for any single order above roughly $600-650, reviewed once real
   relic-tier price data exists post-launch. Flag this cap as a "build
@@ -160,7 +162,7 @@ Reasoning, given the $2.50 nameplate → $300+ relic range:
   item rather than a locked number.
 - **No floor is needed** on the KOBA side of the fee, because a pure
   percentage already produces a sensible minimum in cents terms at low
-  prices — the actual floor problem in this product is Stripe's *own*
+  prices — the actual floor problem in this product is Stripe's _own_
   $0.30 minimum, addressed in §4, not something KOBA's fee formula
   should try to solve.
 
@@ -175,7 +177,8 @@ disclosed-separately model, not Gumroad's or itch.io's absorbed-into-one-number
 model.**
 
 Why on top rather than absorbed:
-- Gumroad and itch.io can quote one blended number because *they* are
+
+- Gumroad and itch.io can quote one blended number because _they_ are
   the merchant of record and negotiate/eat payment processing at scale
   internally. KOBA's architecture, per `ROADMAP.md`'s tech-stack
   section and the existing `stripe-connect.service.ts`, uses Stripe
@@ -199,11 +202,11 @@ Why on top rather than absorbed:
 (US card, standard Stripe rate of 2.9% + $0.30, **sourced** client-
 supplied figure):
 
-| Item | Gross | Stripe fee | KOBA fee (unverified 12%) | KOBA fee (verified 6%) | Seller nets (unverified) | Seller nets (verified) |
-|---|---|---|---|---|---|---|
-| $2.50 nameplate | $2.50 | $0.37 (14.9% of price) | $0.30 | $0.15 | $1.83 (73%) | $1.98 (79%) |
-| $25 skin | $25.00 | $1.03 (4.1%) | $3.00 | $1.50 | $20.97 (84%) | $22.47 (90%) |
-| $300 relic auction | $300.00 | $9.00 (3.0%) | $36.00 | $18.00 | $255.00 (85%) | $273.00 (91%) |
+| Item               | Gross   | Stripe fee             | KOBA fee (unverified 12%) | KOBA fee (verified 6%) | Seller nets (unverified) | Seller nets (verified) |
+| ------------------ | ------- | ---------------------- | ------------------------- | ---------------------- | ------------------------ | ---------------------- |
+| $2.50 nameplate    | $2.50   | $0.37 (14.9% of price) | $0.30                     | $0.15                  | $1.83 (73%)              | $1.98 (79%)            |
+| $25 skin           | $25.00  | $1.03 (4.1%)           | $3.00                     | $1.50                  | $20.97 (84%)             | $22.47 (90%)           |
+| $300 relic auction | $300.00 | $9.00 (3.0%)           | $36.00                    | $18.00                 | $255.00 (85%)            | $273.00 (91%)          |
 
 **Flag, explicitly: the $2.50 item is a real problem regardless of
 KOBA's own rate.** Stripe's fixed $0.30 alone is already ~15% of a
@@ -224,9 +227,10 @@ uncontroversial.
 ## 5. Summary of what's sourced vs. judgment call
 
 **Sourced from real, cited competitor data:**
+
 - All figures in the §1 comparator table.
 - The specific 2x ratio precedent (Apple SBP 30%→15%) used to justify
-  the *size* of KOBA's verified/unverified gap.
+  the _size_ of KOBA's verified/unverified gap.
 - The Stripe 2.9%+$0.30 baseline (client-supplied, consistent with
   Stripe's public pricing).
 - The architectural point that Stripe Connect Express (per the existing
@@ -235,6 +239,7 @@ uncontroversial.
 
 **My synthesis / judgment calls, explicitly flagged as such — not hard
 precedent:**
+
 - The exact 12% (unverified) / 6% (verified) numbers — grounded in the
   comparator range but not a direct quote of any single named
   platform's rate for this exact product category.
@@ -263,5 +268,5 @@ object (`{ standardRate, verifiedRate, capCents? }`) that
 already calls for fee computation to happen "at settlement time, not
 just at checkout, so refunds/disputes recompute correctly" (Phase 3),
 which is compatible with either approach as long as the rate lookup
-reads the seller's badge status *as of settlement time*, not a cached
+reads the seller's badge status _as of settlement time_, not a cached
 value from checkout, since Blue Badge can be revoked mid-cycle.
