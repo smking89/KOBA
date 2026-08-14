@@ -98,6 +98,17 @@ model KobaId {
   staffIssuanceLogEntriesAsIssuer StaffIssuanceLog[] @relation("StaffIssuanceLogIssuer")
   staffIssuanceLogEntriesAsIssued StaffIssuanceLog[] @relation("StaffIssuanceLogIssued")
 
+  /// Phase 3 (Marketplace Core) back-relations — additive only, added
+  /// ahead of Phase 12 so the target shape is validated early, same
+  /// spirit as `cosmeticOwnerships` above. `apps/api`'s marketplace
+  /// module still stores everything behind in-memory repositories this
+  /// phase (see apps/api/src/modules/marketplace/README.md).
+  productsListed    Product[]        @relation("ProductSeller")
+  bidsPlaced        Bid[]            @relation("BidBidder")
+  ordersAsBuyer     Order[]          @relation("OrderBuyer")
+  ordersAsSeller    Order[]          @relation("OrderSeller")
+  stripeAccount     StripeAccount?
+
   /// One KOBAID per (deviceId, role) pair.
   @@unique([deviceId, role])
   @@index([userId])
@@ -155,4 +166,192 @@ model UserInterest {
   interest   Interest @relation(fields: [interestId], references: [id])
 
   @@id([userId, interestId])
+}
+
+// ---------------------------------------------------------------------
+// Phase 3 — Marketplace Core
+//
+// apps/api/src/modules/marketplace currently stores all of this behind
+// in-memory repositories (ProductRepository/AuctionRepository/
+// OrderRepository/StripeAccountRepository) — same storage decision as
+// Phase 1's KobaIdRepository, see that module's README for the
+// rationale. These models are added here now, ahead of Phase 12, so the
+// target shape is validated early ("prisma validate") and a future
+// Prisma-backed repository implementation won't need breaking changes.
+//
+// Per Phase 1's immutability note, FKs to KobaId are RESTRICT (Prisma's
+// default onDelete behavior), not CASCADE.
+// ---------------------------------------------------------------------
+
+/// Six-tier rarity ladder — matches design/ui-ux-design-system.html's
+/// `.rarity-chip` classes exactly. See ROADMAP.md's open question #5
+/// (tier naming needs client confirmation).
+enum RarityTier {
+  common
+  uncommon
+  rare
+  epic
+  legendary
+  relic
+}
+
+/// Listing categories. COSMETIC is the only one that pairs with a
+/// CosmeticType (see below).
+enum ProductCategory {
+  skin
+  map
+  monument
+  asset
+  cosmetic
+}
+
+/// Cosmetics are pre-made and sold, never built by the buyer (ROADMAP.md
+/// Phase 0/9) — exactly these three sub-types, no "packs" (a pack is a
+/// checkout-time bundle of existing products, not a product category).
+enum CosmeticType {
+  avatarDecoration
+  profileEffect
+  nameplate
+}
+
+enum AuctionStatus {
+  active
+  ended
+}
+
+enum OrderSource {
+  direct
+  auction
+}
+
+/// Structural model of Stripe Connect account state only — matches the
+/// three states shown in the Phase 0 design's Stripe Connection screen.
+/// No real Stripe SDK/API integration behind this yet — see
+/// apps/api/src/modules/marketplace/README.md's TODOs.
+enum StripeAccountStatus {
+  notConnected
+  pending
+  active
+}
+
+/// A marketplace listing. Immutable once created except `delisted` — a
+/// soft toggle only (delist ≠ delete, keeps order history intact); there
+/// is deliberately no hard-delete anywhere in this module.
+model Product {
+  id String @id @default(uuid())
+
+  sellerId String
+  seller   KobaId @relation("ProductSeller", fields: [sellerId], references: [id])
+
+  title       String
+  description String
+  /// Small allowlist sample validated at the application layer against
+  /// README.md's "Supported games" list, not a Postgres enum — see
+  /// marketplace.types.ts's SUPPORTED_GAMES.
+  game        String
+
+  category ProductCategory
+  rarity   RarityTier
+
+  /// Integer cents. Never a float, anywhere in this module.
+  priceCents Int
+
+  /// Only set when category == cosmetic; enforced at the application
+  /// layer (CosmeticTypeRequiredError / CosmeticTypeNotAllowedError).
+  cosmeticType CosmeticType?
+
+  delisted  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  auctions Auction[]
+  orders   Order[]
+
+  @@index([sellerId])
+  @@index([game])
+}
+
+/// One active auction per product at a time — enforced at the
+/// application layer (ActiveAuctionExistsError), not a DB constraint,
+/// since "active" is a computed/status field rather than a natural key.
+model Auction {
+  id String @id @default(uuid())
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+
+  /// Denormalized from Product at start time.
+  sellerId String
+
+  startPriceCents   Int
+  minIncrementCents Int
+  endsAt            DateTime
+  status            AuctionStatus @default(active)
+  createdAt         DateTime      @default(now())
+
+  bids  Bid[]
+  order Order?
+
+  @@index([productId])
+  @@index([endsAt])
+}
+
+model Bid {
+  id String @id @default(uuid())
+
+  auctionId String
+  auction   Auction @relation(fields: [auctionId], references: [id])
+
+  bidderKobaId String
+  bidder       KobaId @relation("BidBidder", fields: [bidderKobaId], references: [id])
+
+  amountCents Int
+  placedAt    DateTime @default(now())
+
+  @@index([auctionId])
+}
+
+/// A completed purchase — either a direct Buy (source == direct) or the
+/// settlement of a won auction (source == auction, auctionId set).
+model Order {
+  id String @id @default(uuid())
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+
+  buyerKobaId String
+  buyer       KobaId @relation("OrderBuyer", fields: [buyerKobaId], references: [id])
+
+  sellerKobaId String
+  seller       KobaId @relation("OrderSeller", fields: [sellerKobaId], references: [id])
+
+  amountCents Int
+  createdAt   DateTime    @default(now())
+  source      OrderSource
+
+  /// Set only when source == auction — one Order per settled Auction.
+  auctionId String?  @unique
+  auction   Auction? @relation(fields: [auctionId], references: [id])
+
+  @@index([buyerKobaId])
+  @@index([sellerKobaId])
+}
+
+/// Per-seller-KOBAID Stripe Connect account status. Structural only —
+/// no real charge creation, webhook handling, or Connect onboarding
+/// wired up yet (see apps/api/src/modules/marketplace/README.md).
+///
+/// TODO(platform fee rate): the actual platform fee % (flat vs. tiered,
+/// whether it varies by product type/rarity) is an open client question
+/// (ROADMAP.md "Open questions for the client" #8) — not modeled as a
+/// column here; the fee-math itself lives in application code
+/// (StripeConnectService#calculateFee) with the rate injected as
+/// configuration, not a schema value.
+model StripeAccount {
+  id String @id @default(uuid())
+
+  kobaId String @unique
+  seller KobaId @relation(fields: [kobaId], references: [id])
+
+  status    StripeAccountStatus @default(notConnected)
+  updatedAt DateTime            @updatedAt
 }
