@@ -6,7 +6,7 @@ squads; all on one KOBAID.
 
 ## Status
 
-**Phase 9 — Groups and LFG** is in progress on `feat/groups-lfg`.
+**Phase 10 — Social** is in progress on `feat/social`.
 
 The HTML prototype remains the information-architecture reference:
 
@@ -215,7 +215,7 @@ assign Moderator/Member. The owner can assign Admin.
 
 LFG at `/lfg` filters by game, platform, region, skill, mic, and availability.
 Posts expire; authors accept requests until the roster is full. Self-join is
-blocked. Group feed posts wait for the social system.
+blocked. Group feeds are live on each group page.
 
 | Path                               | Purpose                           |
 | ---------------------------------- | --------------------------------- |
@@ -228,6 +228,42 @@ blocked. Group feed posts wait for the social system.
 | `POST /api/lfg/[ref]/moderate`     | Accept, deny, or cancel           |
 
 Seeded examples: `/groups/rust-legacy-raiders` and `KOBA-LFG-WIPE0001`.
+
+### Social (Phase 10)
+
+Public profiles at `/u/[handle]`. Follows and blocks are user-to-user (shop follows
+stay separate). Blocking removes both follow directions and blocks tagging,
+comments, and feed visibility.
+
+Posts use `KOBA-PST-` public refs. Visibility is public or followers-only.
+Mentions (`@handle`) and explicit shop/group/product tags respect tag privacy
+(`EVERYONE` / `FOLLOWERS` / `NO_ONE`), shop `taggingAllowed`, and group
+`taggingAllowed`. Blocked accounts can never tag. Stories expire after 24 hours
+(`KOBA-STY-`). Reports (`KOBA-RPT-`) go to staff. KOBA staff (SA/AD/MD) can hide
+posts — group Owner/Admin/Moderator cannot. Sponsored is a boolean hook with a
+“Sponsored” label; full ads land in Phase 12.
+
+Signed-in feed is self plus following. Signed-out feed is public live posts.
+Pagination is `page` / `pageSize` (default 8).
+
+| Path                                    | Purpose                      |
+| --------------------------------------- | ---------------------------- |
+| `GET /api/social/feed`                  | Paginated home or group feed |
+| `POST /api/social/posts`                | Create a post                |
+| `POST /api/social/posts/[ref]/like`     | Toggle like                  |
+| `POST /api/social/posts/[ref]/save`     | Toggle save                  |
+| `POST /api/social/posts/[ref]/comments` | Add a comment                |
+| `POST /api/social/stories`              | Create a 24h story           |
+| `POST /api/social/follow/[handle]`      | Toggle follow                |
+| `POST /api/social/block/[handle]`       | Toggle block                 |
+| `POST /api/social/report`               | File a content report        |
+| `POST /api/social/settings`             | Tag privacy and bio          |
+| `POST /api/groups/[slug]/tagging`       | Owner tagging toggle         |
+| `POST /api/business/tagging`            | Shop tagging toggle          |
+| `POST /api/admin/posts/[ref]/hide`      | Staff hide                   |
+
+Seeded examples: `/u/maxbuilds`, `/u/ironwright`, `KOBA-PST-FEED0001`,
+`KOBA-STY-WIPE0001`.
 
 ## Visual identity
 
@@ -272,10 +308,11 @@ self-registered. Group Admin/Moderator badges are community roles, not staff.
 7. **Shops** ✅
 8. **Auctions** ✅
 9. **Payments** ✅
-10. **Groups / LFG** ← current
-11. Social → DMs
-12. Influencer / ads → developer portal → staff admin
-13. Production readiness
+10. **Groups / LFG** ✅
+11. **Social** ← current
+12. DMs
+13. Influencer / ads → developer portal → staff admin
+14. Production readiness
 
 ## License
 
