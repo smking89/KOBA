@@ -17,7 +17,7 @@ const links = [
 
 export function AppHeader() {
   const pathname = usePathname();
-  const { status } = useSession();
+  const { data: session, status } = useSession();
   const isLoggedIn = status === "authenticated";
 
   return (
@@ -50,9 +50,9 @@ export function AppHeader() {
             <>
               <Link
                 href="/settings"
-                className="text-sm font-medium text-muted transition-colors hover:text-foreground"
+                className="hidden font-mono text-xs text-muted transition-colors hover:text-foreground sm:inline"
               >
-                Settings
+                {session?.user.kobaId ?? "Settings"}
               </Link>
               <Button variant="ghost" size="sm" onClick={() => void signOut({ callbackUrl: "/" })}>
                 Sign out

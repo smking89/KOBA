@@ -1,4 +1,12 @@
-export const PROTECTED_PATH_PREFIXES = ["/settings"] as const;
+export const PROTECTED_PATH_PREFIXES = [
+  "/settings",
+  "/kobaid",
+  "/enter",
+  "/dashboard",
+  "/business",
+  "/influencer",
+  "/admin",
+] as const;
 
 export function isProtectedPath(pathname: string): boolean {
   return PROTECTED_PATH_PREFIXES.some(

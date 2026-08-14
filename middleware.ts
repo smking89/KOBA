@@ -13,7 +13,13 @@ export default auth((request) => {
   }
 
   if (isLoggedIn && isAuthPath(pathname)) {
-    return NextResponse.redirect(new URL("/", request.nextUrl.origin));
+    return NextResponse.redirect(new URL("/enter", request.nextUrl.origin));
+  }
+
+  if (isLoggedIn && request.auth?.user.kobaIdRevealed === false && pathname !== "/kobaid") {
+    if (isProtectedPath(pathname) || pathname === "/") {
+      return NextResponse.redirect(new URL("/kobaid", request.nextUrl.origin));
+    }
   }
 
   return NextResponse.next();

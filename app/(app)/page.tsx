@@ -26,14 +26,13 @@ export default function HomePage() {
   return (
     <div className="space-y-10">
       <section className="space-y-5">
-        <Badge tone="live">Phase 1 · Application foundation</Badge>
+        <Badge tone="live">Phase 4 · KOBAID</Badge>
         <h1 className="max-w-2xl text-4xl font-semibold tracking-tight text-balance md:text-5xl">
           Trade what you build. <span className="text-brand-gradient">Play with your people.</span>
         </h1>
         <p className="max-w-xl text-base leading-relaxed text-muted md:text-lg">
-          KOBA is the social marketplace for game-server communities. This foundation ships the dark
-          neon identity, responsive shell, and production tooling — product features land in later
-          phases.
+          KOBA is the social marketplace for game-server communities. Sign in to mint your KOBAID
+          and switch between Player, Business, and Influencer modes.
         </p>
         <div className="flex flex-wrap gap-3">
           <Link href="/market" className={cn(buttonVariants({ variant: "primary" }))}>

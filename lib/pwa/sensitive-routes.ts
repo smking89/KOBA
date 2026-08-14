@@ -10,6 +10,7 @@ export const NEVER_CACHE_PATH_PREFIXES = [
   "/api/webhooks",
   "/api/checkout",
   "/api/orders",
+  "/api/accounts",
   "/api/admin",
 ] as const;
 

@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { sendVerificationEmail } from "@/lib/email/dev-mailer";
 import type { RegisterInput } from "@/features/auth/schemas/auth.schemas";
 import { writeAuditLog } from "@/features/auth/services/audit-log.service";
+import { mintPublicKobaId } from "@/features/koba-id/services/mint.service";
 
 export class AuthServiceError extends Error {
   constructor(
@@ -39,6 +40,7 @@ export async function registerUser(input: RegisterInput, ipAddress?: string | nu
         profile: {
           create: {
             displayName: input.name,
+            activeAccountType: input.accountType,
           },
         },
       },
@@ -107,6 +109,9 @@ export async function verifyEmail(email: string, token: string, ipAddress?: stri
     targetId: user.id,
     ipAddress: ipAddress ?? null,
   });
+
+  const profile = await prisma.accountProfile.findUnique({ where: { userId: user.id } });
+  await mintPublicKobaId(user.id, profile?.activeAccountType ?? "PLAYER", ipAddress);
 }
 
 const RESET_PREFIX = "reset:";

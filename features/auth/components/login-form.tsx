@@ -16,7 +16,7 @@ import { loginSchema, type LoginInput } from "@/features/auth/schemas/auth.schem
 export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") ?? "/";
+  const callbackUrl = searchParams.get("callbackUrl") ?? "/enter";
   const verified = searchParams.get("verified") === "1";
   const [formError, setFormError] = useState<string | null>(null);
 
