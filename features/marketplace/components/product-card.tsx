@@ -44,7 +44,15 @@ export function ProductCard({
           {product.title}
         </Link>
         <p className="text-xs text-muted">
-          {product.game.name} · {product.seller.displayName}
+          {product.game.name} ·{" "}
+          {product.seller.shopSlug ? (
+            <Link href={`/shops/${product.seller.shopSlug}`} className="hover:text-neon-lime">
+              {product.seller.displayName}
+              {product.seller.verified ? " · Verified" : ""}
+            </Link>
+          ) : (
+            product.seller.displayName
+          )}
           {product.seller.kobaId ? (
             <span className="mt-0.5 block font-mono">{product.seller.kobaId}</span>
           ) : null}

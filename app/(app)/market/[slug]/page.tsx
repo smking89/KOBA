@@ -36,7 +36,15 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
         <RarityChip rarity={product.rarity} />
         <h1 className="text-3xl font-semibold tracking-tight">{product.title}</h1>
         <p className="text-sm text-muted">
-          {product.game.name} · {product.category.name} · {product.seller.displayName}
+          {product.game.name} · {product.category.name} ·{" "}
+          {product.seller.shopSlug ? (
+            <Link href={`/shops/${product.seller.shopSlug}`} className="hover:text-neon-lime">
+              {product.seller.displayName}
+            </Link>
+          ) : (
+            product.seller.displayName
+          )}
+          {product.seller.verified ? " · Verified" : ""}
           {product.seller.kobaId ? (
             <span className="ml-2 font-mono text-xs">{product.seller.kobaId}</span>
           ) : null}
