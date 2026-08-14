@@ -6,7 +6,7 @@ squads; all on one KOBAID.
 
 ## Status
 
-**Phase 3 — Database & authentication** is in progress on `feat/auth-foundation`.
+**Phase 4 — Account types & KOBAID** is in progress on `feat/kobaid`.
 
 The HTML prototype remains the information-architecture reference:
 
@@ -101,20 +101,35 @@ Sensitive API paths are excluded from service-worker caching by design.
 
 Routes:
 
-| Path               | Purpose                          |
-| ------------------ | -------------------------------- |
-| `/register`        | Create player account            |
-| `/verify-email`    | Confirm email (link from mailer) |
-| `/login`           | Credentials sign-in              |
-| `/forgot-password` | Request reset link               |
-| `/reset-password`  | Set new password                 |
-| `/settings`        | Protected (requires session)     |
+| Path               | Purpose                                         |
+| ------------------ | ----------------------------------------------- |
+| `/register`        | Create account (Player / Business / Influencer) |
+| `/verify-email`    | Confirm email (link from mailer)                |
+| `/login`           | Credentials sign-in                             |
+| `/forgot-password` | Request reset link                              |
+| `/reset-password`  | Set new password                                |
+| `/kobaid`          | Immutable KOBAID reveal                         |
+| `/dashboard`       | Player dashboard                                |
+| `/business`        | Business dashboard                              |
+| `/influencer`      | Influencer dashboard                            |
+| `/settings`        | Mode switch + identities                        |
 
 In development, verification and reset links are logged to the terminal
 (`lib/email/dev-mailer.ts`) instead of sending real email.
 
-Flow: register → verify email → login. Password reset uses one-hour tokens.
-Staff roles (SA/AD/MD) are never self-registered — KOBAID minting is Phase 4.
+Flow: register (pick a public account type) → verify email (server mints KOBAID) →
+login → reveal screen → type dashboard. Add extra public types from Settings.
+Staff roles (SA/AD/MD) are issued only via `POST /api/admin/kobaid`.
+
+### KOBAID (Phase 4)
+
+Format `KOBA-{PL|BZ|IN|SA|AD|MD}-XXXX` where `XXXX` is 4 uppercase hex characters
+from `crypto.randomBytes`. Codes are unique, immutable, and never chosen by the
+user. Collisions retry up to 32 times, then fail closed.
+
+Public minting accepts Player, Business, and Influencer only. Superadmin may
+issue SA/AD/MD; Admin may issue MD. Group Admin/Moderator badges remain
+community roles, not staff.
 
 ## Visual identity
 
@@ -152,9 +167,9 @@ self-registered. Group Admin/Moderator badges are community roles, not staff.
 
 1. ~~UI / GUI / UX design prototype~~ ✅
 2. ~~Application foundation~~ ✅
-3. **PWA foundation** ← current
-4. Database + Auth.js
-5. Account types + KOBAID
+3. **PWA foundation** ✅
+4. ~~Database + Auth.js~~ ✅
+5. **Account types + KOBAID** ← current
 6. Marketplace → shops → auctions → payments
 7. Groups / LFG → social → DMs
 8. Influencer / ads → developer portal → staff admin
