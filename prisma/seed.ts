@@ -77,6 +77,28 @@ async function main() {
     });
   }
 
+  const shop = await prisma.shop.upsert({
+    where: { slug: "ironwright-trading-co" },
+    update: {
+      name: "Ironwright Trading Co.",
+      bio: "Verified Rust monument kits, cosmetics, and server assets for community operators.",
+      verificationStatus: "VERIFIED",
+    },
+    create: {
+      slug: "ironwright-trading-co",
+      name: "Ironwright Trading Co.",
+      bio: "Verified Rust monument kits, cosmetics, and server assets for community operators.",
+      ownerUserId: seller.id,
+      verificationStatus: "VERIFIED",
+    },
+  });
+
+  await prisma.shopMember.upsert({
+    where: { shopId_userId: { shopId: shop.id, userId: seller.id } },
+    update: { role: "OWNER" },
+    create: { shopId: shop.id, userId: seller.id, role: "OWNER" },
+  });
+
   const rust = await prisma.game.findUniqueOrThrow({ where: { slug: "rust" } });
   const ark = await prisma.game.findUniqueOrThrow({ where: { slug: "ark-survival-ascended" } });
   const conan = await prisma.game.findUniqueOrThrow({ where: { slug: "conan-exiles" } });
@@ -172,6 +194,7 @@ async function main() {
         inventoryQty: listing.inventoryQty,
         platforms: [...listing.platforms],
         publishedAt: new Date(),
+        shopId: shop.id,
       },
       create: {
         slug: listing.slug,
@@ -185,6 +208,7 @@ async function main() {
         inventoryQty: listing.inventoryQty,
         platforms: [...listing.platforms],
         sellerUserId: seller.id,
+        shopId: shop.id,
         gameId: listing.gameId,
         categoryId: listing.categoryId,
         publishedAt: new Date(),
@@ -220,7 +244,7 @@ async function main() {
     }
   }
 
-  console.info("KOBA marketplace catalog seeded.");
+  console.info("KOBA shops and marketplace catalog seeded.");
 }
 
 main()

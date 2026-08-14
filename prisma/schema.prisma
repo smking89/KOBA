@@ -27,6 +27,11 @@ enum AuditAction {
   KOBAID_MINTED
   ACCOUNT_SWITCHED
   KOBAID_ISSUED_STAFF
+  SHOP_CREATED
+  SHOP_VERIFICATION_REQUESTED
+  SHOP_VERIFIED
+  PRODUCT_SUBMITTED
+  PRODUCT_APPROVED
 }
 
 model User {
@@ -46,6 +51,11 @@ model User {
   auditLogs      AuditLog[]     @relation("AuditActor")
   products       Product[]
   favorites      ProductFavorite[]
+  ownedShop      Shop?            @relation("ShopOwner")
+  shopMemberships ShopMember[]
+  shopFollows    ShopFollow[]
+  shopReviews    ShopReview[]     @relation("ShopReviewAuthor")
+  ordersBought   Order[]          @relation("OrderBuyer")
 }
 
 model Account {
@@ -198,6 +208,7 @@ model Product {
   inventoryQty       Int              @default(0)
   platforms          GamePlatform[]
   sellerUserId       String
+  shopId             String?
   gameId             String
   categoryId         String
   publishedAt        DateTime?
@@ -205,17 +216,20 @@ model Product {
   updatedAt          DateTime         @updatedAt
 
   seller    User              @relation(fields: [sellerUserId], references: [id], onDelete: Cascade)
+  shop      Shop?             @relation(fields: [shopId], references: [id], onDelete: SetNull)
   game      Game              @relation(fields: [gameId], references: [id], onDelete: Restrict)
   category  Category          @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   variants  ProductVariant[]
   media     ProductMedia[]
   favorites ProductFavorite[]
+  orderItems OrderItem[]
 
   @@index([moderationStatus, publishedAt])
   @@index([gameId])
   @@index([categoryId])
   @@index([rarity])
   @@index([sellerUserId])
+  @@index([shopId])
   @@index([priceCents])
   @@index([rarityRank])
 }
@@ -258,5 +272,117 @@ model ProductFavorite {
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@id([userId, productId])
+  @@index([productId])
+}
+
+enum ShopVerificationStatus {
+  UNVERIFIED
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum ShopMemberRole {
+  OWNER
+  MODERATOR
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  FULFILLED
+  CANCELLED
+  REFUNDED
+}
+
+model Shop {
+  id                   String                 @id @default(cuid())
+  slug                 String                 @unique
+  name                 String
+  bio                  String                 @db.Text
+  ownerUserId          String                 @unique
+  verificationStatus   ShopVerificationStatus @default(UNVERIFIED)
+  verificationNote     String?
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+
+  owner    User         @relation("ShopOwner", fields: [ownerUserId], references: [id], onDelete: Cascade)
+  members  ShopMember[]
+  follows  ShopFollow[]
+  reviews  ShopReview[]
+  products Product[]
+  orders   Order[]
+}
+
+model ShopMember {
+  shopId    String
+  userId    String
+  role      ShopMemberRole
+  createdAt DateTime       @default(now())
+
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([shopId, userId])
+  @@index([userId])
+}
+
+model ShopFollow {
+  shopId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([shopId, userId])
+  @@index([userId])
+}
+
+model ShopReview {
+  id           String   @id @default(cuid())
+  shopId       String
+  authorUserId String
+  rating       Int
+  body         String   @db.Text
+  createdAt    DateTime @default(now())
+
+  shop   Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  author User @relation("ShopReviewAuthor", fields: [authorUserId], references: [id], onDelete: Cascade)
+
+  @@unique([shopId, authorUserId])
+  @@index([shopId])
+}
+
+model Order {
+  id           String      @id @default(cuid())
+  shopId       String
+  buyerUserId  String
+  status       OrderStatus @default(PENDING)
+  totalCents   Int
+  currency     String      @default("USD")
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  shop  Shop        @relation(fields: [shopId], references: [id], onDelete: Restrict)
+  buyer User        @relation("OrderBuyer", fields: [buyerUserId], references: [id], onDelete: Restrict)
+  items OrderItem[]
+
+  @@index([shopId, createdAt])
+  @@index([buyerUserId])
+}
+
+model OrderItem {
+  id             String @id @default(cuid())
+  orderId        String
+  productId      String
+  titleSnapshot  String
+  quantity       Int
+  unitPriceCents Int
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([orderId])
   @@index([productId])
 }
