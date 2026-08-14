@@ -7,6 +7,10 @@ import { getGroup } from "@/features/groups/services/group.service";
 import { GroupJoinButton } from "@/features/groups/components/group-join-button";
 import { GroupModeratePanel } from "@/features/groups/components/group-moderate-panel";
 import { GroupMemberActions } from "@/features/groups/components/group-member-actions";
+import { FeedList } from "@/features/social/components/feed-list";
+import { PostComposer } from "@/features/social/components/post-composer";
+import { TaggingToggle } from "@/features/social/components/tagging-toggle";
+import { listFeed } from "@/features/social/services/post.service";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -25,6 +29,7 @@ export default async function GroupPage({ params }: { params: Promise<{ slug: st
 
   try {
     const group = await getGroup(slug, session?.user.id);
+    const feed = await listFeed({ viewerUserId: session?.user.id, groupSlug: group.slug });
 
     return (
       <div className="space-y-8">
@@ -87,15 +92,27 @@ export default async function GroupPage({ params }: { params: Promise<{ slug: st
               requests={group.requests}
               bans={group.bans}
             />
-            <Card>
-              <CardTitle>Group feed</CardTitle>
-              <CardDescription>
-                Posts, tags, and stories ship with the social system. Membership and roles are live
-                now.
-              </CardDescription>
-            </Card>
+            {group.viewerRole === "OWNER" ? (
+              <Card>
+                <CardTitle>Tagging</CardTitle>
+                <CardDescription className="mb-3">
+                  Owners decide whether this group can be tagged in posts.
+                </CardDescription>
+                <TaggingToggle
+                  endpoint={`/api/groups/${group.slug}/tagging`}
+                  initial={group.taggingAllowed}
+                  label="Allow group tags"
+                />
+              </Card>
+            ) : null}
           </div>
         </div>
+
+        <section className="space-y-4">
+          <h2 className="text-lg font-semibold">Group feed</h2>
+          {group.joined ? <PostComposer groupSlug={group.slug} /> : null}
+          <FeedList initial={feed} signedIn={Boolean(session?.user.id)} groupSlug={group.slug} />
+        </section>
       </div>
     );
   } catch (error) {

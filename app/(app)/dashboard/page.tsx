@@ -63,7 +63,13 @@ export default async function PlayerDashboardPage() {
       </div>
 
       <div className="flex flex-wrap gap-3">
-        <Link href="/market" className={cn(buttonVariants({ variant: "primary" }))}>
+        <Link href={`/u/${snapshot.handle}`} className={cn(buttonVariants({ variant: "primary" }))}>
+          Your profile
+        </Link>
+        <Link href="/feed" className={cn(buttonVariants({ variant: "secondary" }))}>
+          Feed
+        </Link>
+        <Link href="/market" className={cn(buttonVariants({ variant: "secondary" }))}>
           Explore Market
         </Link>
         <Link href="/orders" className={cn(buttonVariants({ variant: "secondary" }))}>

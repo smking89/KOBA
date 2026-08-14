@@ -5,6 +5,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { CreateShopForm } from "@/features/shops/components/create-shop-form";
 import { RequestVerificationButton } from "@/features/shops/components/request-verification-button";
+import { TaggingToggle } from "@/features/social/components/tagging-toggle";
 import { requireBusinessDashboard } from "@/features/shops/lib/require-business";
 import { getShopAnalytics } from "@/features/shops/services/shop.service";
 
@@ -79,6 +80,18 @@ export default async function BusinessDashboardPage() {
           </CardDescription>
         </Card>
       </div>
+
+      <Card>
+        <CardTitle>Shop tagging</CardTitle>
+        <CardDescription className="mb-3">
+          When off, posts cannot tag this shop. Sponsored placements remain a later ads phase.
+        </CardDescription>
+        <TaggingToggle
+          endpoint="/api/business/tagging"
+          initial={shop.taggingAllowed}
+          label="Allow shop tags"
+        />
+      </Card>
 
       <Card>
         <CardTitle>Inventory</CardTitle>

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
@@ -5,6 +6,7 @@ import { auth } from "@/lib/auth";
 import { getAccountSnapshot } from "@/features/accounts/services/account.service";
 import { AccountModeSwitch } from "@/features/accounts/components/account-mode-switch";
 import { ACCOUNT_TYPE_LABEL } from "@/features/koba-id/lib/format";
+import { TagPrivacyForm } from "@/features/social/components/tag-privacy-form";
 
 export const metadata = { title: "Settings" };
 
@@ -39,11 +41,24 @@ export default async function SettingsPage() {
       <Card>
         <CardTitle>Identity</CardTitle>
         <CardDescription>
+          Handle{" "}
+          <Link href={`/u/${snapshot.handle}`} className="text-neon-lime hover:underline">
+            @{snapshot.handle}
+          </Link>
+          {" · "}
           Active KOBAID{" "}
           <span className="font-mono text-foreground">{snapshot.kobaId ?? "pending"}</span>
           {" · "}
           {ACCOUNT_TYPE_LABEL[snapshot.activeAccountType]}
         </CardDescription>
+      </Card>
+
+      <Card>
+        <CardTitle>Tagging and profile</CardTitle>
+        <CardDescription className="mb-4">
+          Mentions respect this setting. Blocked accounts can never tag you.
+        </CardDescription>
+        <TagPrivacyForm initial={snapshot.tagPrivacy} bio={snapshot.bio ?? ""} />
       </Card>
 
       <Card>
