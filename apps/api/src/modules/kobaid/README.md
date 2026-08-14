@@ -20,34 +20,57 @@ placeholders.
   `CommunityRoleCannotBeStaffIssuedError`, `InvalidIssuerError`,
   `KobaIdCollisionRetryExhaustedError`.
 - `kobaid.repository.ts` — `KobaIdRepository` storage interface
-  (`KOBAID_REPOSITORY` DI token).
+  (`KOBAID_REPOSITORY` DI token), including `findAllByDevice()` (used by
+  switching to find every KOBAID on a device).
 - `in-memory-kobaid.repository.ts` — the only implementation wired up this
   phase.
+- `staff-issuance-log.types.ts` / `staff-issuance-log.repository.ts` /
+  `in-memory-staff-issuance-log.repository.ts` — the `StaffIssuanceLog`
+  audit trail ROADMAP.md's Phase 1 section calls for (issuer KOBAID,
+  issued KOBAID, target role, timestamp). Same interface-behind-in-memory-
+  implementation pattern as `KobaIdRepository`, its own DI token
+  (`STAFF_ISSUANCE_LOG_REPOSITORY`). A log entry is only ever written after
+  `issueStaff()` has fully succeeded — nothing is logged for a failed/
+  rejected issuance attempt.
 - `kobaid.service.ts` — `KobaidService`:
   - `mint()` — public self-registration path, community roles only
     (`PL`/`BZ`/`IN`). Enforces one KOBAID per (deviceId, role); retries CODE
     generation on collision (bounded, throws
-    `KobaIdCollisionRetryExhaustedError` if exhausted).
+    `KobaIdCollisionRetryExhaustedError` if exhausted). Newly minted
+    KOBAIDs start with `active: false`.
   - `issueStaff()` — admin-issuance path, staff roles only (`SA`/`AD`/`MD`).
-    Requires an existing staff `KobaId` as `issuedByKobaId`. Not exposed
-    over HTTP this phase (no controller) — Phase 13 decides the route,
-    gated by Phase 11's RBAC.
-  - KOBAIDs are immutable: there is no update method anywhere in this
-    module, intentionally.
+    Requires an existing staff `KobaId` as `issuedByKobaId`. Records a
+    `StaffIssuanceLogEntry` on success. Not exposed over HTTP this phase
+    (no controller) — Phase 13 decides the route, gated by Phase 11's RBAC.
+  - `getStaffIssuanceLog()` / `getStaffIssuanceLogByIssuer(issuerKobaId)` —
+    read access to the audit log.
+  - `activateForDevice(deviceId, role)` — Phase 2's switching primitive,
+    pulled forward per a later task's scope. Marks the device's existing
+    KOBAID for `role` active and any other active KOBAID on that device
+    inactive; throws `KobaIdNotFoundForDeviceRoleError` if the device has
+    no KOBAID for that role (switching never mints). Only the `active`
+    flag changes — role/code/fullId/mintedAt are untouched, preserving
+    immutability.
+  - KOBAIDs are otherwise immutable: there is no general update method
+    anywhere in this module, intentionally. `active` is the sole mutable
+    field, and only `activateForDevice()` changes it.
 - `kobaid.module.ts` — Nest module wiring `KobaidService` +
-  `InMemoryKobaIdRepository` behind the `KOBAID_REPOSITORY` token.
+  `InMemoryKobaIdRepository` behind `KOBAID_REPOSITORY`, and
+  `InMemoryStaffIssuanceLogRepository` behind `STAFF_ISSUANCE_LOG_REPOSITORY`.
 
 ## Storage decision: in-memory repository, not Prisma, this phase
 
-`KobaIdRepository` is an interface; `InMemoryKobaIdRepository` is the only
-implementation wired up right now. Real Postgres/Prisma models for `User`,
-`Device`, `KobaId`, `Interest`, `UserInterest` were added to
+`KobaIdRepository` and `StaffIssuanceLogRepository` are interfaces;
+`InMemoryKobaIdRepository` and `InMemoryStaffIssuanceLogRepository` are the
+only implementations wired up right now. Real Postgres/Prisma models for
+`User`, `Device`, `KobaId` (now including `active: Boolean @default(false)`),
+`StaffIssuanceLog`, `Interest`, `UserInterest` were added to
 `packages/database/prisma/schema.prisma` (validated with `prisma validate`)
 so the target shape is locked in, but `apps/api` has no `@prisma/client`
-dependency or generated client yet — wiring a `PrismaKobaIdRepository` is
-a Phase 2+/Phase 12 follow-up, not part of this phase's scope. The seam
-(`KobaIdRepository`) is designed so that swap doesn't touch `KobaidService`
-or its tests.
+dependency or generated client yet — wiring Prisma-backed repositories is
+a Phase 2+/Phase 12 follow-up, not part of this phase's scope. The seams
+(`KobaIdRepository`, `StaffIssuanceLogRepository`) are designed so that
+swap doesn't touch `KobaidService` or its tests.
 
 ## TDLS — deliberately unresolved
 
@@ -61,11 +84,21 @@ answer.
 
 ## Explicitly out of scope this phase (left for later phases)
 
-- HTTP controllers/routes for mint/issueStaff (Phase 13).
-- Badge-icon suppression rendering rule (UI concern, ROADMAP Phase 1 item,
-  not required by this pass's task scope — no `badge` field exists on
-  `KobaId` at all, so there's nothing for a careless frontend to render,
-  but the explicit server-side suppression check is not implemented here).
-- `StaffIssuanceLog` audit trail table (ROADMAP mentions it; not built —
-  `issuedByKobaId` on `KobaId` captures the minimum audit pointer for now).
+- HTTP controllers/routes for mint/issueStaff (Phase 13). (The account-
+  *switching* endpoint is the one exception pulled forward — see
+  accounts/README.md and accounts/account-switch.controller.ts.)
 - Prisma-backed repository implementation (see storage decision above).
+
+## Implemented in a later pass (still worth calling out here)
+
+- **Badge-suppression rendering rule** — `resolveBadgeForKobaId()` now
+  lives in the accounts module (`accounts/badge.resolver.ts`) since it
+  also needs `CommunityRole`, an accounts-module concept. Staff KOBAIDs
+  (`SA`/`AD`/`MD`) never render a badge, regardless of any community role
+  passed in.
+- **`StaffIssuanceLog` audit trail** — see `staff-issuance-log.*` above.
+  `issuedByKobaId` on `KobaId` is still the minimum pointer for tracing;
+  the log is the durable, queryable audit record.
+- **Account switching (`activateForDevice`)** — see `kobaid.service.ts`
+  above; the HTTP-facing side (`AccountSwitchService`,
+  `POST /accounts/switch`) lives in the accounts module.

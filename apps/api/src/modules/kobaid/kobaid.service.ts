@@ -6,6 +6,7 @@ import {
   DuplicateKobaIdForDeviceRoleError,
   InvalidIssuerError,
   KobaIdCollisionRetryExhaustedError,
+  KobaIdNotFoundForDeviceRoleError,
   StaffRoleRequiresAdminIssuanceError,
 } from './kobaid.errors';
 import { KOBAID_REPOSITORY, KobaIdRepository } from './kobaid.repository';
@@ -14,8 +15,14 @@ import {
   isCommunityRole,
   isStaffRole,
   KobaId,
+  KobaIdRole,
   MintKobaIdParams,
 } from './kobaid.types';
+import {
+  STAFF_ISSUANCE_LOG_REPOSITORY,
+  StaffIssuanceLogRepository,
+} from './staff-issuance-log.repository';
+import { StaffIssuanceLogEntry } from './staff-issuance-log.types';
 
 /** Bounded retry budget for CODE collisions before giving up loudly. */
 const MAX_CODE_GENERATION_ATTEMPTS = 8;
@@ -24,6 +31,8 @@ const MAX_CODE_GENERATION_ATTEMPTS = 8;
 export class KobaidService {
   constructor(
     @Inject(KOBAID_REPOSITORY) private readonly repository: KobaIdRepository,
+    @Inject(STAFF_ISSUANCE_LOG_REPOSITORY)
+    private readonly staffIssuanceLogRepository: StaffIssuanceLogRepository,
   ) {}
 
   /**
@@ -58,13 +67,38 @@ export class KobaidService {
       throw new InvalidIssuerError(params.issuedByKobaId);
     }
 
-    return this.createKobaId({
+    const issued = await this.createKobaId({
       role: params.role,
       deviceId: params.deviceId,
       userId: params.userId,
       referralCode: null,
       issuedByKobaId: params.issuedByKobaId,
     });
+
+    // Only recorded once issuance has actually succeeded (createKobaId
+    // above threw already on any failure, e.g. duplicate device+role or
+    // exhausted code collisions) — the log must never contain an entry
+    // for an issuance that didn't happen.
+    const logEntry: StaffIssuanceLogEntry = {
+      id: randomUUID(),
+      issuerKobaId: params.issuedByKobaId,
+      issuedKobaId: issued.id,
+      targetRole: issued.role,
+      issuedAt: new Date(),
+    };
+    await this.staffIssuanceLogRepository.record(logEntry);
+
+    return issued;
+  }
+
+  /** All staff-issuance audit log entries, most-recent-last. */
+  async getStaffIssuanceLog(): Promise<StaffIssuanceLogEntry[]> {
+    return this.staffIssuanceLogRepository.findAll();
+  }
+
+  /** Staff-issuance audit log entries created by a specific issuer KOBAID. */
+  async getStaffIssuanceLogByIssuer(issuerKobaId: string): Promise<StaffIssuanceLogEntry[]> {
+    return this.staffIssuanceLogRepository.findByIssuer(issuerKobaId);
   }
 
   async findByDeviceAndRole(deviceId: string, role: KobaId['role']): Promise<KobaId | null> {
@@ -73,6 +107,34 @@ export class KobaidService {
 
   async findByCode(code: string): Promise<KobaId | null> {
     return this.repository.findByCode(code);
+  }
+
+  /**
+   * Marks the device's existing KOBAID for `role` as active, and any other
+   * active KOBAID on the same device as inactive. Does NOT mint a KOBAID —
+   * the device must already hold one for `role`, or this throws
+   * `KobaIdNotFoundForDeviceRoleError`. Never mutates role/code/fullId/
+   * mintedAt on the KOBAIDs it touches — only the `active` flag changes,
+   * per KobaId's immutability contract (see kobaid.types.ts).
+   */
+  async activateForDevice(deviceId: string, role: KobaIdRole): Promise<KobaId> {
+    const target = await this.repository.findByDeviceAndRole(deviceId, role);
+    if (!target) {
+      throw new KobaIdNotFoundForDeviceRoleError(deviceId, role);
+    }
+
+    const deviceKobaIds = await this.repository.findAllByDevice(deviceId);
+    for (const kobaId of deviceKobaIds) {
+      if (kobaId.id !== target.id && kobaId.active) {
+        await this.repository.save({ ...kobaId, active: false });
+      }
+    }
+
+    if (target.active) {
+      return target;
+    }
+
+    return this.repository.save({ ...target, active: true });
   }
 
   private async createKobaId(input: {
@@ -102,6 +164,9 @@ export class KobaidService {
       cosmeticOwnershipRefs: [],
       issuedByKobaId: input.issuedByKobaId,
       mintedAt: new Date(),
+      // Not active at mint/issuance time — a device must explicitly switch
+      // to a role to make it active (see activateForDevice()).
+      active: false,
     };
 
     // TODO(TDLS): the client's Phase 0 prototype and ROADMAP.md's open

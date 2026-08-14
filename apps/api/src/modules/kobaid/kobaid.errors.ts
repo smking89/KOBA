@@ -45,6 +45,17 @@ export class InvalidIssuerError extends KobaIdDomainError {
   }
 }
 
+/**
+ * Thrown when switching (activateForDevice) targets a role the device has
+ * no KOBAID for. Switching only activates an existing KOBAID — it never
+ * mints one, so this is a hard failure, not an implicit mint.
+ */
+export class KobaIdNotFoundForDeviceRoleError extends KobaIdDomainError {
+  constructor(deviceId: string, role: string) {
+    super(`Device "${deviceId}" has no KOBAID for role "${role}" to switch to`);
+  }
+}
+
 /** Thrown when random CODE generation collides on every retry attempt. */
 export class KobaIdCollisionRetryExhaustedError extends KobaIdDomainError {
   constructor(attempts: number) {

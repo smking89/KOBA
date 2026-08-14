@@ -24,6 +24,10 @@ export class InMemoryKobaIdRepository implements KobaIdRepository {
     return this.byId.get(id) ?? null;
   }
 
+  async findAllByDevice(deviceId: string): Promise<KobaId[]> {
+    return [...this.byId.values()].filter((kobaId) => kobaId.deviceId === deviceId);
+  }
+
   async save(kobaId: KobaId): Promise<KobaId> {
     this.byId.set(kobaId.id, kobaId);
     this.byCode.set(kobaId.code, kobaId);

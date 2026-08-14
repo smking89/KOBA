@@ -11,5 +11,7 @@ export interface KobaIdRepository {
   findByDeviceAndRole(deviceId: string, role: KobaIdRole): Promise<KobaId | null>;
   findByCode(code: string): Promise<KobaId | null>;
   findById(id: string): Promise<KobaId | null>;
+  /** All KOBAIDs (any role) registered for a device — used by switching. */
+  findAllByDevice(deviceId: string): Promise<KobaId[]>;
   save(kobaId: KobaId): Promise<KobaId>;
 }

@@ -86,11 +86,39 @@ model KobaId {
 
   mintedAt DateTime @default(now())
 
+  /// Whether this KOBAID is the device's currently active role. Defaults
+  /// to false at mint/issuance time; flipped only by account switching
+  /// (Phase 2's AccountSwitchService). Switching never changes role/code/
+  /// fullId/mintedAt — see the immutability note on this model above.
+  active Boolean @default(false)
+
   cosmeticOwnerships KobaIdCosmeticOwnership[]
+  staffIssuanceLogEntriesAsIssuer StaffIssuanceLog[] @relation("StaffIssuanceLogIssuer")
+  staffIssuanceLogEntriesAsIssued StaffIssuanceLog[] @relation("StaffIssuanceLogIssued")
 
   /// One KOBAID per (deviceId, role) pair.
   @@unique([deviceId, role])
   @@index([userId])
+}
+
+/// Append-only audit trail of `KobaidService#issueStaff()` calls — the
+/// `StaffIssuanceLog` concept from ROADMAP.md's Phase 1 section (issuer
+/// KOBAID, issued KOBAID, target role, timestamp). Distinct from
+/// `KobaId.issuedByKobaId`, which is the minimum pointer needed for
+/// tracing; this is the durable log a Phase 11 admin panel would read.
+model StaffIssuanceLog {
+  id String @id @default(uuid())
+
+  issuerKobaId String
+  issuer       KobaId @relation("StaffIssuanceLogIssuer", fields: [issuerKobaId], references: [id])
+
+  issuedKobaId String
+  issued       KobaId @relation("StaffIssuanceLogIssued", fields: [issuedKobaId], references: [id])
+
+  targetRole KobaIdRole
+  issuedAt   DateTime   @default(now())
+
+  @@index([issuerKobaId])
 }
 
 /// Placeholder relation to owned cosmetics. Cosmetics themselves are

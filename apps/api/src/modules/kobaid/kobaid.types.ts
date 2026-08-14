@@ -65,6 +65,15 @@ export interface KobaId {
    */
   readonly issuedByKobaId: string | null;
   readonly mintedAt: Date;
+  /**
+   * Whether this KOBAID is the device's currently active role. Defaults to
+   * `false` at mint/issuance time — switching (see AccountSwitchService in
+   * the accounts module) is what flips this. NOTE: "switching" never
+   * changes the KOBAID itself (role/code/fullId/mintedAt stay put — each
+   * role's KOBAID is immutable and permanent, per this module's design);
+   * it only changes which of a device's KOBAIDs is currently active.
+   */
+  readonly active: boolean;
 }
 
 export interface MintKobaIdParams {
