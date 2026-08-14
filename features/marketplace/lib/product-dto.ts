@@ -3,6 +3,8 @@ import type { GamePlatform, ListingType, ProductRarity } from "@/features/market
 export type PublicSeller = {
   displayName: string;
   kobaId: string | null;
+  shopSlug: string | null;
+  verified: boolean;
 };
 
 export type PublicProductCard = {
