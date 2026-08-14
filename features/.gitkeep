@@ -1,0 +1,2 @@
+# Feature modules land here in later phases.
+# Keep business logic in feature services — not in React components or thin route handlers.
