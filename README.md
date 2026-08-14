@@ -6,7 +6,7 @@ squads; all on one KOBAID.
 
 ## Status
 
-**Phase 5 — Marketplace foundation** is in progress on `feat/marketplace`.
+**Phase 7 — Auctions** is in progress on `feat/auctions`.
 
 The HTML prototype remains the information-architecture reference:
 
@@ -137,10 +137,9 @@ community roles, not staff.
 Public catalog at `/market` and `/market/[slug]`. Listings are visible only when
 `moderationStatus` is `APPROVED` and `publishedAt` is set.
 
-Filters: `q`, `game`, `category`, `rarity`, `platform`, `sort`, `page`.
-Signed-in users can save listings (`POST /api/market/favorites`). Buy/Bid
-actions are placeholders until auctions (Phase 7) and payments (Phase 8). Seller
-shop tools live at `/business`.
+Filters: `q`, `game`, `category`, `rarity`, `platform`, `listing`, `sort`, `page`.
+Signed-in users can save listings (`POST /api/market/favorites`). Buy-now checkout
+is Phase 8. Live auctions accept bids now.
 
 ### Shops (Phase 6)
 
@@ -158,6 +157,19 @@ reviews require a signed-in user who is not the shop owner.
 Business dashboard analytics count live listings, drafts, followers, reviews,
 and inventory. Order inbox is empty until checkout (Phase 8) — no estimated
 revenue.
+
+### Auctions (Phase 7)
+
+Auction listings expose a live clock, current bid, minimum increment, and bid
+history on `/market/[slug]`. `POST /api/auctions/[slug]/bids` is transactional
+(`SELECT … FOR UPDATE` plus serializable isolation, retried on conflict).
+Sellers and shop members cannot bid on their own listings. Bids in the last two
+minutes extend the clock by two minutes.
+
+When time expires the highest bid is reserved for checkout (Phase 8). No charge
+is taken here. Updates stream over `GET /api/auctions/[slug]/stream` (SSE).
+Idempotency keys prevent duplicate submissions. Bid APIs are never cached by the
+service worker.
 
 ## Visual identity
 
@@ -198,11 +210,13 @@ self-registered. Group Admin/Moderator badges are community roles, not staff.
 3. **PWA foundation** ✅
 4. ~~Database + Auth.js~~ ✅
 5. ~~Account types + KOBAID~~ ✅
-6. **Marketplace** ← current
-7. Shops → auctions → payments
-8. Groups / LFG → social → DMs
-9. Influencer / ads → developer portal → staff admin
-10. Production readiness
+6. **Marketplace** ✅
+7. **Shops** ✅
+8. **Auctions** ← current
+9. Payments
+10. Groups / LFG → social → DMs
+11. Influencer / ads → developer portal → staff admin
+12. Production readiness
 
 ## License
 
