@@ -56,12 +56,14 @@ model Device {
 /// beyond referralCode set at mint time; there is no updatedAt because
 /// there is no update path (corrections are a new issuance, not an edit).
 ///
-/// TODO(TDLS): ROADMAP.md's open questions and the Phase 0 prototype refer
-/// to "TDLS encryption" for the KOBAID payload at rest/in transit, but the
-/// term is undefined anywhere in the repo. `code`/`fullId` are stored as
-/// plain validated strings for now — flag this model as the place TDLS
-/// would apply once the client defines what TDLS means. Do not invent a
-/// scheme here.
+/// TODO(TDLS): the client has since defined TDLS as ephemeral-symmetric-key
+/// envelope encryption (AES-256-GCM) for the *transport* boundary between
+/// sandboxed functions/services — see apps/api/src/common/tdls/README.md
+/// and KobaidService#exportForTransport()/#importFromTransport(), both
+/// implemented. That covers data in transit only. `code`/`fullId` are
+/// still stored here as plain validated strings — at-rest (storage)
+/// encryption for this model is a separate, genuinely still-open concern
+/// the client hasn't spoken to. Do not invent an at-rest scheme here.
 model KobaId {
   id     String     @id @default(uuid())
   role   KobaIdRole

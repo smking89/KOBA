@@ -1,3 +1,5 @@
+import { randomBytes } from 'crypto';
+import { TdlsService } from '../../common/tdls/tdls.service';
 import { InMemoryKobaIdRepository } from './in-memory-kobaid.repository';
 import { InMemoryStaffIssuanceLogRepository } from './in-memory-staff-issuance-log.repository';
 import {
@@ -8,18 +10,20 @@ import {
   StaffRoleRequiresAdminIssuanceError,
 } from './kobaid.errors';
 import { KobaIdRepository } from './kobaid.repository';
-import { KobaidService } from './kobaid.service';
+import { KobaidService, KobaIdTransportPayload } from './kobaid.service';
 import { KobaId, KobaIdRole } from './kobaid.types';
 
 describe('KobaidService', () => {
   let repository: InMemoryKobaIdRepository;
   let staffIssuanceLogRepository: InMemoryStaffIssuanceLogRepository;
+  let tdlsService: TdlsService;
   let service: KobaidService;
 
   beforeEach(() => {
     repository = new InMemoryKobaIdRepository();
     staffIssuanceLogRepository = new InMemoryStaffIssuanceLogRepository();
-    service = new KobaidService(repository, staffIssuanceLogRepository);
+    tdlsService = new TdlsService();
+    service = new KobaidService(repository, staffIssuanceLogRepository, tdlsService);
   });
 
   describe('mint (community self-registration)', () => {
@@ -356,6 +360,45 @@ describe('KobaidService', () => {
       expect(activated.role).toBe(player.role);
       expect(activated.fullId).toBe(player.fullId);
       expect(activated.mintedAt).toEqual(player.mintedAt);
+    });
+  });
+
+  describe('TDLS transport (exportForTransport / importFromTransport)', () => {
+    it('round-trips a real minted KobaId end-to-end', async () => {
+      const masterKey = randomBytes(32);
+      const kobaId = await service.mint({
+        role: KobaIdRole.PLAYER,
+        deviceId: 'device-1',
+        userId: 'user-1',
+      });
+
+      const token = service.exportForTransport(kobaId, 'peer-service-b', masterKey);
+      const imported: KobaIdTransportPayload = service.importFromTransport(token, masterKey);
+
+      expect(imported).toEqual({
+        fullId: kobaId.fullId,
+        role: kobaId.role,
+        mintedAt: kobaId.mintedAt.toISOString(),
+      });
+    });
+
+    it('does not leak the internal storage id', async () => {
+      const masterKey = randomBytes(32);
+      const kobaId = await service.mint({
+        role: KobaIdRole.PLAYER,
+        deviceId: 'device-1',
+        userId: 'user-1',
+      });
+
+      const token = service.exportForTransport(kobaId, 'peer-service-b', masterKey);
+      const imported = service.importFromTransport(token, masterKey) as unknown as Record<
+        string,
+        unknown
+      >;
+
+      expect(imported.id).toBeUndefined();
+      expect(imported.deviceId).toBeUndefined();
+      expect(imported.userId).toBeUndefined();
     });
   });
 });

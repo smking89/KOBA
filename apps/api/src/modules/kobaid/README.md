@@ -54,6 +54,10 @@ placeholders.
   - KOBAIDs are otherwise immutable: there is no general update method
     anywhere in this module, intentionally. `active` is the sole mutable
     field, and only `activateForDevice()` changes it.
+  - `exportForTransport(kobaId, peerId, masterKey)` /
+    `importFromTransport(token, masterKey)` — TDLS-backed secure transport
+    of an already-minted KOBAID's public fields between sandboxed
+    functions/services. See "TDLS" below.
 - `kobaid.module.ts` — Nest module wiring `KobaidService` +
   `InMemoryKobaIdRepository` behind `KOBAID_REPOSITORY`, and
   `InMemoryStaffIssuanceLogRepository` behind `STAFF_ISSUANCE_LOG_REPOSITORY`.
@@ -72,15 +76,33 @@ a Phase 2+/Phase 12 follow-up, not part of this phase's scope. The seams
 (`KobaIdRepository`, `StaffIssuanceLogRepository`) are designed so that
 swap doesn't touch `KobaidService` or its tests.
 
-## TDLS — deliberately unresolved
+## TDLS — transport security between sandboxed functions/services
 
-ROADMAP.md's open questions and the Phase 0 prototype reference "TDLS
-encryption" for the KOBAID payload at rest/in transit, but the term isn't
-defined anywhere in the repo. `kobaid.service.ts` marks the exact point
-(right before persistence) where TDLS would apply, with a `TODO(TDLS)`
-comment. KOBAIDs are stored as plain validated strings for now. No
-cryptographic scheme has been invented here — this is pending the client's
-answer.
+The client has since defined TDLS: an ephemeral-symmetric-key envelope-
+encryption scheme (AES-256-GCM) for handing data securely between two
+sandboxed functions/services. It's implemented in `common/tdls/`
+(`TdlsService`) — see `../../common/tdls/README.md` for the full
+workflow/spec.
+
+`KobaidService` wires it in at the transport boundary, additively (no
+change to `mint()`/`issueStaff()`/`activateForDevice()`):
+
+- `exportForTransport(kobaId, peerId, masterKey)` — wraps an
+  already-minted KOBAID's transmissible fields (`fullId`, `role`,
+  `mintedAt` — never the internal storage id) into a TDLS token.
+- `importFromTransport(token, masterKey)` — validates and decrypts a
+  token produced by `exportForTransport()`, returning those public
+  fields. Purely a transport operation: it does not re-mint or look
+  anything up in the repository.
+
+`masterKey` is the pre-shared trust relationship between the two peers;
+callers supply it — provisioning/distributing it is out of scope (see
+`common/tdls/README.md`).
+
+This is distinct from **at-rest (storage) encryption**, which is still an
+open concern — see `packages/database/prisma/schema.prisma`'s
+`TODO(TDLS)` note on the `KobaId` model. KOBAIDs are persisted as plain
+validated strings/structs for now; TDLS does not change that.
 
 ## Explicitly out of scope this phase (left for later phases)
 

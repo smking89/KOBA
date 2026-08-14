@@ -1,3 +1,4 @@
+import { TdlsService } from '../../common/tdls/tdls.service';
 import { InMemoryKobaIdRepository } from '../kobaid/in-memory-kobaid.repository';
 import { InMemoryStaffIssuanceLogRepository } from '../kobaid/in-memory-staff-issuance-log.repository';
 import { KobaIdNotFoundForDeviceRoleError } from '../kobaid/kobaid.errors';
@@ -14,7 +15,11 @@ describe('AccountSwitchService', () => {
 
   beforeEach(() => {
     repository = new InMemoryKobaIdRepository();
-    kobaidService = new KobaidService(repository, new InMemoryStaffIssuanceLogRepository());
+    kobaidService = new KobaidService(
+      repository,
+      new InMemoryStaffIssuanceLogRepository(),
+      new TdlsService(),
+    );
     service = new AccountSwitchService(kobaidService, new CapabilityService());
   });
 

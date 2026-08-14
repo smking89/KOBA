@@ -1,5 +1,7 @@
 import { randomUUID } from 'crypto';
 import { Inject, Injectable } from '@nestjs/common';
+import { TdlsService } from '../../common/tdls/tdls.service';
+import { TdlsToken } from '../../common/tdls/tdls.types';
 import { buildFullId, generateCode } from './kobaid-format';
 import {
   CommunityRoleCannotBeStaffIssuedError,
@@ -27,12 +29,24 @@ import { StaffIssuanceLogEntry } from './staff-issuance-log.types';
 /** Bounded retry budget for CODE collisions before giving up loudly. */
 const MAX_CODE_GENERATION_ATTEMPTS = 8;
 
+/**
+ * The subset of a KobaId that's ever transmitted between sandboxed
+ * functions/services via TDLS — public/transmissible fields only, never
+ * the internal storage id.
+ */
+export interface KobaIdTransportPayload {
+  fullId: string;
+  role: KobaIdRole;
+  mintedAt: string;
+}
+
 @Injectable()
 export class KobaidService {
   constructor(
     @Inject(KOBAID_REPOSITORY) private readonly repository: KobaIdRepository,
     @Inject(STAFF_ISSUANCE_LOG_REPOSITORY)
     private readonly staffIssuanceLogRepository: StaffIssuanceLogRepository,
+    private readonly tdlsService: TdlsService,
   ) {}
 
   /**
@@ -137,6 +151,33 @@ export class KobaidService {
     return this.repository.save({ ...target, active: true });
   }
 
+  /**
+   * Wraps an already-minted KOBAID's transmissible fields (fullId, role,
+   * mintedAt — never the internal storage id) into a TDLS token for
+   * sending to another sandboxed function/service over the transport
+   * boundary. See common/tdls/README.md for the underlying envelope-
+   * encryption scheme. `masterKey` is the pre-shared trust relationship
+   * with `peerId`; this method does not provision or distribute it.
+   */
+  exportForTransport(kobaId: KobaId, peerId: string, masterKey: Buffer): TdlsToken {
+    const payload: KobaIdTransportPayload = {
+      fullId: kobaId.fullId,
+      role: kobaId.role,
+      mintedAt: kobaId.mintedAt.toISOString(),
+    };
+    return this.tdlsService.issueToken(payload, peerId, masterKey);
+  }
+
+  /**
+   * Validates and decrypts a TDLS token produced by exportForTransport(),
+   * returning the KOBAID's public fields. Purely a transport operation —
+   * it does not re-mint or look up anything in the repository, and is
+   * distinct from mint()/issueStaff()/activateForDevice().
+   */
+  importFromTransport(token: TdlsToken, masterKey: Buffer): KobaIdTransportPayload {
+    return this.tdlsService.validateAndExtract<KobaIdTransportPayload>(token, masterKey);
+  }
+
   private async createKobaId(input: {
     role: KobaId['role'];
     deviceId: string;
@@ -169,13 +210,12 @@ export class KobaidService {
       active: false,
     };
 
-    // TODO(TDLS): the client's Phase 0 prototype and ROADMAP.md's open
-    // questions reference "TDLS encryption" for the KOBAID payload at rest
-    // and in transit, but no algorithm/spec is defined anywhere in the repo.
-    // This is the storage boundary where TDLS would be applied once it's
-    // specified — for now the KOBAID is persisted as a plain validated
-    // string/struct. Do not invent a scheme here; wire it up once the
-    // client answers what TDLS means.
+    // TDLS (see common/tdls/) covers the transport/transmission boundary
+    // between sandboxed functions/services — exportForTransport()/
+    // importFromTransport() below wrap an already-minted KOBAID's public
+    // fields for that. This save() is the storage boundary, which is a
+    // separate, still-open concern (at-rest encryption) — the KOBAID is
+    // persisted as a plain validated string/struct here.
     return this.repository.save(kobaId);
   }
 
