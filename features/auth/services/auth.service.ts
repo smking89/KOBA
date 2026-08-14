@@ -6,6 +6,7 @@ import { sendVerificationEmail } from "@/lib/email/dev-mailer";
 import type { RegisterInput } from "@/features/auth/schemas/auth.schemas";
 import { writeAuditLog } from "@/features/auth/services/audit-log.service";
 import { mintPublicKobaId } from "@/features/koba-id/services/mint.service";
+import { allocateHandleCandidate, slugifyHandle } from "@/features/accounts/lib/handle";
 
 export class AuthServiceError extends Error {
   constructor(
@@ -30,8 +31,17 @@ export async function registerUser(input: RegisterInput, ipAddress?: string | nu
   const passwordHash = await bcrypt.hash(input.password, 12);
   const token = randomBytes(32).toString("hex");
   const expires = new Date(Date.now() + VERIFICATION_TTL_MS);
+  let handle = slugifyHandle(input.name);
 
   const user = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    for (let attempt = 0; attempt < 16; attempt += 1) {
+      const clash = await tx.accountProfile.findUnique({ where: { handle } });
+      if (!clash) {
+        break;
+      }
+      handle = allocateHandleCandidate(input.name);
+    }
+
     const created = await tx.user.create({
       data: {
         email,
@@ -39,6 +49,7 @@ export async function registerUser(input: RegisterInput, ipAddress?: string | nu
         passwordHash,
         profile: {
           create: {
+            handle,
             displayName: input.name,
             activeAccountType: input.accountType,
           },

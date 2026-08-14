@@ -58,6 +58,7 @@ async function main() {
       passwordHash,
       profile: {
         create: {
+          handle: "ironwright",
           displayName: "Ironwright Trading Co.",
           activeAccountType: "BUSINESS",
           kobaIdRevealedAt: new Date(),
@@ -283,7 +284,9 @@ async function main() {
       passwordHash,
       profile: {
         create: {
+          handle: "maxbuilds",
           displayName: "maxbuilds",
+          bio: "Wipe-night builder. Tagging: followers only.",
           activeAccountType: "PLAYER",
           kobaIdRevealedAt: new Date(),
         },
@@ -361,7 +364,70 @@ async function main() {
     },
   });
 
-  console.info("KOBA shops, catalog, auctions, groups, and LFG seeded.");
+  await prisma.accountProfile.update({
+    where: { userId: seller.id },
+    data: { handle: "ironwright", displayName: "Ironwright Trading Co." },
+  });
+  await prisma.accountProfile.update({
+    where: { userId: player.id },
+    data: {
+      handle: "maxbuilds",
+      displayName: "maxbuilds",
+      bio: "Wipe-night builder. Tagging: followers only.",
+    },
+  });
+
+  await prisma.userFollow.upsert({
+    where: {
+      followerUserId_followingUserId: {
+        followerUserId: player.id,
+        followingUserId: seller.id,
+      },
+    },
+    update: {},
+    create: { followerUserId: player.id, followingUserId: seller.id },
+  });
+
+  await prisma.post.upsert({
+    where: { publicRef: "KOBA-PST-FEED0001" },
+    update: {
+      body: "Wipe-ready kits from @ironwright — tagging the shop and group. Not a sponsored post.",
+      visibility: "PUBLIC",
+      sponsored: false,
+      groupId: group.id,
+    },
+    create: {
+      publicRef: "KOBA-PST-FEED0001",
+      authorUserId: player.id,
+      groupId: group.id,
+      body: "Wipe-ready kits from @ironwright — tagging the shop and group. Not a sponsored post.",
+      visibility: "PUBLIC",
+      sponsored: false,
+      tags: {
+        create: [
+          { targetType: "USER", targetSlug: "ironwright" },
+          { targetType: "SHOP", targetSlug: "ironwright-trading-co" },
+          { targetType: "GROUP", targetSlug: "rust-legacy-raiders" },
+        ],
+      },
+    },
+  });
+
+  await prisma.story.upsert({
+    where: { publicRef: "KOBA-STY-WIPE0001" },
+    update: {
+      body: "On for wipe night. Story expires in 24h.",
+      expiresAt: new Date(Date.now() + 20 * 60 * 60 * 1000),
+    },
+    create: {
+      publicRef: "KOBA-STY-WIPE0001",
+      authorUserId: player.id,
+      body: "On for wipe night. Story expires in 24h.",
+      expiresAt: new Date(Date.now() + 20 * 60 * 60 * 1000),
+    },
+  });
+
+  console.info("KOBA shops, catalog, auctions, groups, LFG, and social seeded.");
 }
 
 main()

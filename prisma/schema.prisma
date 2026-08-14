@@ -46,6 +46,10 @@ enum AuditAction {
   LFG_CREATED
   LFG_JOIN_REQUESTED
   LFG_SETTLED
+  POST_CREATED
+  STORY_CREATED
+  CONTENT_REPORTED
+  CONTENT_HIDDEN
 }
 
 model User {
@@ -81,6 +85,17 @@ model User {
   groupBans       GroupBan[]      @relation("GroupBanTarget")
   lfgPosts        LfgPost[]
   lfgRequests     LfgRequest[]
+  posts           Post[]
+  comments        PostComment[]
+  reactions       PostReaction[]
+  savedPosts      PostSave[]
+  stories         Story[]
+  storyViews      StoryView[]
+  follows         UserFollow[]     @relation("Followers")
+  following       UserFollow[]     @relation("Following")
+  blocks          UserBlock[]      @relation("Blocker")
+  blockedBy       UserBlock[]      @relation("Blocked")
+  reports         ContentReport[]
 }
 
 model Account {
@@ -117,11 +132,20 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
+enum TagPrivacy {
+  EVERYONE
+  FOLLOWERS
+  NO_ONE
+}
+
 model AccountProfile {
   id                 String           @id @default(cuid())
   userId             String           @unique
+  handle             String           @unique
   displayName        String?
+  bio                String?
   activeAccountType  KobaAccountType  @default(PLAYER)
+  tagPrivacy         TagPrivacy       @default(FOLLOWERS)
   kobaIdRevealedAt   DateTime?
   createdAt          DateTime         @default(now())
   updatedAt          DateTime         @updatedAt
@@ -333,6 +357,7 @@ model Shop {
   stripeAccountId      String?                @unique
   chargesEnabled       Boolean                @default(false)
   payoutsEnabled       Boolean                @default(false)
+  taggingAllowed       Boolean                @default(true)
   createdAt            DateTime               @default(now())
   updatedAt            DateTime               @updatedAt
 
@@ -533,6 +558,7 @@ model Group {
   joinRequests  GroupJoinRequest[]
   invitations   GroupInvitation[]
   bans          GroupBan[]
+  posts         Post[]
 
   @@index([visibility, createdAt])
   @@index([ownerUserId])
@@ -676,4 +702,197 @@ model LfgRequest {
 
   @@unique([postId, userId])
   @@index([postId, status])
+}
+
+enum PostVisibility {
+  PUBLIC
+  FOLLOWERS
+}
+
+enum PostModeration {
+  LIVE
+  HIDDEN
+  REMOVED
+}
+
+enum PostMediaKind {
+  IMAGE
+  VIDEO
+}
+
+enum TagTargetType {
+  USER
+  SHOP
+  GROUP
+  PRODUCT
+}
+
+enum ReportTargetType {
+  POST
+  COMMENT
+  STORY
+  USER
+}
+
+enum ReportStatus {
+  OPEN
+  REVIEWED
+  DISMISSED
+}
+
+model UserFollow {
+  followerUserId  String
+  followingUserId String
+  createdAt       DateTime @default(now())
+
+  follower  User @relation("Following", fields: [followerUserId], references: [id], onDelete: Cascade)
+  following User @relation("Followers", fields: [followingUserId], references: [id], onDelete: Cascade)
+
+  @@id([followerUserId, followingUserId])
+  @@index([followingUserId])
+}
+
+model UserBlock {
+  blockerUserId String
+  blockedUserId String
+  createdAt     DateTime @default(now())
+
+  blocker User @relation("Blocker", fields: [blockerUserId], references: [id], onDelete: Cascade)
+  blocked User @relation("Blocked", fields: [blockedUserId], references: [id], onDelete: Cascade)
+
+  @@id([blockerUserId, blockedUserId])
+  @@index([blockedUserId])
+}
+
+model Post {
+  id                String          @id @default(cuid())
+  publicRef         String          @unique
+  authorUserId      String
+  groupId           String?
+  body              String          @db.Text
+  visibility        PostVisibility  @default(PUBLIC)
+  moderationStatus  PostModeration  @default(LIVE)
+  sponsored         Boolean         @default(false)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  author    User           @relation(fields: [authorUserId], references: [id], onDelete: Cascade)
+  group     Group?         @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  media     SocialMedia[]
+  comments  PostComment[]
+  reactions PostReaction[]
+  saves     PostSave[]
+  tags      PostTag[]
+
+  @@index([authorUserId, createdAt])
+  @@index([groupId, createdAt])
+  @@index([moderationStatus, createdAt])
+}
+
+model SocialMedia {
+  id        String        @id @default(cuid())
+  postId    String
+  kind      PostMediaKind @default(IMAGE)
+  url       String
+  sortOrder Int           @default(0)
+  createdAt DateTime      @default(now())
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([postId, sortOrder])
+}
+
+model PostComment {
+  id           String         @id @default(cuid())
+  publicRef    String         @unique
+  postId       String
+  authorUserId String
+  body         String
+  moderationStatus PostModeration @default(LIVE)
+  createdAt    DateTime       @default(now())
+
+  post   Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author User @relation(fields: [authorUserId], references: [id], onDelete: Cascade)
+
+  @@index([postId, createdAt])
+}
+
+model PostReaction {
+  postId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([postId, userId])
+  @@index([userId])
+}
+
+model PostSave {
+  postId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([postId, userId])
+  @@index([userId])
+}
+
+model PostTag {
+  id         String        @id @default(cuid())
+  postId     String
+  targetType TagTargetType
+  targetSlug String
+  createdAt  DateTime      @default(now())
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, targetType, targetSlug])
+  @@index([targetType, targetSlug])
+}
+
+model Story {
+  id        String   @id @default(cuid())
+  publicRef String   @unique
+  authorUserId String
+  body      String
+  mediaUrl  String?
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  author User        @relation(fields: [authorUserId], references: [id], onDelete: Cascade)
+  views  StoryView[]
+
+  @@index([authorUserId, expiresAt])
+  @@index([expiresAt])
+}
+
+model StoryView {
+  storyId   String
+  userId    String
+  createdAt DateTime @default(now())
+
+  story Story @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([storyId, userId])
+}
+
+model ContentReport {
+  id             String           @id @default(cuid())
+  publicRef      String           @unique
+  reporterUserId String
+  targetType     ReportTargetType
+  targetRef      String
+  reason         String
+  status         ReportStatus     @default(OPEN)
+  createdAt      DateTime         @default(now())
+
+  reporter User @relation(fields: [reporterUserId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([targetType, targetRef])
 }

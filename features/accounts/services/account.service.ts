@@ -1,4 +1,5 @@
 import type { KobaAccountType } from "@/features/koba-id/lib/format";
+import type { TagPrivacy } from "@/features/social/lib/rules";
 import { AuditAction } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/db";
 import { writeAuditLog } from "@/features/auth/services/audit-log.service";
@@ -7,7 +8,10 @@ import { isPublicAccountType } from "@/features/koba-id/lib/format";
 
 export type AccountSnapshot = {
   userId: string;
+  handle: string;
   displayName: string | null;
+  bio: string | null;
+  tagPrivacy: TagPrivacy;
   activeAccountType: KobaAccountType;
   kobaId: string | null;
   kobaIdRevealed: boolean;
@@ -38,7 +42,10 @@ export async function getAccountSnapshot(userId: string): Promise<AccountSnapsho
 
   return {
     userId: user.id,
+    handle: user.profile?.handle ?? "player",
     displayName: user.profile?.displayName ?? user.name,
+    bio: user.profile?.bio ?? null,
+    tagPrivacy: user.profile?.tagPrivacy ?? "FOLLOWERS",
     activeAccountType,
     kobaId: activeIdentity?.code ?? null,
     kobaIdRevealed: Boolean(user.profile?.kobaIdRevealedAt),
