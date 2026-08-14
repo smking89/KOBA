@@ -1,19 +1,33 @@
+import { redirect } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
+import { auth } from "@/lib/auth";
 
 export const metadata = { title: "Settings" };
 
-export default function SettingsPage() {
+export default async function SettingsPage() {
+  const session = await auth();
+
+  if (!session?.user) {
+    redirect("/login?callbackUrl=/settings");
+  }
+
   return (
     <div className="space-y-6">
       <div>
-        <Badge>Preview</Badge>
+        <Badge>Signed in</Badge>
         <h1 className="mt-3 text-3xl font-semibold tracking-tight">Settings</h1>
         <p className="mt-2 max-w-2xl text-muted">
-          Account mode switching (Player / Business / Influencer) and KOBAID management arrive in
-          Phases 3–4. Dark neon is the product default.
+          Signed in as {session.user.email ?? session.user.name}. KOBAID minting and account mode
+          switching arrive in Phase 4.
         </p>
       </div>
+      <Card>
+        <CardTitle>Account</CardTitle>
+        <CardDescription>
+          User ID: <span className="font-mono text-xs">{session.user.id}</span>
+        </CardDescription>
+      </Card>
       <Card>
         <CardTitle>Appearance</CardTitle>
         <CardDescription>

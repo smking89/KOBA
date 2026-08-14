@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { signOut, useSession } from "next-auth/react";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { BrandMark } from "@/components/koba/brand-mark";
+import { Button } from "@/components/ui/button";
 
 const links = [
   { href: "/", label: "Home" },
@@ -15,6 +17,8 @@ const links = [
 
 export function AppHeader() {
   const pathname = usePathname();
+  const { status } = useSession();
+  const isLoggedIn = status === "authenticated";
 
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-background/90 backdrop-blur">
@@ -41,7 +45,36 @@ export function AppHeader() {
             );
           })}
         </nav>
-        <div className="hidden text-xs text-muted md:block">Phase 1 · Foundation</div>
+        <div className="hidden items-center gap-3 md:flex">
+          {isLoggedIn ? (
+            <>
+              <Link
+                href="/settings"
+                className="text-sm font-medium text-muted transition-colors hover:text-foreground"
+              >
+                Settings
+              </Link>
+              <Button variant="ghost" size="sm" onClick={() => void signOut({ callbackUrl: "/" })}>
+                Sign out
+              </Button>
+            </>
+          ) : (
+            <>
+              <Link
+                href="/login"
+                className="text-sm font-medium text-muted transition-colors hover:text-foreground"
+              >
+                Sign in
+              </Link>
+              <Link
+                href="/register"
+                className="inline-flex h-8 items-center justify-center rounded-md border border-border bg-surface px-3 text-xs font-semibold text-foreground transition-colors hover:bg-surface-2"
+              >
+                Register
+              </Link>
+            </>
+          )}
+        </div>
       </div>
     </header>
   );

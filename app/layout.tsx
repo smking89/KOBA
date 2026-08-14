@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Sora, IBM_Plex_Mono } from "next/font/google";
-import { AppShell } from "@/components/koba/app-shell";
 import { PwaClientLayer } from "@/components/koba/pwa-client-layer";
+import { AuthSessionProvider } from "@/components/koba/session-provider";
 import { getPublicEnv } from "@/lib/env";
 import { kobaTokens } from "@/lib/design-tokens";
 import "./globals.css";
@@ -60,9 +60,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       suppressHydrationWarning
     >
       <body className="font-sans">
-        <PwaClientLayer>
-          <AppShell>{children}</AppShell>
-        </PwaClientLayer>
+        <AuthSessionProvider>
+          <PwaClientLayer>{children}</PwaClientLayer>
+        </AuthSessionProvider>
       </body>
     </html>
   );
