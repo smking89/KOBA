@@ -658,6 +658,21 @@ async function main() {
     "KOBA shops, catalog, auctions, groups, LFG, social, messages, and staff queues seeded.",
   );
   console.info("Local staff login: staff@koba.local / KobaStaff1!");
+
+  // Development-only Coin wallets (ledger-compatible, idempotent)
+  if (process.env.NODE_ENV !== "production") {
+    const { grantPromotionalCoins } = await import("../features/wallet/services/ledger.service");
+    const seededUser = await prisma.user.findUnique({ where: { email: "catalog@koba.local" } });
+    if (seededUser) {
+      await grantPromotionalCoins({
+        userId: seededUser.id,
+        amount: 250,
+        memo: "Development promotional KOBA Coins (seed)",
+        idempotencyKey: `seed:promo:${seededUser.id}:v1`,
+      });
+      console.info("Seeded development promotional Coins for catalog@koba.local");
+    }
+  }
 }
 
 main()
