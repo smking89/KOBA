@@ -140,7 +140,24 @@ Public catalog at `/market` and `/market/[slug]`. Listings are visible only when
 Filters: `q`, `game`, `category`, `rarity`, `platform`, `sort`, `page`.
 Signed-in users can save listings (`POST /api/market/favorites`). Buy/Bid
 actions are placeholders until auctions (Phase 7) and payments (Phase 8). Seller
-shop tools are Phase 6.
+shop tools live at `/business`.
+
+### Shops (Phase 6)
+
+Public shop profiles at `/shops/[slug]`. A Business KOBAID may own one shop.
+Shop Owner and Shop Moderator are community roles on the shop, not KOBA staff
+(SA/AD/MD).
+
+Listings start as `DRAFT`. Sellers submit to `PENDING`. Only KOBA staff can
+approve (`POST /api/admin/products/[slug]/approve`) and set `publishedAt`.
+Sellers cannot self-approve. Editing a live listing returns it to pending.
+
+Staff (SA/AD) verify shops at `POST /api/admin/shops/[slug]/verify`. Follows and
+reviews require a signed-in user who is not the shop owner.
+
+Business dashboard analytics count live listings, drafts, followers, reviews,
+and inventory. Order inbox is empty until checkout (Phase 8) — no estimated
+revenue.
 
 ## Visual identity
 
