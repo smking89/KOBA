@@ -85,16 +85,32 @@ math — no real Stripe API calls).
   - `assertSellerCanReceivePayouts()` — throws
     `StripeAccountNotActiveError` unless `active`; called by both
     `OrderService` paths above.
-  - `calculateFee(amountCents)` — pure platform-fee math, returns
-    `{ platformFeeCents, sellerPayoutCents }`. The fee rate is injected
-    via the `PLATFORM_FEE_RATE` DI token (see "TODO: platform fee rate"
-    below) — never a hardcoded magic constant inside the calculation
-    itself.
+  - `calculateFee(amountCents, isVerifiedSeller)` — pure platform-fee
+    math, returns `{ platformFeeCents, sellerPayoutCents }`. Two-tier
+    rate schedule (**8% standard, 4% for Blue-Badge-verified shops**,
+    per `roadmap/platform-fee-research.md` §2) injected via the
+    `PLATFORM_FEE_RATE_SCHEDULE` DI token — never a hardcoded magic
+    constant inside the calculation itself.
+  - `calculateFeeForSeller(sellerKobaId, amountCents)` — same math, but
+    resolves the seller's verification status via
+    `SELLER_VERIFICATION_REPOSITORY` at call time, so settlement code
+    always reads the seller's Blue Badge status *as of settlement time*,
+    never a value cached from an earlier checkout step (Blue Badge can be
+    revoked mid-cycle).
+- `seller-verification.repository.ts` /
+  `in-memory-seller-verification.repository.ts` — `SellerVerificationRepository`:
+  the minimum seam `StripeConnectService` needs to ask "is this seller
+  currently Blue-Badge-verified?" without depending on Phase 9's
+  (Developer Portal) real `BlueBadgeGrant` model, which doesn't exist as a
+  module yet. Same interface-behind-in-memory-implementation pattern as
+  every other repository here; Phase 9 can later add a real
+  implementation with no change to this module's shape.
 - `marketplace.module.ts` — Nest module wiring `ProductService` /
   `AuctionService` / `OrderService` / `StripeConnectService` behind their
-  repository DI tokens, plus `PLATFORM_FEE_RATE`. **Not yet imported by
-  `AppModule`** — wiring it in is a follow-up task, out of this task's
-  scope (only `apps/api/src/modules/marketplace/` and
+  repository DI tokens, plus `PLATFORM_FEE_RATE_SCHEDULE` and
+  `SELLER_VERIFICATION_REPOSITORY`. **Not yet imported by `AppModule`** —
+  wiring it in is a follow-up task, out of this task's scope (only
+  `apps/api/src/modules/marketplace/` and
   `packages/database/prisma/schema.prisma` were touched).
 
 ## Storage decision: in-memory repositories, not Prisma, this phase
@@ -121,15 +137,24 @@ wiring Prisma-backed repositories is a later-phase follow-up.
   stored" constraint) is a real Stripe integration task for later —
   same spirit as how the kobaid module left TDLS as a TODO until the
   client defined it.
-- **Platform fee rate decision** — ROADMAP.md's "Open questions for the
-  client" #8: the client hasn't confirmed the fee %, whether it's flat
-  or tiered, or whether it varies by product type/rarity.
-  `marketplace.module.ts`'s `PLACEHOLDER_PLATFORM_FEE_RATE` (0.1) is a
-  wiring placeholder only, clearly marked as such — it is not a product
-  decision and should be replaced by real configuration once the client
-  answers. The rate is threaded through as a DI parameter
-  (`PLATFORM_FEE_RATE`) specifically so that swap doesn't touch
-  `StripeConnectService`'s logic.
+- **Platform fee rate** — resolved. Per
+  `roadmap/platform-fee-research.md` §2, the rate is a real, decided
+  two-tier percentage: **8% for unverified/regular shops, 4% for
+  Blue-Badge-verified shops**, wired in `marketplace.module.ts` via the
+  `PLATFORM_FEE_RATE_SCHEDULE` DI token
+  (`{ standardRate: 0.08, verifiedRate: 0.04 }`). Still threaded through
+  as DI configuration (never a hardcoded magic constant inside
+  `StripeConnectService`'s logic), so a future pricing review only
+  touches module wiring. Two related ideas from the same research doc
+  are explicitly **still open, not implemented here**:
+  - **Fee cap for high-value auctions** (research doc §3) — an
+    unresolved judgment call (illustrative $75/$40 ceiling figures, no
+    hard precedent found), flagged as a "build the config field, decide
+    the exact ceiling with real sales data" follow-up.
+  - **Minimum listing price for cheap cosmetics** (research doc §4) — a
+    catalog-policy question about Stripe's $0.30 fixed fee dominating a
+    $2.50 item, not something this module's fee math should try to
+    solve.
 - **Auction auto-close scheduler** — ROADMAP.md recommends an
   auto-extend-on-last-second-bid rule and flags auction end-time as
   something a background sweep (BullMQ, per the tech stack) should

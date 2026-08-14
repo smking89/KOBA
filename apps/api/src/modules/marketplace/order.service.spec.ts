@@ -1,6 +1,7 @@
 import { InMemoryAuctionRepository } from './in-memory-auction.repository';
 import { InMemoryOrderRepository } from './in-memory-order.repository';
 import { InMemoryProductRepository } from './in-memory-product.repository';
+import { InMemorySellerVerificationRepository } from './in-memory-seller-verification.repository';
 import { InMemoryStripeAccountRepository } from './in-memory-stripe-account.repository';
 import {
   AuctionNotEndedError,
@@ -22,6 +23,7 @@ describe('OrderService', () => {
   let auctionRepository: InMemoryAuctionRepository;
   let orderRepository: InMemoryOrderRepository;
   let stripeAccountRepository: InMemoryStripeAccountRepository;
+  let sellerVerificationRepository: InMemorySellerVerificationRepository;
   let productService: ProductService;
   let auctionService: AuctionService;
   let stripeConnectService: StripeConnectService;
@@ -36,10 +38,15 @@ describe('OrderService', () => {
     auctionRepository = new InMemoryAuctionRepository();
     orderRepository = new InMemoryOrderRepository();
     stripeAccountRepository = new InMemoryStripeAccountRepository();
+    sellerVerificationRepository = new InMemorySellerVerificationRepository();
 
     productService = new ProductService(productRepository);
     auctionService = new AuctionService(auctionRepository, productService);
-    stripeConnectService = new StripeConnectService(stripeAccountRepository, 0.1);
+    stripeConnectService = new StripeConnectService(
+      stripeAccountRepository,
+      { standardRate: 0.08, verifiedRate: 0.04 },
+      sellerVerificationRepository,
+    );
     service = new OrderService(
       orderRepository,
       auctionRepository,

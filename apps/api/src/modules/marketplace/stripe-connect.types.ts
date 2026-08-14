@@ -16,9 +16,16 @@ export interface PlatformFeeBreakdown {
 }
 
 /**
- * DI token for the configurable platform fee rate (0..1). ROADMAP.md
- * flags the actual rate as an open client question (see "Open questions
- * for the client" #8) — nothing in this module hardcodes a specific rate
- * as a magic constant; callers/module wiring supply it.
+ * Two-tier platform fee rate schedule (each rate is 0..1), per
+ * `roadmap/platform-fee-research.md` §2's revised recommendation:
+ * 8% standard, 4% for Blue-Badge-verified shops. Still injected as DI
+ * configuration rather than hardcoded inside `calculateFee()` itself, so
+ * a future pricing review only touches module wiring.
  */
-export const PLATFORM_FEE_RATE = Symbol('PLATFORM_FEE_RATE');
+export interface PlatformFeeRateSchedule {
+  readonly standardRate: number;
+  readonly verifiedRate: number;
+}
+
+/** DI token for the injected {@link PlatformFeeRateSchedule}. */
+export const PLATFORM_FEE_RATE_SCHEDULE = Symbol('PLATFORM_FEE_RATE_SCHEDULE');
