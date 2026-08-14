@@ -6,7 +6,7 @@ squads; all on one KOBAID.
 
 ## Status
 
-**Phase 12 — Staff admin** is in progress on `feat/staff-admin`.
+**Phase 13 — Production readiness** is in progress on `feat/prod-readiness`.
 
 The HTML prototype remains the information-architecture reference:
 
@@ -316,6 +316,24 @@ hide posts), issue staff KOBAIDs, and refund orders by public ref (SA/AD).
 Local seed staff: `staff@koba.local` / `KobaStaff1!` (SUPERADMIN). Queues include
 `pending-oil-rig-kit`, shop `raid-ready-maps`, and report `KOBA-RPT-STAFF001`.
 
+### Production readiness (Phase 13)
+
+Ops hardening for a community launch (not ads / influencer / developer portal).
+
+| Area        | Behavior                                                                                                                  |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Email       | Resend when `RESEND_API_KEY` + `EMAIL_FROM` are set; otherwise terminal links in non-prod; **fails closed in production** |
+| Rate limits | In-memory by default; Upstash Redis REST when `UPSTASH_REDIS_REST_*` is set                                               |
+| Health      | `GET /api/health` (add `?deep=1` for a DB ping)                                                                           |
+| Media       | `POST /api/media/presign` for S3/R2/MinIO; optional `MEDIA_ALLOWED_HOSTS` / `S3_PUBLIC_BASE_URL` allowlist                |
+| Stripe      | Test mode only — `sk_live_` stays blocked; readiness notes via health checks                                              |
+
+```bash
+# Example health
+curl -s http://localhost:3000/api/health
+curl -s "http://localhost:3000/api/health?deep=1"
+```
+
 ## Visual identity
 
 | Token          | Value                                  |
@@ -362,8 +380,9 @@ self-registered. Group Admin/Moderator badges are community roles, not staff.
 10. **Groups / LFG** ✅
 11. **Social** ✅
 12. **Direct messaging** ✅
-13. **Staff admin** ← current
-14. Influencer / ads → developer portal → production readiness
+13. **Staff admin** ✅
+14. **Production readiness** ← current
+15. Influencer / ads → developer portal (deferred until GMV)
 
 ## License
 

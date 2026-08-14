@@ -13,7 +13,7 @@ export async function POST(request: Request) {
   }
 
   const ip = clientIp(request) ?? "unknown";
-  const limited = rateLimit(`account-switch:${session.user.id}`, 20, 15 * 60 * 1000);
+  const limited = await rateLimit(`account-switch:${session.user.id}`, 20, 15 * 60 * 1000);
   if (!limited.success) {
     return NextResponse.json({ error: "Too many switch attempts." }, { status: 429 });
   }

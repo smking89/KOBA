@@ -11,7 +11,7 @@ export async function POST(request: Request, context: { params: Promise<{ slug: 
     return NextResponse.json({ error: "Sign in to review a shop." }, { status: 401 });
   }
 
-  const limited = rateLimit(`shop-review:${session.user.id}`, 10, 15 * 60 * 1000);
+  const limited = await rateLimit(`shop-review:${session.user.id}`, 10, 15 * 60 * 1000);
   if (!limited.success) {
     return NextResponse.json({ error: "Too many review attempts." }, { status: 429 });
   }

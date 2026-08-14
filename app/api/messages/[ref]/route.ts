@@ -24,7 +24,7 @@ export async function POST(request: Request, context: { params: Promise<{ ref: s
   if (!session?.user.id) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
-  const limited = rateLimit(`dm:${session.user.id}`, 60, 15 * 60 * 1000);
+  const limited = await rateLimit(`dm:${session.user.id}`, 60, 15 * 60 * 1000);
   if (!limited.success) {
     return NextResponse.json({ error: "Too many messages." }, { status: 429 });
   }

@@ -11,7 +11,7 @@ export async function POST(request: Request) {
   if (!session?.user.id) {
     return NextResponse.json({ error: "Sign in to post LFG." }, { status: 401 });
   }
-  const limited = rateLimit(`lfg-create:${session.user.id}`, 10, 15 * 60 * 1000);
+  const limited = await rateLimit(`lfg-create:${session.user.id}`, 10, 15 * 60 * 1000);
   if (!limited.success) {
     return NextResponse.json({ error: "Too many LFG posts." }, { status: 429 });
   }

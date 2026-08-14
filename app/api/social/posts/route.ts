@@ -11,7 +11,7 @@ export async function POST(request: Request) {
   if (!session?.user.id) {
     return NextResponse.json({ error: "Sign in to post." }, { status: 401 });
   }
-  const limited = rateLimit(`post:${session.user.id}`, 20, 15 * 60 * 1000);
+  const limited = await rateLimit(`post:${session.user.id}`, 20, 15 * 60 * 1000);
   if (!limited.success) {
     return NextResponse.json({ error: "Too many posts." }, { status: 429 });
   }

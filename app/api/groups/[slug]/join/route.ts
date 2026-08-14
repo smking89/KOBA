@@ -10,7 +10,7 @@ export async function POST(request: Request, context: { params: Promise<{ slug: 
   if (!session?.user.id) {
     return NextResponse.json({ error: "Sign in to join a group." }, { status: 401 });
   }
-  const limited = rateLimit(`group-join:${session.user.id}`, 20, 15 * 60 * 1000);
+  const limited = await rateLimit(`group-join:${session.user.id}`, 20, 15 * 60 * 1000);
   if (!limited.success) {
     return NextResponse.json({ error: "Too many join attempts." }, { status: 429 });
   }

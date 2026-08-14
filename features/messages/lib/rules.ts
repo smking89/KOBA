@@ -21,13 +21,10 @@ export function canMessageUser(input: {
   return input.actorUserId !== input.targetUserId && !input.blocked;
 }
 
+import { isAllowedMediaUrl } from "@/features/media/lib/storage";
+
 export function isHttpsMediaUrl(value: string): boolean {
-  try {
-    const url = new URL(value);
-    return url.protocol === "https:";
-  } catch {
-    return false;
-  }
+  return isAllowedMediaUrl(value);
 }
 
 export function shouldPersistVanish(vanishMode: boolean, explicitVanish?: boolean): boolean {

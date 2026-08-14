@@ -12,7 +12,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Sign in to create a group." }, { status: 401 });
   }
   const ip = clientIp(request) ?? "unknown";
-  const limited = rateLimit(`group-create:${session.user.id}`, 8, 15 * 60 * 1000);
+  const limited = await rateLimit(`group-create:${session.user.id}`, 8, 15 * 60 * 1000);
   if (!limited.success) {
     return NextResponse.json({ error: "Too many group create attempts." }, { status: 429 });
   }

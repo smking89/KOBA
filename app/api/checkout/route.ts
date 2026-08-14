@@ -13,7 +13,7 @@ export async function POST(request: Request) {
   }
 
   const ip = clientIp(request) ?? "unknown";
-  const limited = rateLimit(`checkout:${session.user.id}`, 10, 15 * 60 * 1000);
+  const limited = await rateLimit(`checkout:${session.user.id}`, 10, 15 * 60 * 1000);
   if (!limited.success) {
     return NextResponse.json({ error: "Too many checkout attempts." }, { status: 429 });
   }

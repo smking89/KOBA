@@ -31,7 +31,7 @@ export async function POST() {
   if (!session?.user.id) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
-  const limited = rateLimit(`connect:${session.user.id}`, 8, 15 * 60 * 1000);
+  const limited = await rateLimit(`connect:${session.user.id}`, 8, 15 * 60 * 1000);
   if (!limited.success) {
     return NextResponse.json({ error: "Too many onboarding attempts." }, { status: 429 });
   }

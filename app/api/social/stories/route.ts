@@ -10,7 +10,7 @@ export async function POST(request: Request) {
   if (!session?.user.id) {
     return NextResponse.json({ error: "Sign in to post a story." }, { status: 401 });
   }
-  const limited = rateLimit(`story:${session.user.id}`, 12, 15 * 60 * 1000);
+  const limited = await rateLimit(`story:${session.user.id}`, 12, 15 * 60 * 1000);
   if (!limited.success) {
     return NextResponse.json({ error: "Too many stories." }, { status: 429 });
   }

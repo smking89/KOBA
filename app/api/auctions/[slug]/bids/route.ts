@@ -30,7 +30,7 @@ export async function POST(request: Request, context: { params: Promise<{ slug: 
   }
 
   const ip = clientIp(request) ?? "unknown";
-  const limited = rateLimit(`bid:${session.user.id}`, 30, 15 * 60 * 1000);
+  const limited = await rateLimit(`bid:${session.user.id}`, 30, 15 * 60 * 1000);
   if (!limited.success) {
     return NextResponse.json({ error: "Too many bids. Try again shortly." }, { status: 429 });
   }

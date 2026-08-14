@@ -13,7 +13,7 @@ export async function POST(request: Request, context: { params: Promise<{ ref: s
   }
 
   const ip = clientIp(request) ?? "unknown";
-  const limited = rateLimit(`admin-report-resolve:${session.user.id}`, 60, 15 * 60 * 1000);
+  const limited = await rateLimit(`admin-report-resolve:${session.user.id}`, 60, 15 * 60 * 1000);
   if (!limited.success) {
     return NextResponse.json({ error: "Too many report actions." }, { status: 429 });
   }

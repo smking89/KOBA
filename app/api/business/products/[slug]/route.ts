@@ -11,7 +11,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ slug:
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
-  const limited = rateLimit(`seller-product-update:${session.user.id}`, 30, 15 * 60 * 1000);
+  const limited = await rateLimit(`seller-product-update:${session.user.id}`, 30, 15 * 60 * 1000);
   if (!limited.success) {
     return NextResponse.json({ error: "Too many listing updates." }, { status: 429 });
   }

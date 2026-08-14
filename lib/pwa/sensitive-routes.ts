@@ -19,6 +19,7 @@ export const NEVER_CACHE_PATH_PREFIXES = [
   "/api/groups",
   "/api/lfg",
   "/api/social",
+  "/api/media",
 ] as const;
 
 export function isSensitivePath(pathname: string): boolean {

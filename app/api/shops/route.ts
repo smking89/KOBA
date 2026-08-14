@@ -13,7 +13,7 @@ export async function POST(request: Request) {
   }
 
   const ip = clientIp(request) ?? "unknown";
-  const limited = rateLimit(`shop-create:${session.user.id}`, 5, 15 * 60 * 1000);
+  const limited = await rateLimit(`shop-create:${session.user.id}`, 5, 15 * 60 * 1000);
   if (!limited.success) {
     return NextResponse.json({ error: "Too many shop create attempts." }, { status: 429 });
   }

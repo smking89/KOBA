@@ -12,7 +12,7 @@ export async function POST(request: Request, context: { params: Promise<{ slug: 
   }
 
   const ip = clientIp(request) ?? "unknown";
-  const limited = rateLimit(`admin-product-approve:${session.user.id}`, 40, 15 * 60 * 1000);
+  const limited = await rateLimit(`admin-product-approve:${session.user.id}`, 40, 15 * 60 * 1000);
   if (!limited.success) {
     return NextResponse.json({ error: "Too many approval attempts." }, { status: 429 });
   }

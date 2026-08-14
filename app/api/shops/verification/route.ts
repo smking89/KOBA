@@ -12,7 +12,7 @@ export async function POST(request: Request) {
   }
 
   const ip = clientIp(request) ?? "unknown";
-  const limited = rateLimit(`shop-verify-request:${session.user.id}`, 5, 15 * 60 * 1000);
+  const limited = await rateLimit(`shop-verify-request:${session.user.id}`, 5, 15 * 60 * 1000);
   if (!limited.success) {
     return NextResponse.json({ error: "Too many verification requests." }, { status: 429 });
   }

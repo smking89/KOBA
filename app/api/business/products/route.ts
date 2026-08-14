@@ -11,7 +11,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
-  const limited = rateLimit(`seller-product:${session.user.id}`, 20, 15 * 60 * 1000);
+  const limited = await rateLimit(`seller-product:${session.user.id}`, 20, 15 * 60 * 1000);
   if (!limited.success) {
     return NextResponse.json({ error: "Too many listing attempts." }, { status: 429 });
   }

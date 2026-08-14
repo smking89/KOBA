@@ -10,7 +10,7 @@ export async function POST(_request: Request, context: { params: Promise<{ slug:
     return NextResponse.json({ error: "Sign in to follow a shop." }, { status: 401 });
   }
 
-  const limited = rateLimit(`shop-follow:${session.user.id}`, 40, 15 * 60 * 1000);
+  const limited = await rateLimit(`shop-follow:${session.user.id}`, 40, 15 * 60 * 1000);
   if (!limited.success) {
     return NextResponse.json({ error: "Too many follow attempts." }, { status: 429 });
   }

@@ -86,13 +86,10 @@ export function extractHandleMentions(body: string): string[] {
   return [...new Set(matches.map((token) => token.slice(1).toLowerCase()))];
 }
 
+import { isAllowedMediaUrl } from "@/features/media/lib/storage";
+
 export function isHttpsUrl(value: string): boolean {
-  try {
-    const url = new URL(value);
-    return url.protocol === "https:";
-  } catch {
-    return false;
-  }
+  return isAllowedMediaUrl(value);
 }
 
 export function canModerateSocial(accountTypes: readonly string[]): boolean {
