@@ -22,6 +22,9 @@ describe("isSensitivePath", () => {
     expect(isSensitivePath("/api/servers")).toBe(true);
     expect(isSensitivePath("/api/servers/abc/favourite")).toBe(true);
     expect(isSensitivePath("/api/account/servers")).toBe(true);
+    expect(isSensitivePath("/api/plus")).toBe(true);
+    expect(isSensitivePath("/api/plus/checkout")).toBe(true);
+    expect(isSensitivePath("/api/admin/plus")).toBe(true);
   });
 
   it("allows public routes", () => {
