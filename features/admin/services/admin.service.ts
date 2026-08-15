@@ -94,6 +94,14 @@ export async function listPendingProducts(actorUserId: string) {
   }));
 }
 
+export async function listPendingServers(actorUserId: string) {
+  await requireAnyStaff(actorUserId);
+  const { listPendingServers: list } = await import(
+    "@/features/servers/services/server.service"
+  );
+  return list(actorUserId);
+}
+
 export async function listPendingShops(actorUserId: string) {
   const types = await requireAnyStaff(actorUserId);
   if (!canStaffVerifyShop(types)) {

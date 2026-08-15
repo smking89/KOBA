@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { IssueStaffForm } from "@/features/admin/components/issue-staff-form";
 import { PendingProductsPanel } from "@/features/admin/components/pending-products-panel";
+import { PendingServersPanel } from "@/features/admin/components/pending-servers-panel";
 import { PendingShopsPanel } from "@/features/admin/components/pending-shops-panel";
 import { ReportsPanel } from "@/features/admin/components/reports-panel";
 import { StaffRefundForm } from "@/features/admin/components/staff-refund-form";
@@ -12,11 +13,13 @@ import {
   canStaffModerateContent,
   canStaffRefund,
   canStaffVerifyShop,
+  isAnyStaff,
 } from "@/features/admin/lib/access";
 import {
   getAdminOverview,
   listOpenReports,
   listPendingProducts,
+  listPendingServers,
   listPendingShops,
 } from "@/features/admin/services/admin.service";
 import { getAccountSnapshot } from "@/features/accounts/services/account.service";
@@ -47,10 +50,11 @@ export default async function AdminPage() {
   const actorTypes = snapshot.identities.map((identity) => identity.accountType);
   const overview = await getAdminOverview(session.user.id);
 
-  const [products, shops, reports] = await Promise.all([
+  const [products, shops, reports, pendingServers] = await Promise.all([
     canStaffApproveListing(actorTypes) ? listPendingProducts(session.user.id) : Promise.resolve([]),
     canStaffVerifyShop(actorTypes) ? listPendingShops(session.user.id) : Promise.resolve([]),
     canStaffModerateContent(actorTypes) ? listOpenReports(session.user.id) : Promise.resolve([]),
+    isAnyStaff(actorTypes) ? listPendingServers(session.user.id) : Promise.resolve([]),
   ]);
 
   const canIssue =
@@ -123,6 +127,20 @@ export default async function AdminPage() {
             <PendingShopsPanel shops={shops} />
           ) : (
             <p className="text-sm text-muted">Moderators cannot verify shops.</p>
+          )}
+        </div>
+      </Card>
+
+      <Card>
+        <CardTitle>Server directory queue</CardTitle>
+        <CardDescription>
+          Approve or reject Business/Influencer server submissions (staff manual review).
+        </CardDescription>
+        <div className="mt-4">
+          {isAnyStaff(actorTypes) ? (
+            <PendingServersPanel servers={pendingServers} />
+          ) : (
+            <p className="text-sm text-muted">Staff only.</p>
           )}
         </div>
       </Card>
