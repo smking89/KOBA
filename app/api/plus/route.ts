@@ -6,8 +6,8 @@ import { jsonPlusError } from "@/features/plus/lib/http";
 import { plusActionSchema } from "@/features/plus/schemas/plus.schemas";
 import {
   cancelSubscription,
+  createPlusCheckout,
   getSubscription,
-  startCheckoutHandoff,
 } from "@/features/plus/services/plus.service";
 
 export async function GET() {
@@ -43,10 +43,7 @@ export async function POST(request: Request) {
   }
   try {
     if (parsed.data.action === "checkout") {
-      const opts: { planId?: string; interval?: "MONTHLY" | "ANNUAL" } = {};
-      if (parsed.data.planId !== undefined) opts.planId = parsed.data.planId;
-      if (parsed.data.interval !== undefined) opts.interval = parsed.data.interval;
-      const result = await startCheckoutHandoff(session.user.id, opts, clientIp(request));
+      const result = await createPlusCheckout(session.user.id, parsed.data.idempotencyKey);
       return NextResponse.json(result);
     }
     const subscription = await cancelSubscription(session.user.id, clientIp(request));

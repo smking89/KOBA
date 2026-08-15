@@ -1,17 +1,13 @@
-import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
-import { buttonVariants } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
-import { StatusPill } from "@/components/koba/status-pill";
-import { cn } from "@/lib/utils";
 import {
   MOCK_PLUS_SUBSCRIPTION,
   PLUS_BENEFITS,
-  PLUS_PLANS,
-  plusStateLabel,
+  PLUS_MONTHLY_PRICE_LABEL,
   type PlusSubscriptionView,
 } from "@/features/plus/lib/types";
+import { PlusSubscriptionPanel } from "@/features/plus/components/plus-subscription-panel";
 import { getSubscription } from "@/features/plus/services/plus.service";
 
 export const metadata = { title: "KOBA Plus" };
@@ -31,32 +27,30 @@ export default async function PlusPage() {
           Upgrade when it helps you create
         </h1>
         <p className="mt-2 max-w-2xl text-sm text-muted">
-          Plus is configuration-driven. Security, moderation, and accessibility stay free for
-          everyone. Checkout is a handoff stub — no charges in this phase.
+          {PLUS_MONTHLY_PRICE_LABEL}. Security, moderation, and accessibility stay free for
+          everyone, always.
         </p>
-        <div className="mt-3">
-          <StatusPill tone="neutral">{plusStateLabel(subscription.state)}</StatusPill>
-        </div>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2">
-        {PLUS_PLANS.map((plan) => (
-          <Card key={plan.id}>
-            <CardTitle>{plan.label}</CardTitle>
-            <CardDescription>{plan.priceLabel}</CardDescription>
-            <Link
-              href={plan.checkoutHandoff}
-              className={cn(buttonVariants({ size: "sm" }), "mt-4 inline-flex")}
-            >
-              Continue to checkout
-            </Link>
-          </Card>
-        ))}
       </div>
 
       <Card>
+        <CardTitle>Your subscription</CardTitle>
+        <CardDescription>
+          {session?.user.id
+            ? "Cancel takes effect at the end of your current billing period — you keep Plus perks through what you've already paid for."
+            : "Sign in to subscribe."}
+        </CardDescription>
+        <div className="mt-4">
+          {session?.user.id ? (
+            <PlusSubscriptionPanel initial={subscription} />
+          ) : (
+            <p className="text-sm text-muted">Sign in first.</p>
+          )}
+        </div>
+      </Card>
+
+      <Card>
         <CardTitle>Free vs Plus</CardTitle>
-        <CardDescription>Benefits matrix (config-driven).</CardDescription>
+        <CardDescription>What&apos;s live today vs. coming soon.</CardDescription>
         <div className="mt-4 overflow-x-auto">
           <table className="w-full min-w-[28rem] text-left text-sm">
             <thead>
@@ -79,28 +73,6 @@ export default async function PlusPage() {
               ))}
             </tbody>
           </table>
-        </div>
-      </Card>
-
-      <Card>
-        <CardTitle>Subscription controls</CardTitle>
-        <CardDescription>
-          Plan: {subscription.planId ?? "none"}
-          {subscription.renewsAt ? ` · Renews ${subscription.renewsAt}` : ""}
-        </CardDescription>
-        <div className="mt-4 flex flex-wrap gap-2">
-          <button
-            type="button"
-            className={cn(buttonVariants({ size: "sm", variant: "secondary" }))}
-          >
-            Renew
-          </button>
-          <button type="button" className={cn(buttonVariants({ size: "sm", variant: "ghost" }))}>
-            Cancel
-          </button>
-          {subscription.badgeVisible ? (
-            <StatusPill tone="accent">Plus badge preview</StatusPill>
-          ) : null}
         </div>
       </Card>
     </div>

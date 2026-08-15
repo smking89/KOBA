@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { SocialError } from "@/features/social/lib/errors";
 import { canFollowUser } from "@/features/social/lib/rules";
 import type { TagPrivacy } from "@/features/social/lib/rules";
+import { tenureBadgeLabel, tenureBadgeTier } from "@/features/plus/lib/tenure";
 
 const userPublic = {
   id: true,
@@ -40,24 +41,34 @@ export async function getProfileByHandle(handle: string, viewerUserId?: string |
     throw new SocialError("Profile not found.", "NOT_FOUND");
   }
   const userId = profile.userId;
-  const [followers, following, posts, viewerFollows, blocked] = await Promise.all([
-    prisma.userFollow.count({ where: { followingUserId: userId } }),
-    prisma.userFollow.count({ where: { followerUserId: userId } }),
-    prisma.post.count({
-      where: { authorUserId: userId, moderationStatus: "LIVE", visibility: "PUBLIC" },
-    }),
-    viewerUserId
-      ? prisma.userFollow.findUnique({
-          where: {
-            followerUserId_followingUserId: {
-              followerUserId: viewerUserId,
-              followingUserId: userId,
+  const [followers, following, posts, viewerFollows, blocked, plusSubscription] =
+    await Promise.all([
+      prisma.userFollow.count({ where: { followingUserId: userId } }),
+      prisma.userFollow.count({ where: { followerUserId: userId } }),
+      prisma.post.count({
+        where: { authorUserId: userId, moderationStatus: "LIVE", visibility: "PUBLIC" },
+      }),
+      viewerUserId
+        ? prisma.userFollow.findUnique({
+            where: {
+              followerUserId_followingUserId: {
+                followerUserId: viewerUserId,
+                followingUserId: userId,
+              },
             },
-          },
-        })
-      : null,
-    viewerUserId ? isBlocked(viewerUserId, userId) : false,
-  ]);
+          })
+        : null,
+      viewerUserId ? isBlocked(viewerUserId, userId) : false,
+      prisma.plusSubscription.findUnique({
+        where: { userId },
+        select: { state: true, firstActivatedAt: true },
+      }),
+    ]);
+
+  const plusBadgeLabel =
+    plusSubscription?.state === "ACTIVE" && plusSubscription.firstActivatedAt
+      ? tenureBadgeLabel(tenureBadgeTier(plusSubscription.firstActivatedAt))
+      : null;
 
   return {
     handle: profile.handle,
@@ -71,6 +82,7 @@ export async function getProfileByHandle(handle: string, viewerUserId?: string |
     isSelf: viewerUserId === userId,
     followingThem: Boolean(viewerFollows),
     blocked,
+    plusBadgeLabel,
   };
 }
 

@@ -19,42 +19,49 @@ export type PlusBenefit = {
   note?: string;
 };
 
-export type PlusPlan = {
-  id: string;
-  interval: PlusPlanInterval;
-  label: string;
-  priceLabel: string;
-  checkoutHandoff: string;
-};
-
-export type PlusSubscriptionView = {
-  state: PlusSubscriptionState;
-  planId: string | null;
-  renewsAt: string | null;
-  badgeVisible: boolean;
-};
+/**
+ * Single tier, $4.99/month (client-confirmed 2026-08-15) — no multiple
+ * plans with different perk subsets. `ANNUAL` stays in
+ * PLUS_PLAN_INTERVALS/PlusPlanInterval for schema compatibility but has
+ * no offered plan below; add one later without a migration if wanted.
+ */
+export const PLUS_MONTHLY_PRICE_LABEL = "$4.99 / month";
 
 export const PLUS_BENEFITS: PlusBenefit[] = [
-  { id: "browse", label: "Browse market, feed, groups, LFG", free: true, plus: true },
-  { id: "trade", label: "Create trade offers", free: true, plus: true },
   {
-    id: "aiden-quota",
-    label: "Higher Aiden generation quota",
+    id: "tenure-badge",
+    label: "Profile badge that evolves with tenure",
     free: false,
     plus: true,
-    note: "Fair-use limits still apply.",
+    note: "Bronze → Silver → Gold → Diamond as your subscription continues.",
   },
   {
-    id: "coins-bonus",
-    label: "Periodic promotional KOBA Coins",
+    id: "server-bio",
+    label: "Per-server bio",
     free: false,
     plus: true,
+    note: "A different bio per game-server community, separate from your account bio.",
   },
   {
-    id: "badge",
-    label: "KOBA Plus badge on profile",
+    id: "animated-media",
+    label: "Animated avatar & profile banner",
     free: false,
-    plus: true,
+    plus: false,
+    note: "Coming soon — avatar/banner uploads don't exist yet for any account.",
+  },
+  {
+    id: "themes",
+    label: "Custom app themes, icons, notification sounds",
+    free: false,
+    plus: false,
+    note: "Coming soon — no theming system exists yet.",
+  },
+  {
+    id: "shop-discount",
+    label: "Member discount on KOBA Shop cosmetics",
+    free: false,
+    plus: false,
+    note: "Coming soon — blocked on the KOBA Shop itself (ROADMAP.md Phase 23).",
   },
   {
     id: "security",
@@ -65,28 +72,25 @@ export const PLUS_BENEFITS: PlusBenefit[] = [
   },
 ];
 
-export const PLUS_PLANS: PlusPlan[] = [
-  {
-    id: "plus-monthly",
-    interval: "MONTHLY",
-    label: "Monthly",
-    priceLabel: "$7.99 / month",
-    checkoutHandoff: "/plus?checkout=monthly",
-  },
-  {
-    id: "plus-annual",
-    interval: "ANNUAL",
-    label: "Annual",
-    priceLabel: "$71.88 / year",
-    checkoutHandoff: "/plus?checkout=annual",
-  },
-];
+export type PlusSubscriptionView = {
+  state: PlusSubscriptionState;
+  planId: string | null;
+  renewsAt: string | null;
+  cancelAtPeriodEnd: boolean;
+  badgeVisible: boolean;
+  /** Null unless state is (or has ever been) ACTIVE. */
+  tenureBadgeTier: string | null;
+  tenureBadgeLabel: string | null;
+};
 
 export const MOCK_PLUS_SUBSCRIPTION: PlusSubscriptionView = {
   state: "NONE",
   planId: null,
   renewsAt: null,
+  cancelAtPeriodEnd: false,
   badgeVisible: false,
+  tenureBadgeTier: null,
+  tenureBadgeLabel: null,
 };
 
 export function plusStateLabel(state: PlusSubscriptionState): string {
