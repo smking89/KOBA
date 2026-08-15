@@ -388,13 +388,15 @@ model Shop {
   createdAt            DateTime               @default(now())
   updatedAt            DateTime               @updatedAt
 
-  owner    User         @relation("ShopOwner", fields: [ownerUserId], references: [id], onDelete: Cascade)
-  members  ShopMember[]
-  follows  ShopFollow[]
-  reviews  ShopReview[]
-  products Product[]
-  orders   Order[]
-  servers  GameServer[]
+  owner       User             @relation("ShopOwner", fields: [ownerUserId], references: [id], onDelete: Cascade)
+  members     ShopMember[]
+  follows     ShopFollow[]
+  reviews     ShopReview[]
+  products    Product[]
+  orders      Order[]
+  servers     GameServer[]
+  cosmetics   Cosmetic[]
+  promoConfig ShopPromoConfig?
 }
 
 model ShopMember {
@@ -435,6 +437,54 @@ model ShopReview {
 
   @@unique([shopId, authorUserId])
   @@index([shopId])
+}
+
+enum CosmeticSubType {
+  AVATAR_DECORATION
+  PROFILE_EFFECT
+  NAMEPLATE
+}
+
+/// Sold pre-made (Discord-Nitro-item style) — closed sub-type enum, no
+/// custom-build fields, per ROADMAP.md Phase 3's explicit non-goal.
+model Cosmetic {
+  id               String            @id @default(cuid())
+  slug             String            @unique
+  ownerShopId      String
+  subType          CosmeticSubType
+  rarity           ProductRarity
+  name             String
+  description      String            @db.Text
+  priceCents       Int
+  currency         String            @default("USD")
+  moderationStatus ModerationStatus  @default(DRAFT)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  ownerShop Shop @relation(fields: [ownerShopId], references: [id], onDelete: Cascade)
+
+  @@index([ownerShopId])
+  @@index([moderationStatus])
+  @@index([subType])
+  @@index([rarity])
+}
+
+enum PromoPayoutType {
+  PERCENT
+  FIXED
+}
+
+/// Shop-side half of influencer eligibility/payout terms (ROADMAP.md Phase
+/// 4/10). payoutValue is basis points (0-10000) for PERCENT, cents for
+/// FIXED — see isValidPromoPayoutValue in features/shops/services/promo.service.ts.
+model ShopPromoConfig {
+  shopId             String           @id
+  influencerEligible Boolean          @default(false)
+  payoutType         PromoPayoutType  @default(PERCENT)
+  payoutValue        Int              @default(0)
+  updatedAt          DateTime         @updatedAt
+
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
 }
 
 enum OrderKind {
