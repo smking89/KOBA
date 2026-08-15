@@ -37,6 +37,15 @@ export const PLATFORM_LABEL: Record<GamePlatform, string> = {
   PLAYSTATION: "PlayStation",
 };
 
+export const COSMETIC_SUB_TYPES = ["AVATAR_DECORATION", "PROFILE_EFFECT", "NAMEPLATE"] as const;
+export type CosmeticSubType = (typeof COSMETIC_SUB_TYPES)[number];
+
+export const COSMETIC_SUB_TYPE_LABEL: Record<CosmeticSubType, string> = {
+  AVATAR_DECORATION: "Avatar decoration",
+  PROFILE_EFFECT: "Profile effect",
+  NAMEPLATE: "Nameplate",
+};
+
 export const CATEGORY_KINDS = [
   "SKINS",
   "MAPS",
