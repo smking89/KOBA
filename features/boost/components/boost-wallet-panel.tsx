@@ -9,12 +9,12 @@ type BoostRow = {
   id: string;
   status: "UNUSED" | "APPLIED" | "EXPIRED";
   purchaseCoinCost: number;
-  targetType: "PRODUCT" | "SHOP" | "GROUP" | null;
+  targetType: "PRODUCT" | "SHOP" | "GROUP" | "SERVER" | "INFLUENCER" | null;
   targetId: string | null;
   expiresAt: string | null;
 };
 
-const TARGET_TYPES: BoostRow["targetType"][] = ["PRODUCT", "SHOP", "GROUP"];
+const TARGET_TYPES: BoostRow["targetType"][] = ["PRODUCT", "SHOP", "GROUP", "SERVER", "INFLUENCER"];
 
 export function BoostWalletPanel({ initialBoosts }: { initialBoosts: BoostRow[] }) {
   const [boosts, setBoosts] = useState(initialBoosts);

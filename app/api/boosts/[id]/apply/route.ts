@@ -7,7 +7,7 @@ import { jsonBoostError } from "@/features/boost/lib/http";
 import { applyBoost } from "@/features/boost/services/boost.service";
 
 const applySchema = z.object({
-  targetType: z.enum(["PRODUCT", "SHOP", "GROUP"]),
+  targetType: z.enum(["PRODUCT", "SHOP", "GROUP", "SERVER", "INFLUENCER"]),
   targetId: z.string().trim().min(1),
 });
 

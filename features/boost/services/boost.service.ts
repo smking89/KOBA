@@ -69,12 +69,40 @@ async function assertCanManageBoostTarget(
     return;
   }
 
-  // GROUP
-  const membership = await prisma.groupMember.findUnique({
-    where: { groupId_userId: { groupId: targetId, userId } },
+  if (targetType === "GROUP") {
+    const membership = await prisma.groupMember.findUnique({
+      where: { groupId_userId: { groupId: targetId, userId } },
+    });
+    if (groupRoleRank(membership?.role ?? null) < GROUP_ROLE_RANK.ADMIN) {
+      throw new BoostError("You cannot boost a group you don't administer.", "FORBIDDEN");
+    }
+    return;
+  }
+
+  if (targetType === "SERVER") {
+    const server = await prisma.gameServer.findUnique({ where: { id: targetId } });
+    if (!server) {
+      throw new BoostError("Server not found.", "NOT_FOUND");
+    }
+    if (server.ownerUserId !== userId) {
+      throw new BoostError("You cannot boost a server you don't own.", "FORBIDDEN");
+    }
+    return;
+  }
+
+  // INFLUENCER — targetId is the influencer's own userId; only that
+  // account (with an active INFLUENCER KOBAID) can apply a boost to
+  // their own influencer profile. Someone else can still buy a Boost
+  // and gift it to them (giftBoost), same as any other target kind —
+  // the recipient applies it, not the gifter.
+  const influencerIdentity = await prisma.kobaIdentity.findUnique({
+    where: { userId_accountType: { userId: targetId, accountType: "INFLUENCER" } },
   });
-  if (groupRoleRank(membership?.role ?? null) < GROUP_ROLE_RANK.ADMIN) {
-    throw new BoostError("You cannot boost a group you don't administer.", "FORBIDDEN");
+  if (!influencerIdentity) {
+    throw new BoostError("Influencer profile not found.", "NOT_FOUND");
+  }
+  if (targetId !== userId) {
+    throw new BoostError("You cannot boost an influencer profile that isn't yours.", "FORBIDDEN");
   }
 }
 
