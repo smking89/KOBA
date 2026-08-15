@@ -3,24 +3,27 @@
  * pattern as this repo's other "deferred: admin-configurable table" spots
  * (PlatformFeeSchedule seeds one default row, escrow hold days is an env
  * var). A real admin-managed pricing table is future work; for now these
- * five packages are the entire purchasable catalog.
+ * four packages are the entire purchasable catalog.
+ *
+ * Console-store-style coin packs (2026-08-15 client direction, styled
+ * after Rust's own coin-pack pricing ladder): one-time purchases, buy
+ * any time, non-refundable — not a subscription, not recurring billing.
+ * "Non-refundable" isn't just UI copy: there is no refund code path for
+ * CoinPurchase anywhere in this codebase (features/payments's
+ * refundOrder only ever operates on marketplace Order rows) — this was
+ * already true by omission, now it's a confirmed, deliberate policy, so
+ * the checkout line item and wallet UI say so explicitly rather than
+ * leaving it an accident someone could "fix" later by wiring a refund
+ * path that shouldn't exist for Coins.
  *
  * Pricing model (confirmed): 1 Coin ≈ $0.10 of real GPU/model cost KOBA
- * pays a generation vendor; KOBA sells Coins at ≈$0.13 each (a 30% margin
- * over that cost — see docs/aiden-model-costs.md for the full per-model
- * coin-cost table this feeds). The five tiers below are priced at
- * approximately that $0.13/Coin rate with minor rounding to land on clean
- * price points — NOT an escalating bonus-percent structure like this
- * catalog's previous four-tier version.
- *
- * Margin curve validated 2026-08-15 (pricing-strategy skill): every tier
- * clears the 30% floor (29.9%-33.3%) and, per standard virtual-currency
- * practice, effective $/Coin decreases as tier size increases — a bigger
- * purchase should always get a strictly better rate, rewarding volume.
- * Enterprise's coinAmount was bumped 1920 -> 1950 (same $249.99 price) to
- * fix a rounding artifact that had it priced *worse* per-Coin than Pro
- * (30.2% margin vs Pro's 29.9%) — the curve is now monotonically
- * decreasing end to end: 33.2% -> 33.3% -> 31.6% -> 29.9% -> 28.2%.
+ * pays a generation vendor — unchanged from before; a KOBA Coin's real
+ * value (1 Coin = 1 SDXL image, etc. — features/aiden/lib/model-costs.ts)
+ * is NOT being redefined here, only the package/pricing-ladder shape is.
+ * Target ~30% margin over that $0.10 cost basis, escalating (bigger pack
+ * = better rate) same as the price ladder these replace — validated via
+ * the pricing-strategy skill: margins run 34.9% -> 31.4% -> 29.8% ->
+ * 27.2%, monotonically decreasing, blended average ~30.8%.
  */
 export type CoinPackage = {
   id: string;
@@ -43,11 +46,10 @@ export const MODEL_COST_CENTS_PER_COIN = 10;
 export const SELL_RATE_CENTS_PER_COIN = 13;
 
 export const COIN_PACKAGES: readonly CoinPackage[] = [
-  { id: "starter", label: "Starter", priceCents: 999, coinAmount: 75n },
-  { id: "creator", label: "Creator", priceCents: 1999, coinAmount: 150n },
-  { id: "studio", label: "Studio", priceCents: 4999, coinAmount: 380n },
-  { id: "pro", label: "Pro", priceCents: 9999, coinAmount: 770n },
-  { id: "enterprise", label: "Enterprise", priceCents: 24999, coinAmount: 1950n },
+  { id: "small", label: "37 Coins", priceCents: 499, coinAmount: 37n },
+  { id: "medium", label: "76 Coins", priceCents: 999, coinAmount: 76n },
+  { id: "large", label: "154 Coins", priceCents: 1999, coinAmount: 154n },
+  { id: "mega", label: "275 Coins", priceCents: 3499, coinAmount: 275n },
 ] as const;
 
 export function getCoinPackage(id: string): CoinPackage | null {

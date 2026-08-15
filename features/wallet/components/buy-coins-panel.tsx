@@ -36,13 +36,13 @@ export function BuyCoinsPanel({ packages }: { packages: readonly CoinPackage[] }
   return (
     <div className="space-y-3">
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
+      <p className="text-xs text-muted">Buy any time. Non-refundable once purchased.</p>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {packages.map((pack) => (
           <div
             key={pack.id}
             className="flex flex-col gap-2 rounded-lg border border-border bg-surface-2 p-4"
           >
-            <p className="text-sm font-semibold">{pack.label}</p>
             <p className="font-mono text-lg tabular-nums">{pack.coinAmount.toString()} Coins</p>
             <Button
               size="sm"

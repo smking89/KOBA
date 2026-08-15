@@ -15,7 +15,7 @@ function bytesFromHex(hex: string): Uint8Array {
 
 describe("Coin package catalog", () => {
   it("finds a package by id and returns null for unknown ids", () => {
-    expect(getCoinPackage("starter")?.coinAmount).toBe(75n);
+    expect(getCoinPackage("small")?.coinAmount).toBe(37n);
     expect(getCoinPackage("nonexistent")).toBeNull();
   });
 
