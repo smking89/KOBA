@@ -15,7 +15,7 @@ function bytesFromHex(hex: string): Uint8Array {
 
 describe("Coin package catalog", () => {
   it("finds a package by id and returns null for unknown ids", () => {
-    expect(getCoinPackage("starter")?.coinAmount).toBe(500n);
+    expect(getCoinPackage("starter")?.coinAmount).toBe(75n);
     expect(getCoinPackage("nonexistent")).toBeNull();
   });
 
@@ -24,42 +24,29 @@ describe("Coin package catalog", () => {
     expect(listCoinPackages().length).toBeGreaterThan(0);
   });
 
-  it("every real package pays out at least its advertised bonus over the base rate", () => {
+  it("every real package prices Coins within the sane band around the confirmed ~13-cent rate", () => {
     for (const pack of COIN_PACKAGES) {
       expect(isCoinPackageConsistent(pack)).toBe(true);
     }
   });
 
-  it("rejects a package that underpays its advertised bonus", () => {
+  it("rejects a package priced at or below KOBA's own cost basis", () => {
     expect(
       isCoinPackageConsistent({
         id: "bad",
         label: "Bad",
         priceCents: 1000,
-        coinAmount: 500n, // advertises 0% bonus but pays half the base rate
-        bonusPercent: 0,
+        coinAmount: 1000n, // 1 cent/coin — below the 10-cent cost floor
       }),
     ).toBe(false);
   });
 
   it("rejects non-positive price or coin amounts", () => {
     expect(
-      isCoinPackageConsistent({
-        id: "zero",
-        label: "Zero",
-        priceCents: 0,
-        coinAmount: 100n,
-        bonusPercent: 0,
-      }),
+      isCoinPackageConsistent({ id: "zero", label: "Zero", priceCents: 0, coinAmount: 100n }),
     ).toBe(false);
     expect(
-      isCoinPackageConsistent({
-        id: "zero-coins",
-        label: "Zero Coins",
-        priceCents: 100,
-        coinAmount: 0n,
-        bonusPercent: 0,
-      }),
+      isCoinPackageConsistent({ id: "zero-coins", label: "Zero Coins", priceCents: 100, coinAmount: 0n }),
     ).toBe(false);
   });
 });

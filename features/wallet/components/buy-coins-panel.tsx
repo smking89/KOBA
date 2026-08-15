@@ -44,9 +44,6 @@ export function BuyCoinsPanel({ packages }: { packages: readonly CoinPackage[] }
           >
             <p className="text-sm font-semibold">{pack.label}</p>
             <p className="font-mono text-lg tabular-nums">{pack.coinAmount.toString()} Coins</p>
-            {pack.bonusPercent > 0 ? (
-              <p className="text-xs text-neon-lime">+{pack.bonusPercent}% bonus</p>
-            ) : null}
             <Button
               size="sm"
               className="mt-2"
