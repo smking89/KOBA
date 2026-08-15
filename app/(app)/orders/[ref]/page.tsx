@@ -7,6 +7,7 @@ import { PaymentError } from "@/features/payments/lib/errors";
 import { actorIsStaff } from "@/features/payments/lib/staff";
 import { getOrderReceipt } from "@/features/payments/services/checkout.service";
 import { PaymentConfirming } from "@/features/payments/components/payment-confirming";
+import { DisputeFlagForm } from "@/features/payments/components/dispute-flag-form";
 
 export const metadata = { title: "Receipt" };
 
@@ -71,6 +72,30 @@ export default async function OrderReceiptPage({ params }: { params: Promise<{ r
             </p>
           ) : null}
         </div>
+        {receipt.escrow?.status === "HOLDING" ? (
+          <div className="rounded-lg border border-border bg-surface p-5">
+            <p className="text-sm">
+              Funds are held until{" "}
+              <span className="font-medium">
+                {new Date(receipt.escrow.releaseAt).toLocaleString()}
+              </span>{" "}
+              — report a problem before then if something&apos;s wrong with this order.
+            </p>
+            {receipt.viewerIsBuyer ? (
+              <div className="mt-3">
+                <DisputeFlagForm publicRef={receipt.publicRef} />
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+        {receipt.escrow?.status === "DISPUTED" ? (
+          <div className="rounded-lg border border-border bg-surface p-5">
+            <Badge tone="warning">Under review</Badge>
+            <p className="mt-2 text-sm text-muted">
+              This order is under review by KOBA staff. We&apos;ll resolve it and update this page.
+            </p>
+          </div>
+        ) : null}
         <Link href="/orders" className="text-sm text-neon-lime hover:underline">
           All orders
         </Link>

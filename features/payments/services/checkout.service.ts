@@ -10,6 +10,7 @@ import {
   resolveCommissionBps,
   splitPayment,
 } from "@/features/payments/lib/money";
+import { computeEscrowReleaseAt, escrowHoldDays } from "@/features/payments/lib/escrow-rules";
 import { getStripe, isStripeConfigured } from "@/features/payments/lib/stripe";
 import type { CheckoutInput } from "@/features/payments/schemas/checkout.schemas";
 
@@ -195,9 +196,13 @@ export async function createCheckoutSession(
             },
           },
         ],
+        // No transfer_data/application_fee_amount here: the charge settles to the
+        // PLATFORM's own Stripe balance, not a destination charge to the seller's
+        // Connect account. This is the escrow hold — the seller's payout
+        // (order.sellerPayoutCents) is transferred out separately, later, by
+        // escrow.service.ts's releaseEscrow (auto-release sweep or staff
+        // dispute resolution), not instantly at charge time.
         payment_intent_data: {
-          application_fee_amount: split.applicationFeeCents,
-          transfer_data: { destination: stripeAccountId },
           metadata: { orderRef: order.publicRef },
         },
         metadata: { orderRef: order.publicRef },
@@ -276,14 +281,28 @@ export async function markOrderPaid(input: {
     throw new PaymentError("Order cannot be marked paid.", "CONFLICT");
   }
 
+  const paidAt = new Date();
   const paid = await prisma.order.update({
     where: { id: order.id },
     data: {
       status: "PAID",
-      paidAt: new Date(),
+      paidAt,
       stripePaymentIntentId: input.paymentIntentId,
       stripeCheckoutSessionId: input.sessionId,
     },
+  });
+
+  // The seller's payout stays on the platform's Stripe balance (no
+  // transfer_data on the PaymentIntent) until this escrow hold clears —
+  // see escrow.service.ts for release/dispute handling.
+  await prisma.orderEscrow.upsert({
+    where: { orderId: order.id },
+    create: {
+      orderId: order.id,
+      status: "HOLDING",
+      releaseAt: computeEscrowReleaseAt(paidAt, escrowHoldDays()),
+    },
+    update: {},
   });
 
   await writeAuditLog({
@@ -317,6 +336,7 @@ export async function getOrderReceipt(publicRef: string, viewerUserId: string, i
       items: true,
       shop: { select: { slug: true, name: true, ownerUserId: true } },
       buyer: { select: { id: true, name: true, email: true } },
+      escrow: true,
     },
   });
   if (!order) {
@@ -346,6 +366,14 @@ export async function getOrderReceipt(publicRef: string, viewerUserId: string, i
       unitPriceCents: item.unitPriceCents,
     })),
     confirming: order.status === "PENDING",
+    viewerIsBuyer: isBuyer,
+    escrow: order.escrow
+      ? {
+          status: order.escrow.status,
+          releaseAt: order.escrow.releaseAt.toISOString(),
+          disputeReason: isBuyer || isSeller || isStaff ? order.escrow.disputeReason : null,
+        }
+      : null,
   };
 }
 
@@ -365,7 +393,7 @@ export async function refundOrder(actorUserId: string, publicRef: string, actorI
 
   const order = await prisma.order.findUnique({
     where: { publicRef },
-    include: { shop: true, items: true },
+    include: { shop: true, items: true, escrow: true },
   });
   if (!order) {
     throw new PaymentError("Order not found.", "NOT_FOUND");
@@ -380,10 +408,16 @@ export async function refundOrder(actorUserId: string, publicRef: string, actorI
     throw new PaymentError("Missing payment intent.", "NOT_FOUND");
   }
 
+  // Escrow-aware: the seller's payout is only ever transferred out of the
+  // platform's Stripe balance once escrow reaches RELEASED (see
+  // escrow.service.ts). Before that, no `transfer_data`/destination transfer
+  // exists on this PaymentIntent at all, so `reverse_transfer` would have
+  // nothing to reverse. Only pass it once escrow has actually released.
+  const escrowReleased = order.escrow?.status === "RELEASED";
+
   await getStripe().refunds.create({
     payment_intent: order.stripePaymentIntentId,
-    reverse_transfer: true,
-    refund_application_fee: true,
+    ...(escrowReleased ? { reverse_transfer: true } : {}),
   });
 
   return markOrderRefunded(order.publicRef, actorUserId);
@@ -392,7 +426,7 @@ export async function refundOrder(actorUserId: string, publicRef: string, actorI
 export async function markOrderRefunded(publicRef: string, actorUserId?: string | null) {
   const order = await prisma.order.findUnique({
     where: { publicRef },
-    include: { items: true },
+    include: { items: true, escrow: true },
   });
   if (!order) {
     throw new PaymentError("Order not found.", "NOT_FOUND");
@@ -409,6 +443,16 @@ export async function markOrderRefunded(publicRef: string, actorUserId?: string 
           data: { inventoryQty: { increment: item.quantity } },
         });
       }
+    }
+    // If escrow never reached RELEASED, no seller payout was ever sent — mark
+    // the hold REFUNDED so the sweep won't try to release it later. If it was
+    // already RELEASED, leave it as-is: the transfer reversal above (when
+    // applicable) is the historical record of what happened to those funds.
+    if (order.escrow && order.escrow.status !== "RELEASED" && order.escrow.status !== "REFUNDED") {
+      await tx.orderEscrow.update({
+        where: { orderId: order.id },
+        data: { status: "REFUNDED" },
+      });
     }
     return tx.order.update({
       where: { id: order.id },
