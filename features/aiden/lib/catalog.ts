@@ -16,7 +16,7 @@ export const MOCK_AIDEN_JOBS: AidenJobView[] = [
   {
     publicRef: "KOBA-ADN-JOB0002",
     prompt: "Procedural canyon terrain blockout",
-    game: "ARK: SA",
+    game: "Garry's Mod",
     platform: "STEAM",
     assetType: "TERRAIN",
     state: "PROCESSING",
@@ -57,7 +57,7 @@ export const MOCK_AIDEN_LIBRARY: AidenAssetView[] = [
     assetType: "TERRAIN",
     technicalStatus: "CONCEPT_ONLY",
     moderation: "PRIVATE",
-    game: "ARK: SA",
+    game: "Garry's Mod",
     previewLabel: "Concept board",
     assetUrl: null,
   },

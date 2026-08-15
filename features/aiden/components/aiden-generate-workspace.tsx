@@ -16,7 +16,12 @@ import {
 } from "@/features/aiden/lib/types";
 import { coinCostForAssetType } from "@/features/aiden/lib/cost-preview";
 
-const GAMES = ["Rust", "Minecraft", "ARK: SA"] as const;
+// Matches the marketplace's per-game content policy
+// (docs/game-content-policy.md) — Rust and Garry's Mod are the FULL-policy
+// games; Minecraft is SKINS_ONLY, which is fine for Aiden's SKIN/
+// COSMETIC asset types but worth noting if MAP/TERRAIN generation ever
+// gets a Minecraft option here.
+const GAMES = ["Rust", "Minecraft", "Garry's Mod"] as const;
 const PLATFORMS = ["STEAM", "PC", "XBOX"] as const;
 
 export function AidenGenerateWorkspace({ initialJobs = [] }: { initialJobs?: AidenJobView[] }) {
