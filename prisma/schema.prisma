@@ -263,13 +263,41 @@ enum ProductMediaKind {
   VIDEO
 }
 
+/// Per-game marketplace-content policy, derived from the ARK deep-dive +
+/// per-title ToS sweep (2026-08-14). Desk research, not legal counsel — see
+/// docs/game-content-policy.md. FULL = mods/maps/kits/skins all allowed.
+/// SKINS_ONLY = only Category.kind = SKINS listings allowed (in-game
+/// character/item skins — the actual thing publisher policies like
+/// Minecraft's mean by "cosmetics/perks are the sanctioned path"; mods/
+/// maps/kits are not). EXCLUDED = no listings of any kind — a sourced,
+/// direct conflict with the publisher's stated policy. LEGAL_REVIEW = no
+/// public policy found either direction; blocked pending actual legal
+/// counsel or direct publisher contact, not desk-research clearance.
+/// NOTE: Category.kind = COSMETICS and the separate Cosmetic model
+/// (avatar decorations, profile effects, nameplates, profile frames, shop
+/// banners, emojis — KOBA's own subscription-style profile/shop
+/// customization) are never game-specific and are NEVER gated by this
+/// policy at all.
+enum GameContentPolicy {
+  FULL
+  SKINS_ONLY
+  EXCLUDED
+  LEGAL_REVIEW
+}
+
 model Game {
-  id        String    @id @default(cuid())
-  slug      String    @unique
-  name      String
-  createdAt DateTime  @default(now())
-  products  Product[]
-  lfgPosts  LfgPost[]
+  id            String            @id @default(cuid())
+  slug          String            @unique
+  name          String
+  contentPolicy GameContentPolicy @default(FULL)
+  /// Human-readable citation for contentPolicy, shown to sellers/staff —
+  /// e.g. "Wildcard's CurseForge moderation guidelines mandate Tebex-only
+  /// payout for monetized mods; conflicts with KOBA's Stripe Connect
+  /// architecture." Null only for FULL-policy games with nothing to cite.
+  policyNote    String?
+  createdAt     DateTime          @default(now())
+  products      Product[]
+  lfgPosts      LfgPost[]
 }
 
 model Category {
@@ -449,14 +477,25 @@ model ShopReview {
   @@index([shopId])
 }
 
+/// Universal KOBA identity/shop customization, purchased in USD (not KOBA
+/// Coins) — the client's own framing (ROADMAP.md Phase 3: "sold
+/// pre-made"; KOBA Plus/Phase 16 expands the same idea into a recurring
+/// subscription). Never game-specific — a Cosmetic decorates a KOBA
+/// profile or shop, not an in-game character, so it is never subject to
+/// any single game's ToS and is deliberately NOT gated by
+/// Game.contentPolicy (see features/marketplace/lib/game-policy.ts and
+/// docs/game-content-policy.md).
 enum CosmeticSubType {
   AVATAR_DECORATION
   PROFILE_EFFECT
   NAMEPLATE
+  PROFILE_FRAME
+  SHOP_BANNER
+  EMOJI
 }
 
-/// Sold pre-made (Discord-Nitro-item style) — closed sub-type enum, no
-/// custom-build fields, per ROADMAP.md Phase 3's explicit non-goal.
+/// Sold pre-made, closed sub-type enum, no custom-build fields, per
+/// ROADMAP.md Phase 3's explicit non-goal.
 model Cosmetic {
   id               String            @id @default(cuid())
   slug             String            @unique

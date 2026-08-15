@@ -1,4 +1,5 @@
 import { randomBytes } from "node:crypto";
+import type { GameContentPolicy, ProductCategoryKind } from "@/lib/generated/prisma/client";
 import { AuditAction } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/db";
 import { writeAuditLog } from "@/features/auth/services/audit-log.service";
@@ -15,6 +16,22 @@ import {
   activateAuctionForProduct,
   syncAuctionForProduct,
 } from "@/features/auctions/services/auction.service";
+import {
+  gamePolicyDenialReason,
+  isListingAllowedForGame,
+} from "@/features/marketplace/lib/game-policy";
+
+function assertGameAllowsListing(
+  game: { name: string; contentPolicy: GameContentPolicy; policyNote: string | null },
+  categoryKind: ProductCategoryKind,
+) {
+  if (!isListingAllowedForGame(game.contentPolicy, categoryKind)) {
+    throw new ShopError(
+      gamePolicyDenialReason(game.contentPolicy, game.name, game.policyNote),
+      "FORBIDDEN",
+    );
+  }
+}
 
 async function requireOwnedShop(userId: string) {
   const shop = await prisma.shop.findFirst({
@@ -68,6 +85,7 @@ export async function createSellerProduct(userId: string, input: UpsertProductIn
   if (!game || !category) {
     throw new ShopError("Unknown game or category.", "NOT_FOUND");
   }
+  assertGameAllowsListing(game, category.kind);
 
   const product = await prisma.product.create({
     data: {
@@ -115,6 +133,7 @@ export async function updateSellerProduct(userId: string, slug: string, input: U
   if (!game || !category) {
     throw new ShopError("Unknown game or category.", "NOT_FOUND");
   }
+  assertGameAllowsListing(game, category.kind);
 
   const updated = await prisma.product.update({
     where: { id: product.id },
@@ -183,10 +202,16 @@ export async function staffApproveProduct(
     throw new ShopError("Staff only.", "FORBIDDEN");
   }
 
-  const product = await prisma.product.findUnique({ where: { slug } });
+  const product = await prisma.product.findUnique({
+    where: { slug },
+    include: { game: true, category: true },
+  });
   if (!product) {
     throw new ShopError("Product not found.", "NOT_FOUND");
   }
+  // Defense in depth: re-check at approval time, not just at create/update —
+  // catches a game whose policy was tightened after the listing was drafted.
+  assertGameAllowsListing(product.game, product.category.kind);
 
   const updated = await prisma.product.update({
     where: { id: product.id },
