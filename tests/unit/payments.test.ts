@@ -6,10 +6,12 @@ import { PaymentError } from "@/features/payments/lib/errors";
 import {
   canCheckoutListing,
   canPayReservedAuction,
+  exceedsStripeChargeLimit,
   paidStatusFromClient,
   parseCommissionBps,
   resolveCommissionBps,
   splitPayment,
+  STRIPE_MAX_CHARGE_CENTS,
 } from "@/features/payments/lib/money";
 import { generateOrderRef } from "@/features/payments/lib/order-ref";
 import { checkoutSchema } from "@/features/payments/schemas/checkout.schemas";
@@ -67,6 +69,22 @@ describe("commission split", () => {
     expect(parseCommissionBps("-1")).toBe(800);
     expect(parseCommissionBps("0")).toBe(0);
     expect(splitPayment(5000, 0).applicationFeeCents).toBe(0);
+  });
+});
+
+describe("Stripe charge ceiling", () => {
+  it("flags totals over Stripe's $999,999.99 per-charge maximum", () => {
+    expect(exceedsStripeChargeLimit(STRIPE_MAX_CHARGE_CENTS)).toBe(false);
+    expect(exceedsStripeChargeLimit(STRIPE_MAX_CHARGE_CENTS + 1)).toBe(true);
+    // The real-world case this guards: a $100,000 listing (the schema max
+    // on Product/Cosmetic priceCents) at the checkout schema's max quantity
+    // of 10 totals $1,000,000.00 — over the Stripe ceiling.
+    expect(exceedsStripeChargeLimit(10_000_000 * 10)).toBe(true);
+  });
+
+  it("allows ordinary listing totals through", () => {
+    expect(exceedsStripeChargeLimit(0)).toBe(false);
+    expect(exceedsStripeChargeLimit(10_000)).toBe(false);
   });
 });
 

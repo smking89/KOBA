@@ -236,3 +236,39 @@ export async function assertCanStaffRefund(actorUserId: string) {
   }
   return types;
 }
+
+export async function listDisputedOrders(actorUserId: string) {
+  const types = await requireAnyStaff(actorUserId);
+  if (!canStaffRefund(types)) {
+    throw new AdminError("Only Admin or Superadmin can resolve disputes.", "FORBIDDEN");
+  }
+
+  const escrows = await prisma.orderEscrow.findMany({
+    where: { status: "DISPUTED" },
+    orderBy: { disputedAt: "asc" },
+    take: 50,
+    include: {
+      order: {
+        select: {
+          publicRef: true,
+          totalCents: true,
+          currency: true,
+          shop: { select: { name: true, slug: true } },
+        },
+      },
+      disputedBy: { select: { email: true, profile: { select: { handle: true } } } },
+    },
+  });
+
+  return escrows.map((escrow) => ({
+    publicRef: escrow.order.publicRef,
+    totalCents: escrow.order.totalCents,
+    currency: escrow.order.currency,
+    shopName: escrow.order.shop.name,
+    shopSlug: escrow.order.shop.slug,
+    disputedAt: escrow.disputedAt?.toISOString() ?? null,
+    disputeReason: escrow.disputeReason,
+    disputedByHandle: escrow.disputedBy?.profile?.handle ?? null,
+    disputedByEmail: escrow.disputedBy?.email ?? null,
+  }));
+}
