@@ -3,9 +3,7 @@
  *
  * Usage:
  *   pnpm influencer:payouts
- *
- * Pays ACCRUED/PAYABLE earnings when the influencer Connect account can receive transfers.
- * Never sends live-mode Stripe requests.
+ *   INFLUENCER_PAYOUT_WORKER_LOOP=true pnpm influencer:payouts
  */
 import { config } from "dotenv";
 import { fileURLToPath } from "node:url";
@@ -23,12 +21,25 @@ if (!process.env.DATABASE_URL) {
 const { register } = await import("tsx/esm/api");
 register();
 
+const { runWorkerMain } = await import("../lib/observability/worker-main.ts");
 const { retryPayableInfluencerPayouts } =
   await import("../features/influencer/services/payout.service.ts");
 
-const started = Date.now();
-const results = await retryPayableInfluencerPayouts(25);
-const paid = results.filter((row) => row?.status === "PAID").length;
-console.info(
-  `[influencer-payouts] checked=${results.length} paid=${paid} ms=${Date.now() - started}`,
-);
+const intervalMs = Number.parseInt(process.env.INFLUENCER_PAYOUT_WORKER_INTERVAL_MS ?? "15000", 10);
+
+await runWorkerMain({
+  name: "influencer-payouts",
+  loop: process.env.INFLUENCER_PAYOUT_WORKER_LOOP === "true",
+  intervalMs: Number.isSafeInteger(intervalMs) && intervalMs >= 1000 ? intervalMs : 15_000,
+  runOnce: async () => {
+    const results = await retryPayableInfluencerPayouts(25);
+    const failed = results.filter(
+      (row) => row && row.status !== "PAID" && row.status !== "ACCRUED",
+    ).length;
+    return {
+      outcome: failed > 0 ? "failure" : "success",
+      claimed: results.length,
+      failed,
+    };
+  },
+});

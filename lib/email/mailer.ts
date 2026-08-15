@@ -1,4 +1,5 @@
 import { getPublicEnv } from "@/lib/env";
+import { logger } from "@/lib/observability/logger";
 
 export type MailPayload = {
   to: string;
@@ -63,7 +64,12 @@ async function deliver(payload: MailPayload): Promise<void> {
     );
   }
 
-  console.info(`[KOBA] Dev mail → ${payload.to}: ${payload.subject}\n${payload.text}`);
+  logger.info("Dev mail captured (body omitted)", {
+    event: "email_dev_capture",
+    operation: "email_deliver",
+    outcome: "success",
+    extra: { subject: payload.subject },
+  });
 }
 
 export async function sendVerificationEmail(email: string, token: string): Promise<void> {

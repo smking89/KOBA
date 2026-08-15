@@ -13,10 +13,7 @@ import {
   visiblePlayerCount,
   visibleQueue,
 } from "@/features/servers/lib/types";
-import {
-  getBySlugOrRef,
-  getOwnerServer,
-} from "@/features/servers/services/server.service";
+import { getBySlugOrRef, getOwnerServer } from "@/features/servers/services/server.service";
 
 export const metadata = { title: "Server detail" };
 
@@ -34,8 +31,7 @@ export default async function ServerDetailPage({
 
   const snapshot = session?.user.id ? await getAccountSnapshot(session.user.id) : null;
   const ownerView =
-    snapshot &&
-    (await getOwnerServer(session!.user.id, serverId).catch(() => null));
+    snapshot && (await getOwnerServer(session!.user.id, serverId).catch(() => null));
 
   const players = visiblePlayerCount(server);
   const queue = visibleQueue(server);

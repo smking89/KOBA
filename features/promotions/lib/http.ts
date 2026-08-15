@@ -4,6 +4,7 @@ import { InfluencerError, influencerErrorStatus } from "@/features/influencer/li
 import { WalletError, walletErrorStatus } from "@/features/wallet/lib/errors";
 import { PaymentError, paymentErrorStatus } from "@/features/payments/lib/errors";
 import { staffMfaErrorResponse } from "@/features/staff-mfa/lib/http";
+import { unexpectedJsonError } from "@/lib/observability/http";
 
 export const promotionNoStore = { "Cache-Control": "no-store" };
 
@@ -41,6 +42,5 @@ export function jsonPromotionError(
       { status: paymentErrorStatus(error.code), headers: promotionNoStore },
     );
   }
-  console.error(error);
-  return NextResponse.json({ error: fallback }, { status: 500, headers: promotionNoStore });
+  return unexpectedJsonError(error, fallback, promotionNoStore);
 }

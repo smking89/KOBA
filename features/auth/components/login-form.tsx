@@ -37,9 +37,10 @@ export function LoginForm() {
       cache: "no-store",
       body: JSON.stringify({ email: values.email, password: values.password }),
     });
-    const gate = (await gateResponse.json().catch(() => null)) as
-      | { next?: string; error?: string }
-      | null;
+    const gate = (await gateResponse.json().catch(() => null)) as {
+      next?: string;
+      error?: string;
+    } | null;
     if (!gateResponse.ok) {
       setFormError(
         "Invalid email or password, or your email is not verified yet. Check your inbox for the verification link.",

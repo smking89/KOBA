@@ -295,7 +295,8 @@ Severity is not inflated: a theoretical issue without a demonstrated path is not
 - **Impact:** Stripe webhook 500s, ledger errors, and worker poison messages can go unseen. Spec: no incident visibility for financial failures is a launch blocker.
 - **Remediation:** Phase 15D — Sentry (or equivalent) on web + workers; alert on webhook handler failures and job DLQ.
 - **Validation:** Forced webhook signature failure pages an owner.
-- **Launch-blocking:** Yes (public, real-money).
+- **Launch-blocking:** Yes (public, real-money) until an **external** Sentry (or equivalent) project and alert rules exist.
+- **Phase 15D status: CODE COMPLETE, EXTERNAL NOT VERIFIED.** Repository wiring, redaction, disabled mode, `/api/ready`, worker instrumentation, and unit tests exist on `feat/observability-sentry`. No Sentry project was created by this phase. Test/CI must not send events.
 
 #### KOBA-LEG-001 — No customer-facing operational policies
 
@@ -444,6 +445,7 @@ Listed once in blockers as financial-incident blindness. Same evidence.
 
 - **Evidence:** 151 files; same class of failure noted after Phase 14I. Predates this audit. `pnpm ci` would fail. This branch would not run that workflow on push.
 - **Launch-blocking:** No for security; **yes for merging to `main` via current CI** until format is normalized.
+- **Phase 15D note:** Change group A on `feat/observability-sentry` adds `.gitattributes` (`eol=lf`) and Prettier `endOfLine: lf`. Treat as a mechanical commit, not observability.
 
 #### KOBA-DEP-002 — Nested `postcss@8.4.31` advisories
 
@@ -455,6 +457,7 @@ Listed once in blockers as financial-incident blindness. Same evidence.
 
 - **Evidence:** Correlation IDs exist for RCON integration ops, not for general HTTP.
 - **Launch-blocking:** No (15D).
+- **Phase 15D status: RESOLVED in repo.** Middleware validates/sets `x-request-id`; workers and developer webhook deliveries propagate `cor_*`.
 
 #### KOBA-OPS-011 — Audit log is not tamper-evident
 
@@ -465,6 +468,7 @@ Listed once in blockers as financial-incident blindness. Same evidence.
 
 - **Evidence:** `pnpm test:e2e` failed (2/2). `reuseExistingServer` talked to a **non-KOBA** process already bound to `127.0.0.1:3000`. `home.spec.ts` still expects Phase 1 copy. CI does not run e2e. This is **not** evidence that KOBA pages crashed.
 - **Launch-blocking:** No.
+- **Phase 15D status: HARNESS REPAIRED.** Playwright now starts KOBA on port **3015**, never reuses an existing server, waits on `/api/health`, and asserts current home/Plus copy (including real “Coming later” benefits). Still **not** a CI job.
 
 #### KOBA-A11Y-001 — WCAG and Lighthouse not verified
 
@@ -703,7 +707,7 @@ Branch: `fix/critical-security-hardening` (created from `docs/production-readine
 
 ### 16.2 Explicitly out of 15B scope (still open at that time)
 
-KOBA-SEC-003 was assigned to 15C (now resolved). Remaining: KOBA-OPS-001 (backups → 15E), KOBA-OPS-003/FIN-002 (observability → 15D), KOBA-LEG-001 (legal → 15F), KOBA-SEC-012 (deletion/suspend → 15F), KOBA-GIT-001 (integration process), KOBA-FIN-003 (auction settle worker → 15H).
+KOBA-SEC-003 was assigned to 15C (now resolved). Remaining: KOBA-OPS-001 (backups → 15E), KOBA-OPS-003/FIN-002 (observability **code** in 15D, **external Sentry still NOT VERIFIED**), KOBA-LEG-001 (legal → 15F), KOBA-SEC-012 (deletion/suspend → 15F), KOBA-GIT-001 (integration process), KOBA-FIN-003 (auction settle worker → 15H).
 
 ---
 
@@ -717,6 +721,54 @@ Branch: `feat/staff-mfa`. Prisma migration `20260815160000_staff_mfa_sessions` a
 | KOBA-SEC-008 | MEDIUM            | Staff session hashing, idle/absolute timeout, listing, revocation on password reset/change/MFA/role grant | session policy + flows tests                                         | Public JWT still 30 days                                    | Partially mitigated |
 
 Manual actions: set `KOBA_STAFF_MFA_ENCRYPTION_KEY`; enable NTP on the VPS; enroll seed staff locally; apply the Prisma migration with `prisma migrate deploy`. Do not treat closed beta as READY because of this phase.
+
+---
+
+## 18. Phase 15D remediation (2026-08-15)
+
+Branch: `feat/observability-sentry` (created from `2762ddc`, which includes Phase 15C `bcc6d9c` plus SQL idempotency `9b70def` / `2762ddc`). Documentation-only commits after that SHA were not used as the base.
+
+**Phase 15D is implemented in this repository. It is not externally verified.** No Sentry project was created. `SENTRY_DSN` unset / placeholder / test env never sends events. Session replay is hardcoded off.
+
+| Finding ID   | Original severity | Fix implemented                                                                                         | Tests                                    | Remaining risk                                                                 | Status                                      |
+| ------------ | ----------------- | ------------------------------------------------------------------------------------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------- |
+| KOBA-OPS-003 | HIGH              | Sentry SDK (disabled without DSN), structured logs, redaction, named financial/job alerts, `/api/ready` | `tests/unit/observability.test.ts`       | Owner must create Sentry project and alert rules. Backup alerts are 15E stubs. | Code complete; **external NOT VERIFIED**    |
+| KOBA-FIN-002 | HIGH              | Same as OPS-003: Stripe signature/handler, refund, Plus reconcile, ledger invariant events              | same                                     | Same                                                                           | Same as OPS-003                             |
+| KOBA-OPS-010 | MEDIUM            | `x-request-id` validation, response header, correlation into workers/webhooks/Sentry tags               | request-id + correlation tests           | API routes rely on middleware header; workers mint `cor_*`                     | Resolved in repo                            |
+| KOBA-E2E-001 | MEDIUM            | Playwright dedicated port 3015, `reuseExistingServer: false`, waits on `/api/health`, current Plus copy | `tests/e2e/home.spec.ts`, `plus.spec.ts` | Still not a CI gate                                                            | Harness repaired; CI e2e still absent       |
+| KOBA-OPS-009 | MEDIUM            | `.gitattributes` LF + Prettier `endOfLine: lf` + format pass (change group A, separate commit)          | `pnpm format:check`                      | Mechanical only                                                                | Addressed on this branch when group A lands |
+
+`/admin/operations` was **deferred**: in-process worker heartbeats cannot honestly represent VPS crons from the Next.js process. Use `/api/ready` + logs/Sentry.
+
+### 18.1 Explicitly out of 15D scope
+
+KOBA-OPS-001 backups/DR → 15E. Backup alert is a named placeholder only. Legal (15F), live Stripe (15H), Docker/VPS (15E). Do not mark closed beta READY.
+
+### 18.2 Owner actions (external Sentry)
+
+1. Create a Sentry (or equivalent) project for this Next.js 15 App Router app.
+2. Set `SENTRY_DSN` and `NEXT_PUBLIC_SENTRY_DSN` (placeholders only in `.env.example`).
+3. Set `SENTRY_ENVIRONMENT`, `SENTRY_RELEASE`, optional `SENTRY_TRACES_SAMPLE_RATE`.
+4. Put `SENTRY_AUTH_TOKEN` / `SENTRY_ORG` / `SENTRY_PROJECT` on CI/VPS only for source maps.
+5. Wire alert rules to the event names in `docs/operations/observability.md`.
+
+### 18.3 Quality command evidence (this machine, 2026-08-15)
+
+| Command | Result | Detail |
+| ------- | ------ | ------ |
+| `pnpm format:check` | **Pass** | Prettier `endOfLine: lf`. Extra `git status` dirty files are CRLF/index noise (Group A), not observability edits. |
+| `pnpm lint` | **Pass** | `eslint . --max-warnings 0` |
+| `pnpm typecheck` | **Pass** | `tsc --noEmit` |
+| `pnpm test` | **Pass** | 380 passed, 18 skipped |
+| `pnpm build` | **Pass** after `.next` race | First attempt `MODULE_NOT_FOUND` `next-font-manifest.json` while Playwright shared `.next`. Clean rebuild exit 0. No DSN; Sentry init skipped. |
+| `pnpm audit` | **Fail** (2 moderate) | Transitive `@sentry/nextjs@9.47.1`: `uuid` GHSA-w5hq-g745-h8pq; `@opentelemetry/core` GHSA-8988-4f7v-96qf. Not upgraded here. |
+| `pnpm prisma validate` | **Pass** | Schema valid |
+| `pnpm prisma generate` | **Pass** | Client 7.9.1 |
+| `pnpm test:e2e` | **Pass** | 2 passed on `127.0.0.1:3015`, `reuseExistingServer: false`. Not Trust-Link on :3000. |
+| Docker | **Unavailable** | `docker` not on PATH |
+| `pnpm test:a11y` / Lighthouse | **Unavailable** | No scripts |
+
+Do **not** treat Phase 15D as production-verified until the owner creates a Sentry project and alert rules.
 
 ---
 

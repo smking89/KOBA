@@ -7,6 +7,7 @@ import { PaymentError, paymentErrorStatus } from "@/features/payments/lib/errors
 import { DeveloperError, developerErrorStatus } from "@/features/developers/lib/errors";
 import { WalletError, walletErrorStatus } from "@/features/wallet/lib/errors";
 import { staffMfaErrorResponse } from "@/features/staff-mfa/lib/http";
+import { unexpectedJsonError } from "@/lib/observability/http";
 
 export function jsonAdminError(error: unknown, fallback = "Could not complete staff action.") {
   const mfa = staffMfaErrorResponse(error);
@@ -63,6 +64,5 @@ export function jsonAdminError(error: unknown, fallback = "Could not complete st
       { status: walletErrorStatus(error.code) },
     );
   }
-  console.error(error);
-  return NextResponse.json({ error: fallback }, { status: 500 });
+  return unexpectedJsonError(error, fallback);
 }

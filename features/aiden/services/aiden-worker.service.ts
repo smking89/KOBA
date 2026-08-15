@@ -5,6 +5,8 @@ import {
   aidenWorkerHealth,
 } from "@/features/aiden/lib/worker-health";
 import { claimQueuedJobs, processClaimedJob } from "@/features/aiden/services/aiden.service";
+import { resolveCorrelationId } from "@/lib/observability/correlation";
+import { runWithObservabilityContext } from "@/lib/observability/context";
 
 export { AIDEN_WORKER_BATCH, AIDEN_WORKER_CONCURRENCY, aidenWorkerHealth };
 
@@ -20,7 +22,10 @@ export async function runAidenBatch(opts?: {
   });
   const results = await mapWithConcurrency(claimed, concurrency, async (publicRef) => {
     try {
-      return await processClaimedJob(publicRef);
+      return await runWithObservabilityContext(
+        { jobId: publicRef, correlationId: resolveCorrelationId() },
+        () => processClaimedJob(publicRef),
+      );
     } catch (error) {
       return {
         publicRef,

@@ -4,8 +4,7 @@
  *
  * Usage:
  *   pnpm promotions:worker
- *
- * Never sends live payouts or contacts Stripe.
+ *   PROMOTIONS_WORKER_LOOP=true pnpm promotions:worker
  */
 import { config } from "dotenv";
 import { fileURLToPath } from "node:url";
@@ -23,10 +22,21 @@ if (!process.env.DATABASE_URL) {
 const { register } = await import("tsx/esm/api");
 register();
 
+const { runWorkerMain } = await import("../lib/observability/worker-main.ts");
 const { runPromotionsWorker } = await import("../features/promotions/services/worker.service.ts");
 
-const started = Date.now();
-const result = await runPromotionsWorker(50);
-console.info(
-  `[promotions-worker] qualified=${result.qualified} adsSettled=${result.adsSettled} campaignsCompleted=${result.campaignsCompleted} hashesCleared=${result.hashesCleared} ms=${Date.now() - started}`,
-);
+const intervalMs = Number.parseInt(process.env.PROMOTIONS_WORKER_INTERVAL_MS ?? "15000", 10);
+
+await runWorkerMain({
+  name: "promotions",
+  loop: process.env.PROMOTIONS_WORKER_LOOP === "true",
+  intervalMs: Number.isSafeInteger(intervalMs) && intervalMs >= 1000 ? intervalMs : 15_000,
+  runOnce: async () => {
+    const result = await runPromotionsWorker(50);
+    return {
+      outcome: "success",
+      claimed:
+        result.qualified + result.adsSettled + result.campaignsCompleted + result.hashesCleared,
+    };
+  },
+});

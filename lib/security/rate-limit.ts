@@ -1,3 +1,6 @@
+import { bumpWindow, emitAlert } from "@/lib/observability/alerts";
+import { logger } from "@/lib/observability/logger";
+
 type Bucket = { count: number; resetAt: number };
 
 const buckets = new Map<string, Bucket>();
@@ -63,7 +66,17 @@ async function upstashRateLimit(
   });
 
   if (!response.ok) {
-    console.error(`[KOBA] Upstash rate limit failed (${response.status}); falling back to memory.`);
+    logger.warn("Upstash rate limit HTTP failure; falling back to memory", {
+      event: "redis_degraded",
+      operation: "rate_limit",
+      outcome: "degraded",
+      extra: { status: response.status },
+    });
+    if (bumpWindow("redis_rate_limit") >= 5) {
+      void emitAlert("redis_failure", "Upstash rate limit failed repeatedly", {
+        labels: { operation: "rate_limit", errorClass: "redis" },
+      });
+    }
     return memoryRateLimit(key, limit, windowMs);
   }
 
@@ -100,7 +113,21 @@ export async function rateLimit(
     try {
       return await upstashRateLimit(key, limit, windowMs);
     } catch (error) {
-      console.error("[KOBA] Upstash rate limit error; falling back to memory.", error);
+      logger.warn(
+        "Upstash rate limit error; falling back to memory",
+        {
+          event: "redis_degraded",
+          operation: "rate_limit",
+          outcome: "degraded",
+        },
+        error,
+      );
+      if (bumpWindow("redis_rate_limit") >= 5) {
+        void emitAlert("redis_failure", "Upstash rate limit failed repeatedly", {
+          labels: { operation: "rate_limit", errorClass: "redis" },
+          error,
+        });
+      }
       return memoryRateLimit(key, limit, windowMs);
     }
   }

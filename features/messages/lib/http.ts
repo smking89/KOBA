@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { MessageError, messageErrorStatus } from "@/features/messages/lib/errors";
+import { unexpectedJsonError } from "@/lib/observability/http";
 
 export function jsonMessageError(
   error: unknown,
@@ -11,6 +12,5 @@ export function jsonMessageError(
       { status: messageErrorStatus(error.code) },
     );
   }
-  console.error(error);
-  return NextResponse.json({ error: fallback }, { status: 500 });
+  return unexpectedJsonError(error, fallback);
 }

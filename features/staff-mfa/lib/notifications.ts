@@ -1,4 +1,5 @@
 import { sendSecurityEmail } from "@/lib/email/mailer";
+import { logger } from "@/lib/observability/logger";
 
 /**
  * Best-effort staff security mail. Delivery failure is logged and swallowed
@@ -13,6 +14,14 @@ export async function notifyStaffSecurity(
   try {
     await sendSecurityEmail(email, subject, lines);
   } catch (error) {
-    console.error("[staff-mfa] security notification failed", error);
+    logger.error(
+      "Staff security notification failed",
+      {
+        event: "email_delivery_failure",
+        operation: "staff_security_mail",
+        outcome: "failure",
+      },
+      error,
+    );
   }
 }

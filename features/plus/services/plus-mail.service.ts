@@ -1,5 +1,6 @@
 import { getPublicEnv } from "@/lib/env";
 import { prisma } from "@/lib/db";
+import { logger } from "@/lib/observability/logger";
 
 type MailPayload = {
   to: string;
@@ -41,7 +42,12 @@ async function deliver(payload: MailPayload): Promise<void> {
   if (nodeEnv === "production") {
     return;
   }
-  console.info(`[KOBA] Dev mail → ${payload.to}: ${payload.subject}\n${payload.text}`);
+  logger.info("Dev Plus mail captured (body omitted)", {
+    event: "email_dev_capture",
+    operation: "plus_mail",
+    outcome: "success",
+    extra: { subject: payload.subject },
+  });
 }
 
 export async function notifyPlusPaymentFailed(userId: string, publicRef: string) {

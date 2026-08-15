@@ -22,39 +22,22 @@ if (!process.env.DATABASE_URL) {
 const { register } = await import("tsx/esm/api");
 register();
 
+const { runWorkerMain } = await import("../lib/observability/worker-main.ts");
 const { runWebhookBatch } = await import("../features/developers/services/webhook.service.ts");
 
-const shuttingDown = { value: false };
-for (const signal of ["SIGINT", "SIGTERM"]) {
-  process.on(signal, () => {
-    shuttingDown.value = true;
-  });
-}
-
-const loop = process.env.DEVELOPER_WEBHOOK_WORKER_LOOP === "true";
 const intervalMs = Number.parseInt(process.env.DEVELOPER_WEBHOOK_WORKER_INTERVAL_MS ?? "5000", 10);
-const waitMs = Number.isSafeInteger(intervalMs) && intervalMs >= 1000 ? intervalMs : 5000;
 
-async function runOnce() {
-  const started = Date.now();
-  const batch = await runWebhookBatch(8);
-  console.info(
-    JSON.stringify({
-      ok: true,
-      elapsedMs: Date.now() - started,
-      batch,
-      at: new Date().toISOString(),
-    }),
-  );
-}
-
-if (shuttingDown.value) process.exit(0);
-await runOnce();
-
-while (loop && !shuttingDown.value) {
-  await new Promise((resolve) => setTimeout(resolve, waitMs));
-  if (shuttingDown.value) break;
-  await runOnce();
-}
-
-process.exit(0);
+await runWorkerMain({
+  name: "developer-webhooks",
+  loop: process.env.DEVELOPER_WEBHOOK_WORKER_LOOP === "true",
+  intervalMs: Number.isSafeInteger(intervalMs) && intervalMs >= 1000 ? intervalMs : 5000,
+  runOnce: async () => {
+    const batch = await runWebhookBatch(8);
+    const failed = batch.results.filter((row) => row.status === "FAILED").length;
+    return {
+      outcome: failed > 0 ? "failure" : "success",
+      claimed: batch.claimed,
+      failed,
+    };
+  },
+});

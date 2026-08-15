@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { ShopError } from "@/features/shops/services/shop.service";
+import { unexpectedJsonError } from "@/lib/observability/http";
 
 export function shopErrorStatus(code: ShopError["code"]): number {
   switch (code) {
@@ -23,6 +24,5 @@ export function jsonShopError(error: unknown, fallback = "Could not complete sho
       { status: shopErrorStatus(error.code) },
     );
   }
-  console.error(error);
-  return NextResponse.json({ error: fallback }, { status: 500 });
+  return unexpectedJsonError(error, fallback);
 }

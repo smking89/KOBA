@@ -214,7 +214,7 @@
       "confidence": "high",
       "component": "application",
       "launchBlocking": true,
-      "evidence": "no Sentry/APM; console logs only"
+      "evidence": "Sentry SDK wired but disabled without DSN; no owner-created Sentry project; external alerting NOT VERIFIED"
     },
     {
       "id": "KOBA-LEG-001",
@@ -442,6 +442,79 @@
       "KOBA-LEG-001",
       "KOBA-SEC-012",
       "KOBA-GIT-001"
+    ],
+    "readiness": {
+      "internalDevelopment": "READY WITH CONDITIONS",
+      "staging": "READY WITH CONDITIONS",
+      "closedBeta": "NOT READY",
+      "publicLaunch": "NOT READY",
+      "realMoney": "NOT READY"
+    }
+  },
+  "phase15D": {
+    "date": "2026-08-15",
+    "branch": "feat/observability-sentry",
+    "baseCommit": "2762ddc",
+    "scope": "Sentry (disabled without DSN), structured logs, redaction, request/correlation IDs, /api/ready, worker instrumentation, named job/financial alerts",
+    "verified": false,
+    "externalSentry": "NOT VERIFIED",
+    "adminOperationsView": "deferred",
+    "remediation": [
+      {
+        "id": "KOBA-OPS-003",
+        "status": "code-complete-external-not-verified",
+        "fix": "Official @sentry/nextjs integration with disabled mode, beforeSend redaction, structured logger, /api/ready, worker runWorkerMain, named alerts including financial events",
+        "files": [
+          "lib/observability/",
+          "sentry.server.config.ts",
+          "instrumentation.ts",
+          "docs/operations/"
+        ],
+        "tests": ["tests/unit/observability.test.ts"],
+        "residualRisk": "No Sentry project or alert rules exist yet; backup alerts are placeholders until 15E",
+        "launchBlocking": true
+      },
+      {
+        "id": "KOBA-FIN-002",
+        "status": "code-complete-external-not-verified",
+        "fix": "Stripe signature/handler alerts, refund_failure, Plus reconcile mismatch, ledger_invariant_failure",
+        "files": ["app/api/stripe/webhook/route.ts", "lib/observability/alerts.ts"],
+        "tests": ["tests/unit/observability.test.ts"],
+        "residualRisk": "External paging still requires owner Sentry rules",
+        "launchBlocking": true
+      },
+      {
+        "id": "KOBA-OPS-010",
+        "status": "resolved",
+        "fix": "Validated x-request-id, correlation IDs into workers and webhook deliveries",
+        "files": ["middleware.ts", "lib/observability/request-id.ts"],
+        "tests": ["tests/unit/observability.test.ts"],
+        "residualRisk": "none identified for HTTP header injection",
+        "launchBlocking": false
+      },
+      {
+        "id": "KOBA-E2E-001",
+        "status": "harness-repaired",
+        "fix": "Playwright port 3015, reuseExistingServer false, health wait, current Plus/home copy",
+        "files": ["playwright.config.ts", "tests/e2e/home.spec.ts", "tests/e2e/plus.spec.ts"],
+        "tests": ["pnpm test:e2e"],
+        "residualRisk": "e2e still not in CI",
+        "launchBlocking": false
+      }
+    ],
+    "stillOpenBlockers": [
+      "KOBA-MED-001",
+      "KOBA-OPS-001",
+      "KOBA-OPS-003",
+      "KOBA-LEG-001",
+      "KOBA-SEC-012",
+      "KOBA-GIT-001"
+    ],
+    "manualActions": [
+      "create a Sentry project (or equivalent) for this Next.js 15 app",
+      "set SENTRY_DSN and NEXT_PUBLIC_SENTRY_DSN; never commit real values",
+      "set SENTRY_AUTH_TOKEN only on CI/VPS for source maps",
+      "configure alert rules for events in docs/operations/observability.md"
     ],
     "readiness": {
       "internalDevelopment": "READY WITH CONDITIONS",

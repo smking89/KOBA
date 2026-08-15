@@ -22,6 +22,7 @@ import {
 } from "@/features/wallet/lib/amounts";
 import { WalletError } from "@/features/wallet/lib/errors";
 import { generateLedgerRef, generateReservationRef } from "@/features/wallet/lib/refs";
+import { emitAlert } from "@/lib/observability/alerts";
 import {
   allocateSpend,
   type Allocation,
@@ -192,6 +193,9 @@ async function postBalanced(
     else credit += entry.amount;
   }
   if (debit !== credit) {
+    void emitAlert("ledger_invariant_failure", "Ledger transaction is unbalanced", {
+      labels: { operation: "ledger_post", errorClass: "unexpected" },
+    });
     throw new WalletError("Ledger transaction is unbalanced.", "UNBALANCED");
   }
 

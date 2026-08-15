@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { DeveloperError, developerErrorStatus } from "@/features/developers/lib/errors";
 import { WalletError, walletErrorStatus } from "@/features/wallet/lib/errors";
 import { staffMfaErrorResponse } from "@/features/staff-mfa/lib/http";
+import { unexpectedJsonError } from "@/lib/observability/http";
 
 export const developerNoStore = { "Cache-Control": "no-store" };
 
@@ -27,6 +28,5 @@ export function jsonDeveloperError(
       { status: walletErrorStatus(error.code), headers: developerNoStore },
     );
   }
-  console.error(error);
-  return NextResponse.json({ error: fallback }, { status: 500, headers: developerNoStore });
+  return unexpectedJsonError(error, fallback, developerNoStore);
 }

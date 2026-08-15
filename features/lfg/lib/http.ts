@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { LfgError, lfgErrorStatus } from "@/features/lfg/lib/errors";
+import { unexpectedJsonError } from "@/lib/observability/http";
 
 export function jsonLfgError(error: unknown, fallback = "Could not complete LFG action.") {
   if (error instanceof LfgError) {
@@ -8,6 +9,5 @@ export function jsonLfgError(error: unknown, fallback = "Could not complete LFG 
       { status: lfgErrorStatus(error.code) },
     );
   }
-  console.error(error);
-  return NextResponse.json({ error: fallback }, { status: 500 });
+  return unexpectedJsonError(error, fallback);
 }

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { AidenError, aidenErrorStatus } from "@/features/aiden/lib/errors";
+import { unexpectedJsonError } from "@/lib/observability/http";
 
 export const aidenNoStore = { "Cache-Control": "no-store" };
 
@@ -14,6 +15,5 @@ export function jsonAidenError(error: unknown, fallback = "Could not complete Ai
       { status: aidenErrorStatus(error.code), headers: aidenNoStore },
     );
   }
-  console.error(error);
-  return NextResponse.json({ error: fallback }, { status: 500, headers: aidenNoStore });
+  return unexpectedJsonError(error, fallback, aidenNoStore);
 }

@@ -1,4 +1,5 @@
 import withSerwistInit from "@serwist/next";
+import { withSentryConfig } from "@sentry/nextjs";
 import type { NextConfig } from "next";
 import path from "path";
 
@@ -28,7 +29,7 @@ const contentSecurityPolicy = [
   "img-src 'self' data: blob: https:",
   "media-src 'self' blob: https:",
   "font-src 'self' data:",
-  `connect-src 'self'${isDev ? " ws: wss:" : ""}`,
+  `connect-src 'self'${isDev ? " ws: wss:" : ""} https://*.ingest.sentry.io https://*.sentry.io`,
   "frame-src 'none'",
   "frame-ancestors 'none'",
   "base-uri 'self'",
@@ -71,8 +72,24 @@ const nextConfig: NextConfig = {
       { source: "/settings/security", headers: noStore },
       { source: "/settings/security/:path*", headers: noStore },
       { source: "/api/staff-mfa/:path*", headers: noStore },
+      { source: "/api/health", headers: noStore },
+      { source: "/api/ready", headers: noStore },
     ];
   },
 };
 
-export default withSerwist(nextConfig);
+const serwistConfig = withSerwist(nextConfig);
+
+export default withSentryConfig(serwistConfig, {
+  silent: true,
+  sourcemaps: {
+    disable: !process.env.SENTRY_AUTH_TOKEN,
+    deleteSourcemapsAfterUpload: true,
+  },
+  widenClientFileUpload: false,
+  disableLogger: true,
+  automaticVercelMonitors: false,
+  ...(process.env.SENTRY_ORG ? { org: process.env.SENTRY_ORG } : {}),
+  ...(process.env.SENTRY_PROJECT ? { project: process.env.SENTRY_PROJECT } : {}),
+  ...(process.env.SENTRY_AUTH_TOKEN ? { authToken: process.env.SENTRY_AUTH_TOKEN } : {}),
+});

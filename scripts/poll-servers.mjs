@@ -3,10 +3,7 @@
  *
  * Usage:
  *   pnpm servers:poll
- *   node scripts/poll-servers.mjs
- *
- * Requires DATABASE_URL (and SECRET_ENCRYPTION_KEY if your app env does).
- * Never invoke from Next.js page render — this is a worker-only entrypoint.
+ *   SERVER_POLL_WORKER_LOOP=true pnpm servers:poll
  */
 import { config } from "dotenv";
 import { fileURLToPath } from "node:url";
@@ -23,29 +20,23 @@ if (!process.env.DATABASE_URL) {
 const { register } = await import("tsx/esm/api");
 register();
 
+const { runWorkerMain } = await import("../lib/observability/worker-main.ts");
 const { runPollBatch, retainSnapshots } =
   await import("../features/servers/services/polling.service.ts");
 
-const started = Date.now();
-const batch = await runPollBatch({ concurrency: 4, limit: 40 });
-const retention = await retainSnapshots();
+const intervalMs = Number.parseInt(process.env.SERVER_POLL_WORKER_INTERVAL_MS ?? "60000", 10);
 
-console.log(
-  JSON.stringify(
-    {
-      ok: true,
-      elapsedMs: Date.now() - started,
-      batch: {
-        selected: batch.selected,
-        succeeded: batch.succeeded,
-        failed: batch.failed,
-      },
-      retention,
-      at: new Date().toISOString(),
-    },
-    null,
-    2,
-  ),
-);
-
-process.exit(0);
+await runWorkerMain({
+  name: "server-poll",
+  loop: process.env.SERVER_POLL_WORKER_LOOP === "true",
+  intervalMs: Number.isSafeInteger(intervalMs) && intervalMs >= 1000 ? intervalMs : 60_000,
+  runOnce: async () => {
+    const batch = await runPollBatch({ concurrency: 4, limit: 40 });
+    await retainSnapshots();
+    return {
+      outcome: batch.failed > 0 ? "failure" : "success",
+      claimed: batch.selected,
+      failed: batch.failed,
+    };
+  },
+});

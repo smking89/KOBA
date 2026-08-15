@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import bcrypt from "bcryptjs";
 import { AuditAction } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/db";
@@ -9,6 +8,7 @@ import {
   type SealedCredential,
 } from "@/lib/crypto/credential-box";
 import { writeAuditLog } from "@/features/auth/services/audit-log.service";
+import { resolveCorrelationId } from "@/lib/observability/correlation";
 import { getAccountSnapshot } from "@/features/accounts/services/account.service";
 import { createRustAdapter, mergePublicAndRcon } from "@/features/servers/adapters/rust";
 import { getRuntimeAdapter } from "@/features/servers/adapters/runtime";
@@ -328,7 +328,7 @@ export async function testRustConnection(
 ) {
   assertNotImpersonating(actor);
   const { server } = await requireOwner(userId, serverIdOrSlug);
-  const correlationId = randomUUID();
+  const correlationId = resolveCorrelationId();
   const started = Date.now();
   const adapter = getRuntimeAdapter("rust");
   if (!isReadOnlyIntegrationAdapter(adapter)) {
@@ -521,7 +521,7 @@ export async function connectRustIntegration(
       serverId: server.id,
       integrationId: integration.id,
       status: "PENDING",
-      correlationId: randomUUID(),
+      correlationId: resolveCorrelationId(),
     },
   });
 
@@ -913,7 +913,7 @@ export async function runRustRefresh(integrationId: string): Promise<NormalizedS
     success: merged.successful,
     errorCategory: merged.errorCategory,
     durationMs: 0,
-    correlationId: randomUUID(),
+    correlationId: resolveCorrelationId(),
   });
   return merged;
 }

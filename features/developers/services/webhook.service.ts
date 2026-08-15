@@ -20,6 +20,8 @@ import {
 import type { CreateWebhookInput } from "@/features/developers/schemas/developer.schemas";
 import { getMyDeveloperProfile } from "@/features/developers/services/portal.service";
 import { SsrfError } from "@/features/servers/lib/ssrf";
+import { resolveCorrelationId } from "@/lib/observability/correlation";
+import { runWithObservabilityContext } from "@/lib/observability/context";
 
 export async function createWebhookEndpoint(userId: string, input: CreateWebhookInput) {
   const mine = await getMyDeveloperProfile(userId);
@@ -191,6 +193,7 @@ export async function processWebhookDelivery(deliveryId: string) {
         "X-KOBA-Signature": signature,
         "X-KOBA-Delivery": row.deliveryId,
         "X-KOBA-Event": row.eventType,
+        "X-KOBA-Correlation-Id": resolveCorrelationId(),
       },
       body: row.payloadJson,
     });
@@ -322,7 +325,12 @@ export async function runWebhookBatch(limit = 8) {
   const claimed = await claimWebhookDeliveries(limit);
   const results = [];
   for (const deliveryId of claimed) {
-    results.push(await processWebhookDelivery(deliveryId));
+    results.push(
+      await runWithObservabilityContext(
+        { jobId: deliveryId, correlationId: resolveCorrelationId() },
+        () => processWebhookDelivery(deliveryId),
+      ),
+    );
   }
   return { claimed: claimed.length, results };
 }

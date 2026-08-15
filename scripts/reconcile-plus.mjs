@@ -3,7 +3,7 @@
  *
  * Usage:
  *   pnpm plus:reconcile
- *   node scripts/reconcile-plus.mjs
+ *   PLUS_RECONCILE_WORKER_LOOP=true pnpm plus:reconcile
  *
  * Fetches Stripe subscription state and updates local rows only.
  * Never writes local state back to Stripe.
@@ -28,12 +28,34 @@ if (!process.env.STRIPE_SECRET_KEY?.startsWith("sk_test_")) {
 const { register } = await import("tsx/esm/api");
 register();
 
+const { runWorkerMain } = await import("../lib/observability/worker-main.ts");
+const { emitAlert } = await import("../lib/observability/alerts.ts");
 const { reconcileDuePlusSubscriptions } =
   await import("../features/plus/services/plus-reconcile.service.ts");
 
-const started = Date.now();
-const results = await reconcileDuePlusSubscriptions(25);
-const drifted = results.filter((row) => !row.aligned).length;
-console.info(
-  `[reconcile-plus] checked=${results.length} drifted=${drifted} ms=${Date.now() - started}`,
-);
+const intervalMs = Number.parseInt(process.env.PLUS_RECONCILE_WORKER_INTERVAL_MS ?? "300000", 10);
+
+await runWorkerMain({
+  name: "plus-reconcile",
+  loop: process.env.PLUS_RECONCILE_WORKER_LOOP === "true",
+  intervalMs: Number.isSafeInteger(intervalMs) && intervalMs >= 1000 ? intervalMs : 300_000,
+  runOnce: async () => {
+    const results = await reconcileDuePlusSubscriptions(25);
+    const drifted = results.filter((row) => !row.aligned).length;
+    if (drifted > 0) {
+      await emitAlert(
+        "payment_reconciliation_mismatch",
+        "Plus subscription state drifted from Stripe",
+        {
+          labels: { worker: "plus-reconcile", operation: "plus_reconcile", errorClass: "payment" },
+          extra: { driftedCount: drifted, checked: results.length },
+        },
+      );
+    }
+    return {
+      outcome: drifted > 0 ? "failure" : "success",
+      claimed: results.length,
+      failed: drifted,
+    };
+  },
+});

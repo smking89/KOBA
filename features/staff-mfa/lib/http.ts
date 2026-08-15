@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { StaffMfaError, staffMfaErrorStatus } from "@/features/staff-mfa/lib/errors";
+import { emitAlert, recordStaffMfaFailure } from "@/lib/observability/alerts";
+import { unexpectedJsonError } from "@/lib/observability/http";
 
 export const staffMfaNoStore = { "Cache-Control": "no-store, no-cache, must-revalidate" };
 
@@ -16,8 +18,12 @@ export function staffMfaErrorResponse(error: unknown): NextResponse | null {
 }
 
 export function jsonStaffMfaError(error: unknown, fallback = "Could not complete MFA action.") {
-  return (
-    staffMfaErrorResponse(error) ??
-    NextResponse.json({ error: fallback }, { status: 500, headers: staffMfaNoStore })
-  );
+  if (error instanceof StaffMfaError && error.code === "INVALID") {
+    if (recordStaffMfaFailure() >= 12) {
+      void emitAlert("staff_mfa_failure_spike", "Repeated staff MFA failures", {
+        labels: { operation: "staff_mfa", errorClass: "authentication" },
+      });
+    }
+  }
+  return staffMfaErrorResponse(error) ?? unexpectedJsonError(error, fallback, staffMfaNoStore);
 }

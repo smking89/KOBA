@@ -6,6 +6,7 @@ import { PaymentError } from "@/features/payments/lib/errors";
 import { getStripe, isStripeConfigured } from "@/features/payments/lib/stripe";
 import { InfluencerError } from "@/features/influencer/lib/errors";
 import { settleReferralForPaidOrder } from "@/features/influencer/services/influencer.service";
+import { logger } from "@/lib/observability/logger";
 
 async function assertInfluencerMode(userId: string) {
   const profile = await prisma.accountProfile.findUnique({
@@ -163,7 +164,15 @@ export async function payInfluencerEarning(orderId: string) {
     });
     return paid;
   } catch (error) {
-    console.error("[KOBA] influencer transfer failed", error);
+    logger.error(
+      "Influencer Stripe transfer failed",
+      {
+        event: "payment_side_effect_failure",
+        operation: "influencer_transfer",
+        outcome: "failure",
+      },
+      error,
+    );
     await prisma.influencerEarning.update({
       where: { id: earning.id },
       data: { status: "PAYABLE" },

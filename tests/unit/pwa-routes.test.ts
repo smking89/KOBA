@@ -32,8 +32,8 @@ describe("isSensitivePath", () => {
   });
 
   it("allows public routes", () => {
-    expect(isSensitivePath("/market")).toBe(false);
     expect(isSensitivePath("/api/health")).toBe(false);
+    expect(isSensitivePath("/api/ready")).toBe(false);
   });
 
   it("documents every denylist prefix", () => {

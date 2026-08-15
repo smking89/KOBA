@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { InfluencerError, influencerErrorStatus } from "@/features/influencer/lib/errors";
 import { PaymentError, paymentErrorStatus } from "@/features/payments/lib/errors";
+import { unexpectedJsonError } from "@/lib/observability/http";
 
 export const influencerNoStore = { "Cache-Control": "no-store" };
 
@@ -24,6 +25,5 @@ export function jsonInfluencerError(
       { status: paymentErrorStatus(error.code), headers: influencerNoStore },
     );
   }
-  console.error(error);
-  return NextResponse.json({ error: fallback }, { status: 500, headers: influencerNoStore });
+  return unexpectedJsonError(error, fallback, influencerNoStore);
 }
