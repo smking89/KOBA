@@ -143,9 +143,9 @@ describe("Aiden product mapping (Vest/Graft/Terra)", () => {
 });
 
 describe("USD to Coin cost conversion", () => {
-  it("converts at the same base rate live Coin purchases use ($0.01 = 1 Coin)", () => {
-    expect(usdToCoins(1)).toBe(100);
-    expect(usdToCoins(0.5)).toBe(50);
+  it("converts at KOBA's own cost basis ($0.10 = 1 Coin)", () => {
+    expect(usdToCoins(1)).toBe(10);
+    expect(usdToCoins(0.5)).toBe(5);
   });
 
   it("rounds up fractional cents so KOBA never under-charges", () => {

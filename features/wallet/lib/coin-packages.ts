@@ -3,27 +3,42 @@
  * pattern as this repo's other "deferred: admin-configurable table" spots
  * (PlatformFeeSchedule seeds one default row, escrow hold days is an env
  * var). A real admin-managed pricing table is future work; for now these
- * four packages are the entire purchasable catalog.
+ * five packages are the entire purchasable catalog.
+ *
+ * Pricing model (confirmed): 1 Coin ≈ $0.10 of real GPU/model cost KOBA
+ * pays a generation vendor; KOBA sells Coins at ≈$0.13 each (a 30% margin
+ * over that cost — see docs/aiden-model-costs.md for the full per-model
+ * coin-cost table this feeds). The five tiers below are priced at
+ * approximately that $0.13/Coin rate with minor rounding to land on clean
+ * price points — NOT an escalating bonus-percent structure like this
+ * catalog's previous four-tier version.
  */
 export type CoinPackage = {
   id: string;
   label: string;
   priceCents: number;
   coinAmount: bigint;
-  /** Marketing-only bonus percentage vs. the base $0.01-per-Coin rate, for display. */
-  bonusPercent: number;
 };
 
-// $0.01 = 1 Coin at the base (no-bonus) rate. Exported so other spend
-// surfaces (e.g. Aiden generation cost reconciliation) convert at the same
-// rate real purchases use, rather than defining a second exchange rate.
-export const BASE_RATE_COINS_PER_CENT = 1;
+/** Real GPU/model cost KOBA pays per Coin, in cents. Used to convert a
+ * generation provider's reported actualCostUsd into Coins for audit
+ * (features/aiden/lib/cost.ts) — this is KOBA's cost basis, deliberately
+ * NOT the ~13-cent price Coins are sold to users at (SELL_RATE_CENTS_PER_COIN
+ * below), since coinCostActual should reflect what the generation truly
+ * cost, not the markup. */
+export const MODEL_COST_CENTS_PER_COIN = 10;
+
+/** Approximate price Coins are sold to users at, in cents — informational
+ * only (the actual sell price comes from COIN_PACKAGES below, which round
+ * to clean price points rather than being priced at this rate exactly). */
+export const SELL_RATE_CENTS_PER_COIN = 13;
 
 export const COIN_PACKAGES: readonly CoinPackage[] = [
-  { id: "starter", label: "Starter", priceCents: 499, coinAmount: 500n, bonusPercent: 0 },
-  { id: "plus", label: "Plus", priceCents: 999, coinAmount: 1100n, bonusPercent: 10 },
-  { id: "pro", label: "Pro", priceCents: 2499, coinAmount: 3000n, bonusPercent: 20 },
-  { id: "ultra", label: "Ultra", priceCents: 4999, coinAmount: 6500n, bonusPercent: 30 },
+  { id: "starter", label: "Starter", priceCents: 999, coinAmount: 75n },
+  { id: "creator", label: "Creator", priceCents: 1999, coinAmount: 150n },
+  { id: "studio", label: "Studio", priceCents: 4999, coinAmount: 380n },
+  { id: "pro", label: "Pro", priceCents: 9999, coinAmount: 770n },
+  { id: "enterprise", label: "Enterprise", priceCents: 24999, coinAmount: 1920n },
 ] as const;
 
 export function getCoinPackage(id: string): CoinPackage | null {
@@ -34,16 +49,22 @@ export function listCoinPackages(): readonly CoinPackage[] {
   return COIN_PACKAGES;
 }
 
-/** Pure validation: every package must actually pay out at or above the
- * advertised bonus over the base rate, and never below it (no silent
- * downgrade), so a config typo can't accidentally under- or over-pay. */
+/**
+ * Pure validation: every package's effective per-Coin price must land in a
+ * sane band around the confirmed ~$0.13/Coin sell rate — catches a typo
+ * that would accidentally give away Coins far below cost (below
+ * MODEL_COST_CENTS_PER_COIN, KOBA loses money on every Coin sold) or
+ * overcharge wildly above the intended rate.
+ */
+const MIN_CENTS_PER_COIN = MODEL_COST_CENTS_PER_COIN; // never sell at/below raw cost
+const MAX_CENTS_PER_COIN = 20; // generous ceiling above the ~13-cent target
+
 export function isCoinPackageConsistent(pack: CoinPackage): boolean {
   if (pack.priceCents <= 0 || pack.coinAmount <= 0n) {
     return false;
   }
-  const baseCoins = BigInt(pack.priceCents) * BigInt(BASE_RATE_COINS_PER_CENT);
-  const expectedMinimum = baseCoins + (baseCoins * BigInt(pack.bonusPercent)) / 100n;
-  return pack.coinAmount >= expectedMinimum;
+  const centsPerCoin = pack.priceCents / Number(pack.coinAmount);
+  return centsPerCoin > MIN_CENTS_PER_COIN && centsPerCoin <= MAX_CENTS_PER_COIN;
 }
 
 // Runtime guardrail: a future edit to COIN_PACKAGES that breaks the
@@ -53,6 +74,6 @@ export function isCoinPackageConsistent(pack: CoinPackage): boolean {
 // should never silently ship.
 for (const pack of COIN_PACKAGES) {
   if (!isCoinPackageConsistent(pack)) {
-    throw new Error(`Inconsistent Coin package "${pack.id}": price/coinAmount/bonus mismatch.`);
+    throw new Error(`Inconsistent Coin package "${pack.id}": price/coinAmount out of band.`);
   }
 }

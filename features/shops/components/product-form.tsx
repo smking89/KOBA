@@ -37,10 +37,14 @@ export function ProductForm({
 }) {
   const router = useRouter();
   const [formError, setFormError] = useState<string | null>(null);
+  const [describing, setDescribing] = useState(false);
+  const [describeError, setDescribeError] = useState<string | null>(null);
   const {
     register,
     handleSubmit,
     watch,
+    setValue,
+    getValues,
     formState: { errors, isSubmitting },
   } = useForm<UpsertProductInput>({
     resolver: zodResolver(upsertProductSchema),
@@ -59,6 +63,35 @@ export function ProductForm({
   });
 
   const listingType = watch("listingType");
+
+  async function generateDescription() {
+    const { title, gameSlug, categorySlug } = getValues();
+    if (!title.trim()) {
+      setDescribeError("Enter a title first.");
+      return;
+    }
+    setDescribing(true);
+    setDescribeError(null);
+    const response = await fetch("/api/business/products/describe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title,
+        game: games.find((g) => g.slug === gameSlug)?.name ?? gameSlug,
+        category: categories.find((c) => c.slug === categorySlug)?.name ?? categorySlug,
+        idempotencyKey: crypto.randomUUID(),
+      }),
+    });
+    const payload = (await response.json()) as { description?: string; error?: string };
+    setDescribing(false);
+    if (!response.ok) {
+      setDescribeError(payload.error ?? "Could not generate a description.");
+      return;
+    }
+    if (payload.description) {
+      setValue("description", payload.description, { shouldValidate: true });
+    }
+  }
 
   const onSubmit = handleSubmit(async (values) => {
     setFormError(null);
@@ -85,6 +118,18 @@ export function ProductForm({
       </FormField>
       <FormField id="description" label="Description" error={errors.description?.message}>
         <Textarea id="description" rows={5} maxLength={4000} {...register("description")} />
+        <div className="mt-2 flex items-center gap-2">
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            disabled={describing}
+            onClick={() => void generateDescription()}
+          >
+            {describing ? "Generating…" : "Generate with AI (1 Coin)"}
+          </Button>
+          {describeError ? <p className="text-xs text-destructive">{describeError}</p> : null}
+        </div>
       </FormField>
       <div className="grid gap-4 md:grid-cols-2">
         <FormField id="gameSlug" label="Game" error={errors.gameSlug?.message}>
