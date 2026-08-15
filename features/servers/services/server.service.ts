@@ -15,7 +15,11 @@ import type { CreateServerInput, RconActionInput } from "@/features/servers/sche
 import { isPlusActive } from "@/features/plus/services/plus.service";
 import { queryProtocolForGame, rconProtocolForGame } from "@/features/servers/lib/rcon/registry";
 import { runRconCommand, SourceRconError } from "@/features/servers/lib/rcon/source-rcon";
-import { runWebRconCommand, WebRconError } from "@/features/servers/lib/rcon/rust-webrcon";
+import {
+  queryRustStatusViaRcon,
+  runWebRconCommand,
+  WebRconError,
+} from "@/features/servers/lib/rcon/rust-webrcon";
 import { queryServerInfo, SourceQueryError, type SourceServerInfo } from "@/features/servers/lib/rcon/source-query";
 import { getCachedServerStatus, setCachedServerStatus } from "@/features/servers/lib/status-cache";
 
@@ -136,6 +140,54 @@ export async function isServerOwner(userId: string, serverIdOrSlug: string): Pro
 }
 
 /**
+ * A2S_INFO first (unauthenticated, confirmed reachable on PC Source
+ * servers). Falls back to Rust's own `status` RCON command over WebRcon
+ * when A2S isn't available for this game/platform but RCON is (this is
+ * the Console Edition path — see rust-webrcon.ts's confidence note on
+ * that parser). Returns null, never a partial/guessed value, if neither
+ * path is available or the RCON fallback's parse comes back empty.
+ */
+async function queryLiveStatus(
+  server: NonNullable<ServerRow> & { host: string; port: number },
+): Promise<SourceServerInfo | null> {
+  const a2sProtocol = queryProtocolForGame(server.game, server.platformFamily);
+  if (a2sProtocol) {
+    try {
+      return await queryServerInfo({ host: server.host, port: server.port });
+    } catch (error) {
+      if (!(error instanceof SourceQueryError)) {
+        throw error;
+      }
+      return null;
+    }
+  }
+
+  const rconProtocol = rconProtocolForGame(server.game, server.platformFamily);
+  if (rconProtocol !== "RUST_WEBRCON") {
+    return null;
+  }
+  const credential = await prisma.serverCredential.findUnique({ where: { serverId: server.id } });
+  if (!credential) {
+    return null;
+  }
+  try {
+    const password = openSecret(credential);
+    const status = await queryRustStatusViaRcon({ host: server.host, port: server.port, password });
+    if (status.players === null || status.maxPlayers === null) {
+      return null; // parse didn't find the expected shape — fail closed, not a guess
+    }
+    return {
+      serverName: status.hostname ?? server.name,
+      mapName: status.mapName ?? "",
+      players: status.players,
+      maxPlayers: status.maxPlayers,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
  * On-demand, cached live query (client-confirmed polling model,
  * 2026-08-15) — queried only when a server's page is viewed, cached
  * ~45s (features/servers/lib/status-cache.ts), no scheduled background
@@ -147,8 +199,9 @@ export async function getLiveServerStatus(
   serverIdOrSlug: string,
 ): Promise<SourceServerInfo | null> {
   const server = await loadServer(serverIdOrSlug);
-  const protocol = queryProtocolForGame(server.game, server.platformFamily);
-  if (!protocol || !server.host || server.port == null) {
+  const host = server.host;
+  const port = server.port;
+  if (!host || port == null) {
     return null;
   }
 
@@ -157,14 +210,9 @@ export async function getLiveServerStatus(
     return cached;
   }
 
-  let info: SourceServerInfo;
-  try {
-    info = await queryServerInfo({ host: server.host, port: server.port });
-  } catch (error) {
-    if (error instanceof SourceQueryError) {
-      return null;
-    }
-    throw error;
+  const info = await queryLiveStatus({ ...server, host, port });
+  if (!info) {
+    return null;
   }
 
   await setCachedServerStatus(server.id, info);

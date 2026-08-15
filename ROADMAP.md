@@ -955,19 +955,27 @@ a real connection — now real for every case below.
   **GPORTAL's own wiki** (not inferred, their documented instructions
   for RUST CE admins), it's also how Console Edition is RCON'd into.
   Wired as Rust's primary RCON protocol on both PC and CONSOLE.
-- **RCON and live-query capability are deliberately decoupled**
-  (`features/servers/lib/rcon/registry.ts`, split into
-  `rconProtocolForGame`/`queryProtocolForGame`) — Rust Console Edition
-  gets real RCON (WebRcon) but its A2S_INFO live-query reachability is
-  **not** confirmed, so live stats stay PC-only. Two different
-  protocols with two different confidence levels shouldn't share one
-  "supported/not" flag.
+- **Live stats on Rust Console Edition — resolved same day.** A2S_INFO
+  (UDP query) reachability on console is still unconfirmed, but that
+  turned out not to matter: `status` and `playerlist` are normal RCON
+  commands, reachable via the same WebRcon connection already
+  confirmed working on Console Edition — no separate protocol needed.
+  `playerlist` (`features/servers/lib/rcon/rust-webrcon.ts`) returns a
+  real structured JSON array (verified against a concrete published
+  example — SteamID/DisplayName/Ping/etc. per player), used as the
+  primary player-count source since counting array entries needs no
+  text-format guessing. `status` (regex-parsed text, lower confidence,
+  documented as such in code) supplies hostname/map/max-players, the
+  fields `playerlist` doesn't carry. Both queried in parallel; a
+  failure in one doesn't block the other.
 - **Real A2S_INFO query client**
   (`features/servers/lib/rcon/source-query.ts`): UDP, PC Source-engine
-  servers only (Rust, Garry's Mod) — the *correct* protocol for public
-  live-stats reads (player count/map/name); RCON itself is for
+  servers only (Rust, Garry's Mod) — the *correct*, highest-confidence
+  protocol for public live-stats reads on PC; RCON itself is for
   authenticated admin commands, a different concern. Implements the
-  challenge/response round trip modern Source servers require.
+  challenge/response round trip modern Source servers require. Tried
+  first when available; the RCON-based path above is the fallback for
+  servers A2S doesn't reach (Console Edition today).
 - **Polling model (client-confirmed 2026-08-15)**: on-demand, cached
   ~45s (`features/servers/lib/status-cache.ts`, same fail-soft Upstash/
   in-memory shape as `feed-cache.ts`/`rate-limit.ts`) — queried when a
@@ -996,8 +1004,10 @@ a real connection — now real for every case below.
   confirmed for that game, not new architecture.
 - Console Garry's Mod (no equivalent to WebRcon confirmed for it — it's
   Facepunch/Rust-specific tech).
-- Live-stats polling on Rust Console Edition — RCON works there, A2S
-  query reachability doesn't yet have a confirmed answer.
+- `status`'s text format is regex-parsed against the widely-documented
+  shape, not a byte-verified spec the way `playerlist`'s JSON and
+  A2S_INFO's binary format both are — flagged as lower-confidence in
+  code, fails closed (null fields) rather than guessing on a mismatch.
 
 **Dependencies**
 
@@ -1008,9 +1018,7 @@ a real connection — now real for every case below.
 
 **Open questions for the client**
 
-1. Whether Rust Console Edition exposes a reachable A2S_INFO query port
-   for live player-count/map polling — not confirmed either way yet.
-2. Beyond Rust/Garry's Mod, which other PC games need RCON support, and
+1. Beyond Rust/Garry's Mod, which other PC games need RCON support, and
    what protocol do they actually use (confirm before assuming Source
    RCON applies — it doesn't universally).
 
@@ -1503,7 +1511,7 @@ Flagging rather than guessing on anything with real product/cost/legal consequen
 12. **Aiden frontier-model providers** (Phase 14) — Vest recommended (Tripo AI, pay-as-you-go). Graft and Terra vendors still open; blocks wiring the actual API calls (the reconciliation pipeline itself is built and vendor-agnostic).
 13. **KOBAads vs. Boost relationship** (Phase 15) — one product or two.
 14. **KOBA Plus perks** — shipped 2026-08-15 (see Phase 16): real Stripe Subscriptions, $4.99/mo single tier, tenure badges, per-server bio. Animated avatar/banner and themes/icons/sounds are blocked on prerequisite features that don't exist at all (no avatar/banner upload, no theming system) — not just unwired. KOBA Shop discount + Cosmetic access still blocked on Phase 23. Multiplier perk deliberately deferred. Still open: tenure badge threshold values (placeholder), lapse-reset behavior (shipped assuming persist).
-15. **Server "rarity" meaning** (Phase 17) — resolved 2026-08-15: derived from an owned, KOBA-marketplace-purchased Map set active on the server, shipped. Console RCON also resolved the same day (Rust Console Edition uses Facepunch's own WebRcon, confirmed via GPORTAL's official docs — not a proprietary hosting-provider API). Still open: whether Rust Console Edition exposes a reachable A2S live-query port.
+15. **Server "rarity" meaning** (Phase 17) — resolved 2026-08-15: derived from an owned, KOBA-marketplace-purchased Map set active on the server, shipped. Console RCON *and* live stats both resolved the same day (Rust Console Edition uses Facepunch's own WebRcon, confirmed via GPORTAL's official docs; live stats reached via WebRcon's `playerlist`/`status` commands rather than needing A2S at all — no gap remains here beyond the usual "extend the game list" follow-up.
 16. **Subdomain deployment strategy** (Phase 20) — single-app rewrite vs. separate deployments, and who owns DNS/TLS for `koba.games`.
 17. **KOBA Shop details** (Phase 23) — cosmetic checkout model (reuse `Order` or a dedicated `CosmeticOrder`), application review workflow/SLA, hero section display logic, and how the Plus member discount interacts with the 2.5% seller fee.
 18. **User interests / tag taxonomy** (Phase 1 → Phase 8) — Phase 1's outline named a mandatory "minimum 4 hashtags/interest tags" registration step feeding Phase 8's ranking, but neither the capture step nor a tag taxonomy was ever built. Phase 8's feed ranking now ships with an `interestMatch` signal deliberately held at weight 0 pending this.

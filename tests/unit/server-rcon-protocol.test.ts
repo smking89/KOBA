@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest";
 import { decodePacket, encodePacket } from "@/features/servers/lib/rcon/source-rcon";
 import { buildRequest, parseInfoResponse } from "@/features/servers/lib/rcon/source-query";
 import { queryProtocolForGame, rconProtocolForGame } from "@/features/servers/lib/rcon/registry";
-import { buildWebRconUrl } from "@/features/servers/lib/rcon/rust-webrcon";
+import {
+  buildWebRconUrl,
+  parsePlayerListOutput,
+  parseStatusOutput,
+} from "@/features/servers/lib/rcon/rust-webrcon";
 
 describe("Source RCON packet encode/decode", () => {
   it("round-trips id/type/body through encode then decode", () => {
@@ -124,6 +128,75 @@ describe("buildWebRconUrl", () => {
     expect(buildWebRconUrl("play.example.com", 28016, "p@ss/word?")).toBe(
       "ws://play.example.com:28016/p%40ss%2Fword%3F",
     );
+  });
+});
+
+describe("parseStatusOutput", () => {
+  it("parses the widely-documented status header shape", () => {
+    const output = [
+      "hostname: Legacy Raiders US",
+      "version : 12345 secure (secure mode enabled, connected to Steam3)",
+      "map     : Procedural Map",
+      "players : 42 (200 max) (5 queued) (0 joining)",
+      "id name ping connected addr owner violation kicks",
+    ].join("\n");
+    const info = parseStatusOutput(output);
+    expect(info).toEqual({
+      hostname: "Legacy Raiders US",
+      mapName: "Procedural Map",
+      players: 42,
+      maxPlayers: 200,
+      queued: 5,
+    });
+  });
+
+  it("parses players/max without a queued count present", () => {
+    const output = "hostname: My Server\nmap     : Facepunch Island\nplayers : 10 (50 max)";
+    const info = parseStatusOutput(output);
+    expect(info.players).toBe(10);
+    expect(info.maxPlayers).toBe(50);
+    expect(info.queued).toBeNull();
+  });
+
+  it("fails closed (all-null) on unrecognized output rather than guessing", () => {
+    const info = parseStatusOutput("Unknown command\n");
+    expect(info).toEqual({
+      hostname: null,
+      mapName: null,
+      players: null,
+      maxPlayers: null,
+      queued: null,
+    });
+  });
+
+  it("is case-insensitive on field labels", () => {
+    const output = "HOSTNAME: Loud Server\nPLAYERS : 3 (10 MAX)";
+    const info = parseStatusOutput(output);
+    expect(info.hostname).toBe("Loud Server");
+    expect(info.players).toBe(3);
+    expect(info.maxPlayers).toBe(10);
+  });
+});
+
+describe("parsePlayerListOutput", () => {
+  it("counts entries in a real playerlist JSON array shape", () => {
+    const raw = JSON.stringify([
+      { SteamID: "111", OwnerSteamID: "0", DisplayName: "Alice", Ping: 28 },
+      { SteamID: "222", OwnerSteamID: "0", DisplayName: "Bob", Ping: 41 },
+    ]);
+    expect(parsePlayerListOutput(raw)).toBe(2);
+  });
+
+  it("counts zero for an empty array (nobody online)", () => {
+    expect(parsePlayerListOutput("[]")).toBe(0);
+  });
+
+  it("fails closed (null) on invalid JSON rather than throwing or guessing", () => {
+    expect(parsePlayerListOutput("Unknown command")).toBeNull();
+  });
+
+  it("fails closed (null) on valid JSON that isn't an array", () => {
+    expect(parsePlayerListOutput('{"error": "no rcon"}')).toBeNull();
   });
 });
 
