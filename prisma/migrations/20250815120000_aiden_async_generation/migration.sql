@@ -63,4 +63,4 @@ ALTER TABLE "AidenAsset" ADD COLUMN "model" TEXT;
 ALTER TABLE "AidenAsset" ADD COLUMN "modelVersion" TEXT;
 ALTER TABLE "AidenAsset" ADD COLUMN "provenanceJson" TEXT;
 
-CREATE INDEX "AidenAsset_moderation_idx" ON "AidenAsset"("moderation");
+CREATE INDEX IF NOT EXISTS "AidenAsset_moderation_idx" ON "AidenAsset"("moderation");
