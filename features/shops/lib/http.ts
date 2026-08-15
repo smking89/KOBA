@@ -13,6 +13,8 @@ export function shopErrorStatus(code: ShopError["code"]): number {
       return 403;
     case "INVALID_PAYOUT_VALUE":
       return 400;
+    case "GENERATION_FAILED":
+      return 502;
     default:
       return 400;
   }

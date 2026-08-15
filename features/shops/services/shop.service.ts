@@ -22,7 +22,8 @@ export class ShopError extends Error {
       | "ALREADY_EXISTS"
       | "SELF_ACTION"
       | "UNVERIFIED_BUSINESS"
-      | "INVALID_PAYOUT_VALUE",
+      | "INVALID_PAYOUT_VALUE"
+      | "GENERATION_FAILED",
   ) {
     super(message);
     this.name = "ShopError";
