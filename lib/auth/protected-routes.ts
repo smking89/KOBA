@@ -10,6 +10,7 @@ export const PROTECTED_PATH_PREFIXES = [
   "/messages",
   "/wallet",
   "/servers/connect",
+  "/servers/manage",
   "/aiden/generate",
   "/aiden/library",
 ] as const;

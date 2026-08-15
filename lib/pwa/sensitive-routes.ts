@@ -24,6 +24,7 @@ export const NEVER_CACHE_PATH_PREFIXES = [
   "/api/trade",
   "/api/inventory",
   "/api/servers",
+  "/api/account",
   "/api/plus",
   "/api/aiden",
   "/api/developers",
