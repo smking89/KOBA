@@ -20,6 +20,7 @@
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",
     "db:seed": "prisma db seed",
+    "db:reset": "prisma migrate reset --force && prisma db seed",
     "postinstall": "prisma generate",
     "ci": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build"
   },
