@@ -34,8 +34,7 @@ export const MOCK_AIDEN_JOBS: AidenJobView[] = [
     state: "FAILED",
     coinCostPreview: 15,
     coinCostActual: null,
-    failureReason:
-      "Vest has no configured generation provider (set AIDEN_VEST_PROVIDER_API_KEY to enable).",
+    failureReason: "Replicate has no configured API token (set REPLICATE_API_TOKEN to enable).",
     createdAt: "2026-08-13T16:00:00.000Z",
   },
 ];

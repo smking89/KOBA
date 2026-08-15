@@ -1,29 +1,34 @@
-import { isEnvConfigured } from "@/features/aiden/providers/env-gate";
+import { generateImage, isReplicateConfigured } from "@/features/aiden/providers/replicate-provider";
+import { generate3D, isTripoConfigured } from "@/features/aiden/providers/tripo-provider";
 import {
   AidenProviderNotConfiguredError,
+  type AidenGenerationInput,
   type AidenGenerationResult,
   type AidenProvider,
 } from "@/features/aiden/providers/types";
 
-const ENV_VAR = "AIDEN_GRAFT_PROVIDER_API_KEY";
+const IMAGE_ENV_VAR = "REPLICATE_API_TOKEN";
 
 /**
- * Graft: custom monument/prop/asset generation (3D modality). No vendor is
- * wired yet — fails closed like an unconfigured Stripe key. 3D asset
- * generation is a narrower vendor space than image generation (Vest) or
- * text/structured-data generation (Terra); pick deliberately, don't guess.
- * See ROADMAP.md Phase 14, open question 1.
+ * Graft: custom monument/prop/texture generation. Same split as Vest —
+ * TEXTURE is a 2D image (Replicate), PROP/ANIMATION are 3D (Tripo).
+ * PROP is a static prop (text-to-3D only); ANIMATION chains an auto-rig
+ * pass so the result is actually posable/animatable, not just a static
+ * mesh under an "Animation" label.
  */
 export const graftProvider: AidenProvider = {
   product: "GRAFT",
   isConfigured(): boolean {
-    return isEnvConfigured(ENV_VAR);
+    return isReplicateConfigured() || isTripoConfigured();
   },
-  async generate(): Promise<AidenGenerationResult> {
-    if (!this.isConfigured()) {
-      throw new AidenProviderNotConfiguredError("GRAFT", ENV_VAR);
+  async generate(input: AidenGenerationInput): Promise<AidenGenerationResult> {
+    if (input.assetType === "TEXTURE") {
+      if (!isReplicateConfigured()) {
+        throw new AidenProviderNotConfiguredError("GRAFT", IMAGE_ENV_VAR);
+      }
+      return generateImage({ prompt: input.prompt, model: "SDXL_IMAGE" });
     }
-    // TODO(aiden-graft): real vendor call goes here once a provider is chosen.
-    throw new AidenProviderNotConfiguredError("GRAFT", ENV_VAR);
+    // PROP: static 3D asset. ANIMATION: 3D asset + auto-rig.
+    return generate3D({ prompt: input.prompt, withAutoRig: input.assetType === "ANIMATION" });
   },
 };
