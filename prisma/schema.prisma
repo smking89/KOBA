@@ -75,6 +75,7 @@ enum AuditAction {
   BOOST_PURCHASED
   BOOST_GIFTED
   BOOST_APPLIED
+  AIDEN_ASSET_PUBLISHED
 }
 
 // Major, independently-toggleable platform functions. This is the registry
@@ -440,6 +441,7 @@ model Product {
   favorites ProductFavorite[]
   orderItems OrderItem[]
   auction    Auction?
+  aidenAsset AidenAsset?
 
   @@index([moderationStatus, publishedAt])
   @@index([gameId])
@@ -1801,11 +1803,20 @@ model AidenAsset {
   /// Generated output location (image/model/map file URL). Null for
   /// CONCEPT_ONLY assets and anything created before real generation existed.
   assetUrl         String?
+  /// Set once this asset has been published to the marketplace as a
+  /// Product (features/aiden/services/aiden.service.ts's
+  /// publishAssetToMarketplace). Null means never published; presence
+  /// blocks re-publishing the same asset as a second listing. The
+  /// created Product still starts DRAFT and goes through the same
+  /// seller submit -> staff review pipeline as any other listing — this
+  /// is lineage tracking, not a moderation bypass.
+  publishedProductId String?              @unique
   createdAt        DateTime              @default(now())
   updatedAt        DateTime              @updatedAt
 
-  user User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  job  AidenJob? @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job             AidenJob? @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  publishedProduct Product? @relation(fields: [publishedProductId], references: [id], onDelete: SetNull)
 
   @@index([userId, createdAt])
   @@index([moderation])

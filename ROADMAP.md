@@ -516,9 +516,21 @@ architecture. What's real:
   skeleton retargeting to that game's animation set) is deterministic
   glue work KOBA has to build itself (e.g. a headless Blender automation
   service) — no vendor does this step.
-- Successful generations publishing directly to the KOBA marketplace as a
-  new `Product`/`Cosmetic` (still enters the existing moderation queue,
-  no bypass) — not built yet, the pipeline stops at asset creation today.
+- ~~Successful generations publishing directly to the KOBA marketplace~~
+  **shipped 2026-08-15**: `publishAssetToMarketplace`
+  (`features/aiden/services/aiden.service.ts`) creates a real DRAFT
+  `Product` (via the same `createSellerProduct` a manual listing form
+  calls) from a generated asset, attaches its `assetUrl` as
+  `ProductMedia`, and links `AidenAsset.publishedProductId` so an asset
+  can only publish once. The Product still goes through the existing
+  seller-submit → staff-review pipeline — no bypass. Every
+  `AidenAssetType` maps to a required `Category.kind` at publish time
+  (`features/aiden/lib/marketplace-mapping.ts`; `CONCEPT_IMAGE` maps to
+  null — concepts aren't publishable). Aiden asset types never map to
+  `Cosmetic` — nothing in `AidenAssetType` conceptually produces a
+  KOBA-identity item (nameplate/avatar decoration/etc.), only
+  marketplace `Product` content. `/aiden/library`'s "Publish to shop"
+  button is now real (was previously always disabled/non-functional).
 
 **Data models / entities**
 
@@ -540,10 +552,16 @@ architecture. What's real:
 
 **Open questions for the client**
 
-1. Frontier model provider per modality — Vest (image gen), Graft (3D/
-   asset gen), Terra (procedural map gen) plausibly need three different
-   vendors. Which, and what's the pricing/usage-reporting shape for each
-   (needed to build the actual-cost reconciliation)?
+1. Frontier model **provider** per modality — partially resolved
+   (2026-08-15): the client specified which *models* (SDXL, Kandinsky,
+   Hunyuan, Tripo, Luma, Flux — matching `features/aiden/lib/
+model-costs.ts`'s cost table exactly), but SDXL/Kandinsky/Hunyuan/Flux
+   are open-weight models with no single owning company/API — they need
+   a **hosting platform** decision (e.g. Replicate, fal.ai, Fireworks,
+   RunPod — each with different endpoint shapes, pricing, and
+   usage-reporting format) before any of those four can be wired. Tripo
+   and Luma each have their own direct API and don't need this decision.
+   Still blocks the actual-cost reconciliation for 4 of 6 models.
 2. Exchange rate: USD-cost-of-generation → KOBA Coins. Fixed multiplier,
    or does it track the same live Coin-purchase pricing (Phase 15,
    `features/wallet/lib/coin-packages.ts`)?

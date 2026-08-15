@@ -5,10 +5,18 @@ import { AidenError } from "@/features/aiden/lib/errors";
 import { generateAidenAssetRef, generateAidenJobRef } from "@/features/aiden/lib/refs";
 import { usdToCoins } from "@/features/aiden/lib/cost";
 import { coinCostForAssetType } from "@/features/aiden/lib/cost-preview";
-import type { AidenAssetType, AidenAssetView, AidenJobView } from "@/features/aiden/lib/types";
+import {
+  aidenAssetTypeLabel,
+  type AidenAssetType,
+  type AidenAssetView,
+  type AidenJobView,
+} from "@/features/aiden/lib/types";
+import { expectedCategoryKindForAssetType } from "@/features/aiden/lib/marketplace-mapping";
 import { productForAssetType, type AidenGenerationResult } from "@/features/aiden/providers/types";
 import { masterAgent, AidenOsError } from "@/features/aiden/os";
-import type { CreateAidenJobInput } from "@/features/aiden/schemas/aiden.schemas";
+import type { CreateAidenJobInput, PublishAidenAssetInput } from "@/features/aiden/schemas/aiden.schemas";
+import { ShopError } from "@/features/shops/services/shop.service";
+import { createSellerProduct } from "@/features/shops/services/product-admin.service";
 import { WalletError } from "@/features/wallet/lib/errors";
 import {
   captureReservation,
@@ -53,6 +61,7 @@ function toAssetView(asset: {
   game: string;
   previewLabel: string;
   assetUrl: string | null;
+  publishedProduct?: { slug: string } | null;
 }): AidenAssetView {
   return {
     publicRef: asset.publicRef,
@@ -63,6 +72,7 @@ function toAssetView(asset: {
     game: asset.game,
     previewLabel: asset.previewLabel,
     assetUrl: asset.assetUrl,
+    publishedProductSlug: asset.publishedProduct?.slug ?? null,
   };
 }
 
@@ -80,6 +90,7 @@ export async function listLibrary(userId: string): Promise<AidenAssetView[]> {
     where: { userId },
     orderBy: { createdAt: "desc" },
     take: 64,
+    include: { publishedProduct: { select: { slug: true } } },
   });
   return assets.map(toAssetView);
 }
@@ -318,21 +329,98 @@ export async function runGeneration(
   return toJobView(updatedJob);
 }
 
-export async function publishToShopRequest(
+/**
+ * Closes the ROADMAP.md Phase 14 gap: "successful generations publishing
+ * directly to the KOBA marketplace as a new Product ... not built yet,
+ * the pipeline stops at asset creation today." Creates a real DRAFT
+ * Product (via createSellerProduct — the same function a seller's manual
+ * "New listing" form calls) with the asset's generated file as its media,
+ * and links the asset to it. The Product still goes through the existing
+ * seller-submit -> staff-review pipeline; nothing here bypasses
+ * moderation, it only automates getting from "generated" to "draft
+ * listing" instead of a seller re-uploading the file by hand.
+ */
+export async function publishAssetToMarketplace(
   userId: string,
   publicRef: string,
+  input: PublishAidenAssetInput,
+  ipAddress?: string | null,
 ): Promise<AidenAssetView> {
   const asset = await prisma.aidenAsset.findUnique({ where: { publicRef } });
   if (!asset || asset.userId !== userId) {
     throw new AidenError("Asset not found.", "NOT_FOUND");
   }
-  if (asset.technicalStatus === "CONCEPT_ONLY") {
-    throw new AidenError("Concept-only assets cannot be submitted for shop review.", "INVALID");
+  if (!asset.assetUrl) {
+    throw new AidenError("This asset has no generated file to publish yet.", "INVALID");
   }
+  if (asset.publishedProductId) {
+    throw new AidenError("This asset has already been published.", "CONFLICT");
+  }
+
+  const expectedKind = expectedCategoryKindForAssetType(asset.assetType);
+  if (!expectedKind) {
+    throw new AidenError(
+      `${aidenAssetTypeLabel(asset.assetType)} assets are concepts, not publishable listings.`,
+      "INVALID",
+    );
+  }
+
+  const category = await prisma.category.findUnique({ where: { slug: input.categorySlug } });
+  if (!category) {
+    throw new AidenError("Unknown category.", "NOT_FOUND");
+  }
+  if (category.kind !== expectedKind) {
+    throw new AidenError(
+      `${aidenAssetTypeLabel(asset.assetType)} assets must publish under a ${expectedKind} category.`,
+      "INVALID",
+    );
+  }
+
+  let product: Awaited<ReturnType<typeof createSellerProduct>>;
+  try {
+    product = await createSellerProduct(userId, {
+      title: asset.title,
+      description: `Generated with KOBA Aiden (${aidenAssetTypeLabel(asset.assetType)}) for ${asset.game}. ${asset.previewLabel}`,
+      rarity: input.rarity,
+      listingType: input.listingType,
+      priceCents: input.priceCents,
+      inventoryQty: input.inventoryQty,
+      gameSlug: input.gameSlug,
+      categorySlug: input.categorySlug,
+      platforms: input.platforms,
+      durationHours: input.durationHours,
+      minIncrementCents: input.minIncrementCents,
+    });
+  } catch (error) {
+    if (error instanceof ShopError) {
+      throw new AidenError(error.message, error.code === "FORBIDDEN" ? "FORBIDDEN" : "NOT_FOUND");
+    }
+    throw error;
+  }
+
+  await prisma.productMedia.create({
+    data: {
+      productId: product.id,
+      url: asset.assetUrl,
+      alt: asset.title,
+      kind: "IMAGE",
+      sortOrder: 0,
+    },
+  });
 
   const updated = await prisma.aidenAsset.update({
     where: { id: asset.id },
-    data: { moderation: "PENDING_REVIEW" },
+    data: { moderation: "PENDING_REVIEW", publishedProductId: product.id },
+    include: { publishedProduct: { select: { slug: true } } },
+  });
+
+  await writeAuditLog({
+    actorUserId: userId,
+    action: AuditAction.AIDEN_ASSET_PUBLISHED,
+    targetType: "Product",
+    targetId: product.id,
+    metadata: { aidenAssetPublicRef: publicRef, productSlug: product.slug },
+    ipAddress: ipAddress ?? null,
   });
 
   return toAssetView(updated);

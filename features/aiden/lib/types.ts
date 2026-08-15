@@ -62,6 +62,9 @@ export type AidenAssetView = {
   game: string;
   previewLabel: string;
   assetUrl: string | null;
+  /** Slug of the Product this asset was published as, once published.
+   * Null means never published — see publishAssetToMarketplace. */
+  publishedProductSlug: string | null;
 };
 
 export function aidenAssetTypeLabel(type: AidenAssetType): string {

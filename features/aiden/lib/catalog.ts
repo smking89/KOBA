@@ -50,6 +50,7 @@ export const MOCK_AIDEN_LIBRARY: AidenAssetView[] = [
     game: "Rust",
     previewLabel: "Preview still",
     assetUrl: null,
+    publishedProductSlug: null,
   },
   {
     publicRef: "KOBA-ADN-AST0002",
@@ -60,6 +61,7 @@ export const MOCK_AIDEN_LIBRARY: AidenAssetView[] = [
     game: "Garry's Mod",
     previewLabel: "Concept board",
     assetUrl: null,
+    publishedProductSlug: null,
   },
   {
     publicRef: "KOBA-ADN-AST0003",
@@ -70,5 +72,6 @@ export const MOCK_AIDEN_LIBRARY: AidenAssetView[] = [
     game: "Rust",
     previewLabel: "FBX preview",
     assetUrl: null,
+    publishedProductSlug: null,
   },
 ];

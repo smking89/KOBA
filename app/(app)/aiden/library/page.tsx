@@ -1,21 +1,19 @@
 import Link from "next/link";
-import { Button, buttonVariants } from "@/components/ui/button";
-import { Card, CardDescription, CardTitle } from "@/components/ui/card";
-import { StatusPill } from "@/components/koba/status-pill";
-import { cn } from "@/lib/utils";
-import {
-  AIDEN_DISCLAIMER,
-  aidenAssetTypeLabel,
-  aidenTechnicalLabel,
-} from "@/features/aiden/lib/types";
+import { AIDEN_DISCLAIMER } from "@/features/aiden/lib/types";
+import { LibraryAssetCard } from "@/features/aiden/components/library-asset-card";
 import { listLibrary } from "@/features/aiden/services/aiden.service";
 import { requireAidenPage } from "@/features/aiden/lib/require-business";
+import { listCategories, listGames } from "@/features/marketplace/services/product.service";
 
 export const metadata = { title: "Aiden library" };
 
 export default async function AidenLibraryPage() {
   const { userId } = await requireAidenPage("/aiden/library");
-  const assets = await listLibrary(userId).catch(() => []);
+  const [assets, games, categories] = await Promise.all([
+    listLibrary(userId).catch(() => []),
+    listGames(),
+    listCategories(),
+  ]);
 
   return (
     <div className="space-y-8">
@@ -33,42 +31,7 @@ export default async function AidenLibraryPage() {
         <ul className="grid gap-4 md:grid-cols-2">
           {assets.map((asset) => (
             <li key={asset.publicRef}>
-              <Card className="h-full">
-                <CardTitle>{asset.title}</CardTitle>
-                <CardDescription>
-                  {asset.game} · {aidenAssetTypeLabel(asset.assetType)} · {asset.previewLabel}
-                </CardDescription>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <StatusPill tone="accent">
-                    {aidenTechnicalLabel(asset.technicalStatus)}
-                  </StatusPill>
-                  <StatusPill>{asset.moderation}</StatusPill>
-                </div>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {asset.assetUrl ? (
-                    <a
-                      href={asset.assetUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className={cn(buttonVariants({ size: "sm", variant: "secondary" }))}
-                    >
-                      Preview
-                    </a>
-                  ) : (
-                    <Button size="sm" variant="secondary" disabled>
-                      Preview
-                    </Button>
-                  )}
-                  <Button size="sm" disabled={asset.technicalStatus === "CONCEPT_ONLY"}>
-                    Publish to shop
-                  </Button>
-                </div>
-                {asset.technicalStatus === "CONCEPT_ONLY" ? (
-                  <p className="mt-2 text-xs text-muted">
-                    Concept-only assets cannot publish as game-ready listings.
-                  </p>
-                ) : null}
-              </Card>
+              <LibraryAssetCard asset={asset} games={games} categories={categories} />
             </li>
           ))}
         </ul>
