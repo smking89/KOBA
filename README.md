@@ -459,15 +459,17 @@ self-registered. Group Admin/Moderator badges are community roles, not staff.
 19. **KOBA Coins double-entry ledger** ✅
 20. **Player-to-player item trading** ✅ (rarity-matched — see ROADMAP.md Phase 19)
 21. **Live KOBA Coin purchases** ✅
-22. **Aiden Studio OS** ✅ (real pipeline; no AI vendor wired yet — ROADMAP.md Phase 14) ← current
+22. **Aiden Studio OS** ✅ (real pipeline; no AI vendor wired yet — ROADMAP.md Phase 14)
 23. KOBAads + Boost (ROADMAP.md Phase 15)
 24. KOBA Plus subscriptions (ROADMAP.md Phase 16)
 25. Live RCON + server directory (real per-game protocols — ROADMAP.md Phase 17)
 26. Freebie products (ROADMAP.md Phase 18)
 27. Multi-subdomain split (koba.games / developer. / app. / admin. / aiden. — ROADMAP.md Phase 20)
+28. KOBA PC Plugin (free; Steam-linked skin application — ROADMAP.md Phase 21)
+29. Discord bot (free; live feeds, account linking, item delivery — ROADMAP.md Phase 22)
 
 See [ROADMAP.md](ROADMAP.md) for the full scope, data models, and open
-questions behind each of 22–27 — none of them are built yet.
+questions behind each of 22–29 — none of them are built yet.
 
 ## License
 

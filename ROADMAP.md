@@ -48,6 +48,8 @@ open questions that need client decisions before (or during) each phase.
 - [Phase 18 — Freebie Products](#phase-18--freebie-products)
 - [Phase 19 — Rarity-Matched Trading (status: done)](#phase-19--rarity-matched-trading-status-done)
 - [Phase 20 — Multi-Subdomain Architecture](#phase-20--multi-subdomain-architecture)
+- [Phase 21 — KOBA PC Plugin](#phase-21--koba-pc-plugin)
+- [Phase 22 — Discord Bot](#phase-22--discord-bot)
 - [Sequencing / milestones](#sequencing--milestones)
 - [Open questions for the client](#open-questions-for-the-client)
 
@@ -735,6 +737,139 @@ Client-specified domain structure:
 2. DNS/TLS ownership — who manages the `koba.games` zone and subdomain
    records (affects whether this can be done from within the app repo
    at all, or needs coordination outside it)?
+
+---
+
+## Phase 21 — KOBA PC Plugin
+
+A native desktop application — **not part of this Next.js app**, a
+separate codebase/tech stack — that talks to `koba.games` and
+`aiden.koba.games`, confirms the player's KOBAID + linked Steam account,
+and lets them apply skins they bought or Aiden-generated directly into
+their games.
+
+**Free to use** — no KOBA Plus / paywall gate, confirmed by the client.
+Distributed via the Business dashboard (`/business`): a download link,
+surfaced once the plugin actually exists — do not build a placeholder
+download card pointing at nothing.
+
+**Foundational gap this phase (and Phase 22) both depend on**: this app
+currently has **no authentication mechanism for a non-browser client** —
+Auth.js sessions are browser cookies only. A desktop plugin (and, below,
+a Discord bot) both need an OAuth2 device-authorization-style flow
+(user gets a code/link, approves in their browser, the client polls for a
+token) — this is new infrastructure, shared by both phases, built once.
+
+**Scope, as engineering deliverables**
+
+- **Backend (this repo)**: a device-authorization endpoint set
+  (`POST /api/oauth/device/code`, `POST /api/oauth/device/token`,
+  a consent page at `/oauth/authorize`) issuing scoped access tokens for
+  non-browser clients. `SteamAccountLink` (userId, steamId64, linkedAt) —
+  Steam's own OpenID login, not a koba-issued credential, so this is a
+  "confirm the player owns this Steam account" flow, not a password.
+  A read API for the plugin: the player's `InventoryItem` rows (already
+  exists, from item trading) filtered to purchased/Aiden-generated skins.
+- **Plugin (separate project)**: device-flow login, Steam account
+  detection/confirmation, fetches owned skins, and **applies** them —
+  this last part is genuinely game-specific and is not one integration:
+  for games with a workshop-style skin system this likely means writing
+  to that game's local skin-config, for Aiden-generated custom content it
+  means placing the generated files into the correct local game/mod
+  directory. This mirrors Phase 17's "per-game adapter" problem — expect
+  a similar per-game applicator architecture, not a single universal one.
+
+**Data models / entities**
+
+- `SteamAccountLink` (userId unique, steamId64 unique, linkedAt).
+- `OAuthDeviceGrant` / `OAuthAccessToken` (device code, user code, scopes,
+  expiry, associated userId once approved) — new, shared with Phase 22.
+- Extend `InventoryItem` with an apply-status field (e.g. `appliedAt`,
+  `appliedGame`) so the plugin can report back what it actually applied,
+  distinct from what's merely owned.
+
+**Dependencies**
+
+- `InventoryItem` (done, from item trading).
+- Aiden generation (pipeline done, no vendor wired — Phase 14).
+- New: OAuth device-flow infra (shared with Phase 22).
+
+**Open questions for the client**
+
+1. Plugin tech stack — Tauri/Electron/native. Real tradeoffs: install
+   size, cross-platform story, and how easily it can read/write into
+   arbitrary game install directories.
+2. Code-signing and distribution channel — this is an installed native
+   app with local filesystem write access to game directories; trust and
+   security expectations are materially different from a web app.
+3. Per-game skin-application mechanics and launch game list — this is
+   the actual hard part and needs to be scoped per game, not assumed
+   universal.
+
+---
+
+## Phase 22 — Discord Bot
+
+Live feeds from `koba.games` (group feeds, marketplace feeds) posted into
+Discord, plus account linking and in-game item delivery via slash
+commands.
+
+**Free to use** — no KOBA Plus / paywall gate, same as the PC plugin.
+Distributed via the Business dashboard (`/business`): a bot-invite link,
+surfaced once the bot actually exists.
+
+**Scope, as engineering deliverables**
+
+- **Account linking**: a slash command (e.g. `/link`) — if the Discord
+  user has no linked KOBAID, show a button that starts the same OAuth
+  device-flow consent from Phase 21 (shared infra, not a second auth
+  system), ending with a "Create account" path if they don't have a
+  KOBAID yet. Once linked, prompts for console platform — Xbox
+  (gamertag) or PlayStation (PSN username).
+- **Live feeds**: Discord channel subscriptions to a KOBA group's feed or
+  the marketplace feed, pushed via Discord webhooks on relevant events
+  (new post, new listing). Note: this rides on whatever feed exists
+  today — a plain reverse-chron feed (Phase 8's full ranked Feed Engine
+  isn't built yet), so "live feed" here means "new item posted," not a
+  ranked/curated stream.
+- **Item delivery**: once a purchase completes, the bot delivers the
+  in-game item. For server-deliverable items this should reuse Phase 17's
+  RCON infrastructure (the bot triggers a give-item RCON command against
+  the buyer's linked server account); for client-side skins this
+  coordinates with the Phase 21 plugin instead — the bot itself doesn't
+  reach into a player's PC.
+- **This is a separate always-on service**, not a Next.js route — a
+  Discord gateway connection needs its own long-running process and
+  hosting decision, run alongside but not inside this web app.
+
+**Data models / entities**
+
+- `DiscordAccountLink` (discordUserId unique, userId, linkedAt).
+- `XboxAccountLink` (userId, gamertag) / `PlayStationAccountLink` (userId,
+  psnUsername) — self-reported at MVP; see open question below on
+  whether real Xbox Live/PSN API verification is even reachable.
+- `DiscordChannelSubscription` (guildId, channelId, feedType [GROUP |
+  MARKETPLACE], feedRef, webhookUrl).
+
+**Dependencies**
+
+- New: OAuth device-flow infra (shared with Phase 21).
+- `InventoryItem` (done), RCON (Phase 17, not yet real — item delivery
+  to servers is blocked on this).
+- Groups/Social feeds (done, basic reverse-chron only).
+
+**Open questions for the client**
+
+1. Bot hosting — where does this always-on process run (separate from
+   the Next.js deployment)?
+2. Real Xbox Live / PlayStation Network API verification of
+   gamertag/PSN username requires a publisher partnership agreement with
+   Microsoft/Sony respectively — this is a business/legal step, not just
+   engineering. Is self-reported (unverified) good enough for MVP, or is
+   real verification a hard requirement before launch?
+3. Which feeds are in scope for v1 — group feeds and marketplace feeds
+   are named explicitly; anything else (social posts, auctions ending)?
+4. Rate limits / bot permission scope for the Discord application itself.
 
 ---
 
