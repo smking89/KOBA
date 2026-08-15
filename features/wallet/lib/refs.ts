@@ -20,3 +20,9 @@ export function generateReservationRef(
 ): string {
   return hexRef("KOBA-RSV-", bytesFn);
 }
+
+export function generateCoinPurchaseRef(
+  bytesFn: (size: number) => Uint8Array = (size) => randomBytes(size),
+): string {
+  return hexRef("KOBA-CPR-", bytesFn);
+}

@@ -92,6 +92,7 @@ model User {
   shopFollows    ShopFollow[]
   shopReviews    ShopReview[]     @relation("ShopReviewAuthor")
   ordersBought   Order[]          @relation("OrderBuyer")
+  coinPurchases  CoinPurchase[]
   escrowDisputesFiled    OrderEscrow[] @relation("OrderEscrowDisputedBy")
   escrowDisputesResolved OrderEscrow[] @relation("OrderEscrowResolvedBy")
   bids           Bid[]
@@ -1571,6 +1572,43 @@ model CoinReservation {
 
   @@index([walletId, status])
   @@index([status, expiresAt])
+}
+
+enum CoinPurchaseStatus {
+  PENDING
+  PAID
+  CANCELLED
+}
+
+/// A real-money purchase of a fixed Coin package via Stripe Checkout. Kept
+/// separate from Order (marketplace purchases) since this is KOBA selling
+/// its own Coins directly — no shop, no escrow, no seller payout: the
+/// charge settles to and stays on KOBA's own Stripe balance. On payment
+/// (webhook-driven only, same trust model as checkout.service.ts) this
+/// credits the buyer's PURCHASED bucket via ledger.service.ts's
+/// creditPurchasedCoins, using idempotencyKey as the ledger idempotency key
+/// so a retried webhook can never double-credit.
+model CoinPurchase {
+  id                      String             @id @default(cuid())
+  publicRef               String             @unique
+  userId                  String
+  packageId               String
+  priceCents              Int
+  coinAmount              BigInt
+  currency                String             @default("USD")
+  status                  CoinPurchaseStatus @default(PENDING)
+  stripeCheckoutSessionId String?            @unique
+  stripePaymentIntentId   String?
+  idempotencyKey          String             @unique
+  ledgerTransactionRef    String?
+  paidAt                  DateTime?
+  createdAt               DateTime           @default(now())
+  updatedAt               DateTime           @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([userId, createdAt])
+  @@index([status])
 }
 
 model AidenJob {

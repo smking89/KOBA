@@ -5,6 +5,10 @@ import {
   markOrderPaid,
   markOrderRefunded,
 } from "@/features/payments/services/checkout.service";
+import {
+  expireCoinPurchaseCheckout,
+  markCoinPurchasePaid,
+} from "@/features/wallet/services/coin-purchase.service";
 
 export { verifyStripeEvent } from "@/features/payments/lib/webhook-verify";
 
@@ -31,14 +35,23 @@ export async function handleStripeEvent(event: Stripe.Event): Promise<void> {
       if (session.payment_status !== "paid") {
         return;
       }
-      const orderRef = session.metadata?.orderRef ?? session.client_reference_id;
-      if (!orderRef) {
-        return;
-      }
       const paymentIntent =
         typeof session.payment_intent === "string"
           ? session.payment_intent
           : (session.payment_intent?.id ?? null);
+
+      // Coin purchases (KOBA selling its own Coins) and marketplace orders
+      // (shop checkout) share this same webhook event but are otherwise
+      // fully separate flows/tables — routed by session.metadata.kind.
+      if (session.metadata?.kind === "coin_purchase") {
+        await markCoinPurchasePaid({ sessionId: session.id, paymentIntentId: paymentIntent });
+        return;
+      }
+
+      const orderRef = session.metadata?.orderRef ?? session.client_reference_id;
+      if (!orderRef) {
+        return;
+      }
       await markOrderPaid({
         publicRef: orderRef,
         paymentIntentId: paymentIntent,
@@ -48,6 +61,10 @@ export async function handleStripeEvent(event: Stripe.Event): Promise<void> {
     }
     case "checkout.session.expired": {
       const session = event.data.object;
+      if (session.metadata?.kind === "coin_purchase") {
+        await expireCoinPurchaseCheckout(session.id);
+        return;
+      }
       await expireCheckoutSession(session.id);
       return;
     }

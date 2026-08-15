@@ -6,8 +6,10 @@ squads; all on one KOBAID.
 
 ## Status
 
-**Phase 14C — Item trading** is in progress on `feat/item-trading`
-(inventory ownership, locks, atomic accept — stacked on the Coins ledger).
+**Phase 15 — Live KOBA Coin purchases** is done (Stripe Checkout against a
+fixed Coin package catalog, credited via the double-entry ledger on signed
+webhook). Item trading (Phase 14C) is also merged. Next: the influencer ads
+network (deferred).
 
 The HTML prototype remains the information-architecture reference:
 
@@ -28,7 +30,9 @@ live in `app/globals.css` and `lib/design-tokens.ts`.
 | `/wallet`                                             | KOBA Coins wallet (ledger-backed)         |
 
 See [docs/wallet-ledger.md](docs/wallet-ledger.md) for the Phase 14B accounting model.
-Coin purchases, live AI capture, and cash withdrawal remain deferred.
+Coins can be bought for real money at `/wallet` (Stripe Checkout, test mode —
+see the Payments section below). Live AI capture and cash withdrawal remain
+deferred.
 
 ## Stack
 
@@ -215,18 +219,18 @@ Checkout charges settle to **KOBA's own Stripe balance** — no
 to the seller's Connect account at charge time. See Escrow below for how and
 when the seller actually gets paid.
 
-| Path                                      | Purpose                                |
-| ----------------------------------------- | -------------------------------------- |
-| `POST /api/checkout`                      | Create a Checkout Session (idempotent) |
-| `POST /api/stripe/webhook`                | Signed Stripe events                   |
-| `GET`/`POST /api/business/connect`        | Express onboarding                     |
-| `POST /api/business/orders/[ref]/fulfill` | Shop owner fulfill                     |
-| `POST /api/business/orders/[ref]/refund`  | Shop owner refund                      |
-| `POST /api/admin/orders/[ref]/refund`     | Staff (SA/AD) refund                   |
-| `POST /api/orders/[ref]/dispute`          | Buyer flags an escrow dispute          |
+| Path                                           | Purpose                                   |
+| ---------------------------------------------- | ----------------------------------------- |
+| `POST /api/checkout`                           | Create a Checkout Session (idempotent)    |
+| `POST /api/stripe/webhook`                     | Signed Stripe events                      |
+| `GET`/`POST /api/business/connect`             | Express onboarding                        |
+| `POST /api/business/orders/[ref]/fulfill`      | Shop owner fulfill                        |
+| `POST /api/business/orders/[ref]/refund`       | Shop owner refund                         |
+| `POST /api/admin/orders/[ref]/refund`          | Staff (SA/AD) refund                      |
+| `POST /api/orders/[ref]/dispute`               | Buyer flags an escrow dispute             |
 | `POST /api/admin/orders/[ref]/resolve-dispute` | Staff (SA/AD) release or refund a dispute |
-| `/orders` · `/orders/[ref]`               | Buyer history and receipts             |
-| `/business/payouts`                       | Connect charges/payouts status         |
+| `/orders` · `/orders/[ref]`                    | Buyer history and receipts                |
+| `/business/payouts`                            | Connect charges/payouts status            |
 
 Sellers and shop members cannot buy their own listings. Auction checkout requires
 `RESERVED`, the winning bidder, and a future `reservedUntil`. Inventory decrements
@@ -448,8 +452,9 @@ self-registered. Group Admin/Moderator badges are community roles, not staff.
 17. **Owner product expansion UI** ✅
 18. **Owner expansion backends** ✅
 19. **KOBA Coins double-entry ledger** ✅
-20. **Player-to-player item trading** ← current
-21. Influencer ads network / live Coin purchases (deferred)
+20. **Player-to-player item trading** ✅
+21. **Live KOBA Coin purchases** ✅ ← current
+22. Influencer ads network (deferred)
 
 ## License
 
