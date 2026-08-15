@@ -6,10 +6,7 @@ import { jsonServerError } from "@/features/servers/lib/http";
 import { rconActionSchema } from "@/features/servers/schemas/server.schemas";
 import { handleRconAction } from "@/features/servers/services/server.service";
 
-export async function POST(
-  request: Request,
-  context: { params: Promise<{ serverId: string }> },
-) {
+export async function POST(request: Request, context: { params: Promise<{ serverId: string }> }) {
   const session = await auth();
   if (!session?.user.id) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
