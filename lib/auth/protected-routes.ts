@@ -15,6 +15,14 @@ export const PROTECTED_PATH_PREFIXES = [
   "/aiden/create",
   "/aiden/library",
   "/aiden/jobs",
+  "/developers/new",
+  "/developers/dashboard",
+  "/developers/applications",
+  "/developers/api-keys",
+  "/developers/webhooks",
+  "/developers/products",
+  "/library/apps",
+  "/orders/apps",
 ] as const;
 
 export function isProtectedPath(pathname: string): boolean {
