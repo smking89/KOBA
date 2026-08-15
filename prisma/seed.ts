@@ -15,10 +15,25 @@ const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
 const games = [
   { slug: "rust", name: "Rust" },
   { slug: "minecraft", name: "Minecraft" },
+  { slug: "minecraft-java", name: "Minecraft Java" },
+  { slug: "minecraft-bedrock", name: "Minecraft Bedrock" },
   { slug: "ark-survival-ascended", name: "ARK: Survival Ascended" },
+  { slug: "ark-survival-evolved", name: "ARK: Survival Evolved" },
+  { slug: "ark-console", name: "ARK Console Editions" },
   { slug: "dayz", name: "DayZ" },
+  { slug: "7-days-to-die", name: "7 Days to Die" },
+  { slug: "7-days-to-die-console", name: "7 Days to Die Console" },
   { slug: "conan-exiles", name: "Conan Exiles" },
+  { slug: "conan-exiles-console", name: "Conan Exiles Console" },
   { slug: "valheim", name: "Valheim" },
+  { slug: "unturned", name: "Unturned" },
+  { slug: "garrys-mod", name: "Garry’s Mod" },
+  { slug: "sbox", name: "S&Box" },
+  { slug: "project-zomboid", name: "Project Zomboid" },
+  { slug: "eco", name: "Eco" },
+  { slug: "terraria", name: "Terraria" },
+  { slug: "starbound", name: "Starbound" },
+  { slug: "rust-console", name: "Rust Console Edition" },
 ] as const;
 
 const categories = [

@@ -59,6 +59,12 @@ enum AuditAction {
   TRADE_UPDATED
   SERVER_REGISTERED
   SERVER_RCON_UPDATED
+  SERVER_SUBMITTED
+  SERVER_VERIFIED
+  SERVER_REJECTED
+  SERVER_SUSPENDED
+  SERVER_RESTORED
+  SERVER_STATUS_POLL
   PLUS_CHECKOUT_STARTED
   PLUS_CANCELLED
   COIN_LEDGER_POSTED
@@ -118,6 +124,7 @@ model User {
   inventoryItems  InventoryItem[]
   tradeEvents     TradeEvent[]
   ownedServers    GameServer[]
+  serverFavourites ServerFavourite[]
   plusSubscription PlusSubscription?
   coinWallet      CoinWallet?
   ledgerAccounts  LedgerAccount[]
@@ -1053,8 +1060,12 @@ enum ServerCapability {
   PLAYER_LIST
   QUEUE_COUNT
   MAP_INFO
+  MAP_SIZE
+  PING
+  PUBLIC_QUERY
   RCON_READ
   RCON_WRITE
+  JOIN_LINK
   PC
   CONSOLE
 }
@@ -1062,7 +1073,22 @@ enum ServerCapability {
 enum ServerOnlineStatus {
   ONLINE
   OFFLINE
+  DEGRADED
   UNKNOWN
+}
+
+enum ServerVerificationStatus {
+  UNVERIFIED
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum ServerPublicationStatus {
+  DRAFT
+  PUBLISHED
+  SUSPENDED
+  ARCHIVED
 }
 
 enum RconTestState {
@@ -1309,50 +1335,113 @@ model TradeEvent {
 }
 
 model GameServer {
-  id              String                @id @default(cuid())
-  publicRef       String                @unique
-  slug            String                @unique
-  name            String
-  game            String
-  platformFamily  ServerPlatformFamily
-  region          String
-  tags            String[]
-  ownerUserId     String
-  shopId          String?
-  joinInfo        String?
-  lastRefreshAt   DateTime?
-  capabilities    ServerCapability[]
-  status          ServerOnlineStatus    @default(UNKNOWN)
-  livePlayers     Int?
-  maxPlayers      Int?
-  queue           Int?
-  mapName         String?
-  mapSize         String?
-  pingMs          Int?
-  host            String?
-  port            Int?
-  rconTestState   RconTestState         @default(IDLE)
-  createdAt       DateTime              @default(now())
-  updatedAt       DateTime              @updatedAt
+  id                 String                   @id @default(cuid())
+  publicRef          String                   @unique
+  slug               String                   @unique
+  name               String
+  description        String?                  @db.Text
+  game               String
+  platformFamily     ServerPlatformFamily
+  region             String
+  country            String?
+  timezone           String?
+  tags               String[]
+  ownerUserId        String
+  /// Active KOBA account type that owns this server (BUSINESS or INFLUENCER).
+  ownerAccountType   KobaAccountType
+  shopId             String?
+  joinInfo           String?
+  hostname           String?
+  host               String?
+  queryPort          Int?
+  gamePort           Int?
+  port               Int?
+  hideResolvedIp     Boolean                  @default(true)
+  adapterKey         String                   @default("manual")
+  capabilities       ServerCapability[]
+  verificationStatus ServerVerificationStatus @default(UNVERIFIED)
+  publicationStatus  ServerPublicationStatus  @default(DRAFT)
+  operationalStatus  ServerOnlineStatus       @default(UNKNOWN)
+  /// Prefer operationalStatus; kept for expansion UI compatibility.
+  status             ServerOnlineStatus       @default(UNKNOWN)
+  verificationToken  String?
+  verificationNote   String?
+  verifiedAt         DateTime?
+  submittedAt        DateTime?
+  suspendedAt        DateTime?
+  livePlayers        Int?
+  maxPlayers         Int?
+  queue              Int?
+  mapName            String?
+  mapSize            String?
+  pingMs             Int?
+  lastRefreshAt      DateTime?
+  lastSuccessfulAt   DateTime?
+  freshUntil         DateTime?
+  pollFailures       Int                      @default(0)
+  nextPollAt         DateTime?
+  rconTestState      RconTestState            @default(IDLE)
+  createdAt          DateTime                 @default(now())
+  updatedAt          DateTime                 @updatedAt
 
-  owner       User             @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
-  shop        Shop?            @relation(fields: [shopId], references: [id], onDelete: SetNull)
-  credential  ServerCredential?
+  owner      User                   @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+  shop       Shop?                  @relation(fields: [shopId], references: [id], onDelete: SetNull)
+  credential ServerCredential?
+  favourites ServerFavourite[]
+  snapshots  ServerStatusSnapshot[]
 
   @@index([ownerUserId])
   @@index([game, region])
   @@index([platformFamily])
+  @@index([publicationStatus, verificationStatus])
+  @@index([operationalStatus, nextPollAt])
+  @@index([slug])
+}
+
+model ServerStatusSnapshot {
+  id               String             @id @default(cuid())
+  serverId         String
+  operationalState ServerOnlineStatus
+  livePlayers      Int?
+  maxPlayers       Int?
+  queue            Int?
+  mapName          String?
+  mapSize          String?
+  pingMs           Int?
+  adapterKey       String
+  checkedAt        DateTime           @default(now())
+  successfulAt     DateTime?
+  freshUntil       DateTime?
+  errorCategory    String?
+  createdAt        DateTime           @default(now())
+
+  server GameServer @relation(fields: [serverId], references: [id], onDelete: Cascade)
+
+  @@index([serverId, checkedAt])
+  @@index([checkedAt])
+}
+
+model ServerFavourite {
+  userId    String
+  serverId  String
+  createdAt DateTime @default(now())
+
+  user   User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  server GameServer @relation(fields: [serverId], references: [id], onDelete: Cascade)
+
+  @@id([userId, serverId])
+  @@index([serverId])
 }
 
 model ServerCredential {
-  id                 String   @id @default(cuid())
-  serverId           String   @unique
-  ciphertext         String   @db.Text
-  iv                 String
-  authTag            String
-  rotatedAt          DateTime @default(now())
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  id         String   @id @default(cuid())
+  serverId   String   @unique
+  ciphertext String   @db.Text
+  iv         String
+  authTag    String
+  rotatedAt  DateTime @default(now())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   server GameServer @relation(fields: [serverId], references: [id], onDelete: Cascade)
 }
