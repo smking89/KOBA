@@ -22,9 +22,11 @@ export default function AidenLandingPage() {
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardTitle>Generate</CardTitle>
-          <CardDescription>Prompt, game, asset type, and Coin cost preview.</CardDescription>
+          <CardDescription>
+            Prompt a concept image, reserve KOBA Coins, and queue generation.
+          </CardDescription>
           <Link
-            href="/aiden/generate"
+            href="/aiden/create"
             className={cn(buttonVariants({ size: "sm" }), "mt-4 inline-flex")}
           >
             Open generator
@@ -32,7 +34,9 @@ export default function AidenLandingPage() {
         </Card>
         <Card>
           <CardTitle>Library</CardTitle>
-          <CardDescription>Private assets, technical status, publish-to-shop.</CardDescription>
+          <CardDescription>
+            Private concept drafts. Marketplace review is optional and never automatic.
+          </CardDescription>
           <Link
             href="/aiden/library"
             className={cn(buttonVariants({ size: "sm", variant: "secondary" }), "mt-4 inline-flex")}

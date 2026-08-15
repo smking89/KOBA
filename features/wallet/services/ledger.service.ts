@@ -837,6 +837,115 @@ export async function captureReservation(input: {
   });
 }
 
+export async function settleReservation(input: {
+  userId: string;
+  reservationPublicRef: string;
+  captureAmount: CoinAmount | number | string;
+  idempotencyKey: string;
+  actorUserId?: string | null;
+  ipAddress?: string | null;
+}) {
+  const captureAmount = parseCoinAmount(input.captureAmount);
+  const idempotencyKey = requireIdempotencyKey(input.idempotencyKey);
+
+  return prisma.$transaction(async (db) => {
+    const reservation = await db.coinReservation.findUnique({
+      where: { publicRef: input.reservationPublicRef },
+    });
+    if (!reservation) throw new WalletError("Reservation not found.", "NOT_FOUND");
+
+    const wallet = await lockWallet(
+      db,
+      (await db.coinWallet.findUniqueOrThrow({ where: { id: reservation.walletId } })).userId,
+    );
+    if (wallet.userId !== input.userId) {
+      throw new WalletError("Reservation does not belong to this wallet.", "FORBIDDEN");
+    }
+
+    if (reservation.status === "CAPTURED" && reservation.captureTxId) {
+      const prior = await db.ledgerTransaction.findUniqueOrThrow({
+        where: { id: reservation.captureTxId },
+      });
+      return {
+        publicRef: reservation.publicRef,
+        status: reservation.status,
+        captured: reservation.amount.toString(),
+        released: "0",
+        txPublicRef: prior.publicRef,
+      };
+    }
+    if (reservation.status !== "ACTIVE") {
+      throw new WalletError(
+        `Cannot settle reservation in status ${reservation.status}.`,
+        "CONFLICT",
+      );
+    }
+    if (captureAmount > reservation.amount) {
+      throw new WalletError("Capture exceeds the reserved amount.", "INVALID");
+    }
+
+    const remainder = reservation.amount - captureAmount;
+    const entries: PostEntryInput[] = [
+      {
+        accountCode: userBucketCode(input.userId, "RESERVED"),
+        side: "DEBIT",
+        amount: reservation.amount,
+        classification: "RESERVED",
+      },
+      { accountCode: SYSTEM.revenue, side: "CREDIT", amount: captureAmount },
+    ];
+
+    if (remainder > 0n) {
+      const allocations = parseAllocations(reservation.allocationsJson);
+      let left = remainder;
+      for (const allocation of [...allocations].reverse()) {
+        if (left <= 0n) break;
+        const take = allocation.amount < left ? allocation.amount : left;
+        if (take > 0n) {
+          entries.push({
+            accountCode: userBucketCode(input.userId, allocation.bucket),
+            side: "CREDIT",
+            amount: take,
+            classification: allocation.bucket,
+          });
+          left -= take;
+        }
+      }
+      if (left !== 0n) {
+        throw new WalletError("Could not allocate reservation remainder.", "UNBALANCED");
+      }
+    }
+
+    const tx = await postBalanced(db, {
+      category: "RESERVATION_CAPTURE",
+      memo: `Settle ${reservation.publicRef} capture=${captureAmount} release=${remainder}`,
+      idempotencyKey,
+      entries,
+      actorUserId: input.actorUserId ?? input.userId,
+      walletId: wallet.id,
+    });
+    await updateProjectionsFromEntries(db, wallet.id, entries, input.userId);
+
+    await db.coinReservation.update({
+      where: { id: reservation.id },
+      data: {
+        status: "CAPTURED",
+        captureTxId: tx.id,
+        capturedAt: new Date(),
+        releasedAt: remainder > 0n ? new Date() : null,
+      },
+    });
+
+    return {
+      publicRef: reservation.publicRef,
+      status: "CAPTURED" as const,
+      captured: captureAmount.toString(),
+      released: remainder.toString(),
+      txPublicRef: tx.publicRef,
+    };
+  });
+}
+
 export async function releaseReservation(input: {
   userId: string;
   reservationPublicRef: string;

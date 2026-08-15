@@ -12,7 +12,9 @@ export const PROTECTED_PATH_PREFIXES = [
   "/servers/connect",
   "/servers/manage",
   "/aiden/generate",
+  "/aiden/create",
   "/aiden/library",
+  "/aiden/jobs",
 ] as const;
 
 export function isProtectedPath(pathname: string): boolean {

@@ -25,6 +25,8 @@ describe("isSensitivePath", () => {
     expect(isSensitivePath("/api/plus")).toBe(true);
     expect(isSensitivePath("/api/plus/checkout")).toBe(true);
     expect(isSensitivePath("/api/admin/plus")).toBe(true);
+    expect(isSensitivePath("/api/aiden")).toBe(true);
+    expect(isSensitivePath("/api/aiden/jobs")).toBe(true);
   });
 
   it("allows public routes", () => {

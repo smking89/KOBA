@@ -30,25 +30,27 @@ export async function requireAnyStaff(userId: string) {
 export async function getAdminOverview(actorUserId: string) {
   await requireAnyStaff(actorUserId);
 
-  const [pendingProducts, pendingShops, openReports, paidOrders, recentAudit] = await Promise.all([
-    prisma.product.count({ where: { moderationStatus: "PENDING" } }),
-    prisma.shop.count({ where: { verificationStatus: "PENDING" } }),
-    prisma.contentReport.count({ where: { status: "OPEN" } }),
-    prisma.order.count({ where: { status: { in: ["PAID", "FULFILLED"] } } }),
-    prisma.auditLog.findMany({
-      orderBy: { createdAt: "desc" },
-      take: 12,
-      select: {
-        id: true,
-        action: true,
-        targetType: true,
-        targetId: true,
-        metadata: true,
-        createdAt: true,
-        actorUserId: true,
-      },
-    }),
-  ]);
+  const [pendingProducts, pendingShops, openReports, paidOrders, pendingAidenAssets, recentAudit] =
+    await Promise.all([
+      prisma.product.count({ where: { moderationStatus: "PENDING" } }),
+      prisma.shop.count({ where: { verificationStatus: "PENDING" } }),
+      prisma.contentReport.count({ where: { status: "OPEN" } }),
+      prisma.order.count({ where: { status: { in: ["PAID", "FULFILLED"] } } }),
+      prisma.aidenAsset.count({ where: { moderation: "PENDING_REVIEW" } }),
+      prisma.auditLog.findMany({
+        orderBy: { createdAt: "desc" },
+        take: 12,
+        select: {
+          id: true,
+          action: true,
+          targetType: true,
+          targetId: true,
+          metadata: true,
+          createdAt: true,
+          actorUserId: true,
+        },
+      }),
+    ]);
 
   return {
     counts: {
@@ -56,6 +58,7 @@ export async function getAdminOverview(actorUserId: string) {
       pendingShops,
       openReports,
       refundableOrders: paidOrders,
+      pendingAidenAssets,
     },
     recentAudit,
   };
@@ -96,9 +99,7 @@ export async function listPendingProducts(actorUserId: string) {
 
 export async function listPendingServers(actorUserId: string) {
   await requireAnyStaff(actorUserId);
-  const { listPendingServers: list } = await import(
-    "@/features/servers/services/server.service"
-  );
+  const { listPendingServers: list } = await import("@/features/servers/services/server.service");
   return list(actorUserId);
 }
 
@@ -235,6 +236,86 @@ export async function staffRejectProduct(
   });
 
   return updated;
+}
+
+export async function listPendingAidenAssets(actorUserId: string) {
+  const types = await requireAnyStaff(actorUserId);
+  if (!canStaffModerateContent(types)) {
+    throw new AdminError("Staff only.", "FORBIDDEN");
+  }
+
+  const assets = await prisma.aidenAsset.findMany({
+    where: { moderation: "PENDING_REVIEW" },
+    orderBy: { updatedAt: "asc" },
+    take: 50,
+    include: {
+      user: { select: { email: true, profile: { select: { handle: true } } } },
+    },
+  });
+
+  return assets.map((asset) => ({
+    publicRef: asset.publicRef,
+    title: asset.title,
+    game: asset.game,
+    assetType: asset.assetType,
+    technicalStatus: asset.technicalStatus,
+    provider: asset.provider,
+    model: asset.model,
+    modelVersion: asset.modelVersion,
+    createdAt: asset.createdAt.toISOString(),
+    ownerHandle: asset.user.profile?.handle ?? null,
+    ownerEmail: asset.user.email,
+  }));
+}
+
+export async function staffReviewAidenAsset(
+  actorUserId: string,
+  publicRef: string,
+  action: "approve" | "reject",
+  ipAddress?: string | null,
+) {
+  const types = await requireAnyStaff(actorUserId);
+  if (!canStaffModerateContent(types)) {
+    throw new AdminError("Staff only.", "FORBIDDEN");
+  }
+
+  const asset = await prisma.aidenAsset.findUnique({ where: { publicRef } });
+  if (!asset) {
+    throw new AdminError("Aiden asset not found.", "NOT_FOUND");
+  }
+  if (asset.moderation !== "PENDING_REVIEW") {
+    throw new AdminError("Asset is not awaiting review.", "CONFLICT");
+  }
+
+  const updated = await prisma.aidenAsset.update({
+    where: { id: asset.id },
+    data: {
+      moderation: action === "approve" ? "APPROVED" : "REJECTED",
+      technicalStatus: action === "approve" ? "APPROVED_FOR_MARKETPLACE" : asset.technicalStatus,
+    },
+  });
+
+  await writeAuditLog({
+    actorUserId,
+    action:
+      action === "approve" ? AuditAction.AIDEN_ASSET_APPROVED : AuditAction.AIDEN_ASSET_REJECTED,
+    targetType: "AidenAsset",
+    targetId: asset.id,
+    metadata: {
+      publicRef,
+      listingCreated: false,
+      generatedByAiden: true,
+      provider: asset.provider,
+      model: asset.model,
+    },
+    ipAddress: ipAddress ?? null,
+  });
+
+  return {
+    publicRef: updated.publicRef,
+    moderation: updated.moderation,
+    technicalStatus: updated.technicalStatus,
+  };
 }
 
 export async function assertCanStaffRefund(actorUserId: string) {

@@ -81,6 +81,10 @@ enum AuditAction {
   COIN_LEDGER_POSTED
   AIDEN_JOB_CREATED
   AIDEN_JOB_CANCELLED
+  AIDEN_JOB_COMPLETED
+  AIDEN_ASSET_REVIEW_SUBMITTED
+  AIDEN_ASSET_APPROVED
+  AIDEN_ASSET_REJECTED
   DEV_PRODUCT_SUBMITTED
 }
 
@@ -212,6 +216,7 @@ model KobaIdentity {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   plusSubscription PlusSubscription?
   plusGrants       PlusEntitlementGrant[]
+  aidenJobs        AidenJob[]
 
   @@unique([userId, accountType])
   @@index([code])
@@ -1231,16 +1236,21 @@ enum AidenAssetType {
 }
 
 enum AidenTechnicalStatus {
+  CONCEPT
   CONCEPT_ONLY
   PREVIEW
   REQUIRES_CONVERSION
-  GAME_READY
   VALIDATION_FAILED
+  APPROVED_FOR_MARKETPLACE
+  GAME_READY
 }
 
 enum AidenJobState {
+  DRAFT
   QUEUED
   PROCESSING
+  MODERATING
+  SUCCEEDED
   COMPLETED
   FAILED
   CANCELLED
@@ -1252,6 +1262,29 @@ enum AidenModerationState {
   APPROVED
   REJECTED
   HIDDEN
+}
+
+enum AidenPromptModeration {
+  PENDING
+  ALLOWED
+  BLOCKED
+}
+
+enum AidenOutputModeration {
+  PENDING
+  CLEAR
+  FLAGGED
+  BLOCKED
+}
+
+enum AidenFailureClass {
+  PROVIDER
+  VALIDATION
+  MODERATION
+  STORAGE
+  COST
+  CANCELLED
+  INTERNAL
 }
 
 enum DevProductKind {
@@ -1801,25 +1834,54 @@ model CoinReservation {
 }
 
 model AidenJob {
-  id              String         @id @default(cuid())
-  publicRef       String         @unique
-  userId          String
-  prompt          String         @db.Text
-  game            String
-  platform        String
-  assetType       AidenAssetType
-  state           AidenJobState  @default(QUEUED)
-  coinCostPreview Int
-  reservationTxId String?
-  failureReason   String?
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  id                     String                 @id @default(cuid())
+  publicRef              String                 @unique
+  userId                 String
+  kobaIdentityId         String?
+  prompt                 String                 @db.Text
+  promptHash             String?
+  game                   String
+  platform               String
+  assetType              AidenAssetType
+  settingsJson           String                 @default("{}")
+  state                  AidenJobState          @default(QUEUED)
+  coinCostPreview        Int
+  estimatedCostCoins     BigInt                 @default(0)
+  actualCostCoins        BigInt?
+  reservationPublicRef   String?
+  reservationTxId        String?
+  provider               String                 @default("mock")
+  model                  String                 @default("aiden-mock-concept")
+  modelVersion           String                 @default("1")
+  providerRequestId      String?                @unique
+  idempotencyKey         String?                @unique
+  promptModeration       AidenPromptModeration  @default(PENDING)
+  outputModeration       AidenOutputModeration  @default(PENDING)
+  failureReason          String?
+  failureClass           AidenFailureClass?
+  attempts               Int                    @default(0)
+  maxAttempts            Int                    @default(3)
+  runAfter               DateTime               @default(now())
+  claimedAt              DateTime?
+  claimedBy              String?
+  version                Int                    @default(0)
+  outputStorageKey       String?
+  outputMime             String?
+  outputBytes            Bytes?
+  outputByteSize         Int?
+  outputWidth            Int?
+  outputHeight           Int?
+  cancelRequestedAt      DateTime?
+  createdAt              DateTime               @default(now())
+  updatedAt              DateTime               @updatedAt
 
-  user  User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  asset AidenAsset?
+  user     User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  identity KobaIdentity?  @relation(fields: [kobaIdentityId], references: [id], onDelete: SetNull)
+  asset    AidenAsset?
 
   @@index([userId, createdAt])
-  @@index([state, createdAt])
+  @@index([state, runAfter])
+  @@index([state, claimedAt])
 }
 
 model AidenAsset {
@@ -1833,6 +1895,15 @@ model AidenAsset {
   moderation       AidenModerationState  @default(PRIVATE)
   game             String
   previewLabel     String
+  storageKey       String?
+  mimeType         String?
+  byteSize         Int?
+  width            Int?
+  height           Int?
+  provider         String?
+  model            String?
+  modelVersion     String?
+  provenanceJson   String?
   createdAt        DateTime              @default(now())
   updatedAt        DateTime              @updatedAt
 

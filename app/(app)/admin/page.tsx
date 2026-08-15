@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { IssueStaffForm } from "@/features/admin/components/issue-staff-form";
+import { PendingAidenPanel } from "@/features/admin/components/pending-aiden-panel";
 import { PendingProductsPanel } from "@/features/admin/components/pending-products-panel";
 import { PendingServersPanel } from "@/features/admin/components/pending-servers-panel";
 import { PendingShopsPanel } from "@/features/admin/components/pending-shops-panel";
@@ -19,6 +20,7 @@ import {
 import {
   getAdminOverview,
   listOpenReports,
+  listPendingAidenAssets,
   listPendingProducts,
   listPendingServers,
   listPendingShops,
@@ -51,11 +53,14 @@ export default async function AdminPage() {
   const actorTypes = snapshot.identities.map((identity) => identity.accountType);
   const overview = await getAdminOverview(session.user.id);
 
-  const [products, shops, reports, pendingServers] = await Promise.all([
+  const [products, shops, reports, pendingServers, pendingAiden] = await Promise.all([
     canStaffApproveListing(actorTypes) ? listPendingProducts(session.user.id) : Promise.resolve([]),
     canStaffVerifyShop(actorTypes) ? listPendingShops(session.user.id) : Promise.resolve([]),
     canStaffModerateContent(actorTypes) ? listOpenReports(session.user.id) : Promise.resolve([]),
     isAnyStaff(actorTypes) ? listPendingServers(session.user.id) : Promise.resolve([]),
+    canStaffModerateContent(actorTypes)
+      ? listPendingAidenAssets(session.user.id)
+      : Promise.resolve([]),
   ]);
 
   const canIssue =
@@ -102,6 +107,12 @@ export default async function AdminPage() {
           </CardTitle>
           <CardDescription>Paid / fulfilled orders</CardDescription>
         </Card>
+        <Card>
+          <CardTitle className="text-2xl tabular-nums">
+            {overview.counts.pendingAidenAssets}
+          </CardTitle>
+          <CardDescription>Aiden review queue</CardDescription>
+        </Card>
       </div>
 
       <Card>
@@ -142,6 +153,21 @@ export default async function AdminPage() {
             <PendingServersPanel servers={pendingServers} />
           ) : (
             <p className="text-sm text-muted">Staff only.</p>
+          )}
+        </div>
+      </Card>
+
+      <Card>
+        <CardTitle>Aiden review queue</CardTitle>
+        <CardDescription>
+          Owner-submitted concept assets. Approval never publishes a listing or marks output as
+          game-ready. Prompts stay private.
+        </CardDescription>
+        <div className="mt-4">
+          {canStaffModerateContent(actorTypes) ? (
+            <PendingAidenPanel assets={pendingAiden} />
+          ) : (
+            <p className="text-sm text-muted">Your staff role cannot moderate Aiden assets.</p>
           )}
         </div>
       </Card>

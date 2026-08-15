@@ -95,6 +95,8 @@ describe("plus, aiden, wallet contracts", () => {
     expect(coinCategoryLabel("PROMOTIONAL_GRANT")).toBe("Promotional Grant");
     expect(isProtectedPath("/wallet")).toBe(true);
     expect(isProtectedPath("/servers/connect")).toBe(true);
+    expect(isProtectedPath("/aiden/create")).toBe(true);
+    expect(isProtectedPath("/aiden/jobs")).toBe(true);
   });
 });
 

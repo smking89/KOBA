@@ -6,9 +6,11 @@ squads; all on one KOBAID.
 
 ## Status
 
-**Phase 14F — KOBA Plus subscriptions** is in progress on `feat/koba-plus`
-(per-KOBAID entitlements, Stripe test-mode Billing, webhook-authoritative
-activation). See [docs/plus.md](docs/plus.md).
+**Phase 14G — Aiden AI generation MVP** is in progress on `feat/aiden-generation`
+(async concept-image jobs, KOBA Coin reservation, mock provider). See
+[docs/aiden.md](docs/aiden.md).
+
+Phase 14F KOBA Plus remains on `feat/koba-plus`. See [docs/plus.md](docs/plus.md).
 
 Phase 14E Rust read-only RCON remains on `feat/rcon-rust-readonly`. See
 [docs/rcon-rust.md](docs/rcon-rust.md).
@@ -23,17 +25,19 @@ live in `app/globals.css` and `lib/design-tokens.ts`.
 
 ### Owner expansion routes (UI foundations)
 
-| Path                                                  | Purpose                                   |
-| ----------------------------------------------------- | ----------------------------------------- |
-| `/trade`, `/trade/[tradeId]`                          | Trade discovery, composer, history (mock) |
-| `/servers`, `/servers/[serverId]`, `/servers/connect` | Server directory + RCON connect wizard    |
-| `/plus`                                               | KOBA Plus membership and test checkout    |
-| `/aiden`, `/aiden/generate`, `/aiden/library`         | Aiden creator, jobs, asset library        |
-| `/wallet`                                             | KOBA Coins wallet (ledger-backed)         |
+| Path                                                  | Purpose                                    |
+| ----------------------------------------------------- | ------------------------------------------ |
+| `/trade`, `/trade/[tradeId]`                          | Trade discovery, composer, history (mock)  |
+| `/servers`, `/servers/[serverId]`, `/servers/connect` | Server directory + RCON connect wizard     |
+| `/plus`                                               | KOBA Plus membership and test checkout     |
+| `/aiden`, `/aiden/create`, `/aiden/library`           | Aiden concept generation + private library |
+| `/aiden/jobs/[jobId]`                                 | Generation job status                      |
+| `/wallet`                                             | KOBA Coins wallet (ledger-backed)          |
 
-See [docs/wallet-ledger.md](docs/wallet-ledger.md) for the Phase 14B accounting model
-and [docs/plus.md](docs/plus.md) for Plus ownership, entitlements, and webhooks.
-Coin purchases, live AI capture, and cash withdrawal remain deferred. Promotional
+See [docs/wallet-ledger.md](docs/wallet-ledger.md) for the Phase 14B accounting model,
+[docs/plus.md](docs/plus.md) for Plus ownership, entitlements, and webhooks, and
+[docs/aiden.md](docs/aiden.md) for Aiden generation, pricing, and worker recovery.
+Coin purchases, live paid AI providers, and cash withdrawal remain deferred. Promotional
 Plus Coins are not granted until the owner approves amount and refund policy.
 
 ## Stack
@@ -223,6 +227,10 @@ Membership is per active KOBAID. The browser success redirect never activates
 Plus — only a verified webhook does. Plan Price IDs come from
 `STRIPE_PRICE_PLUS_MONTHLY` / `STRIPE_PRICE_PLUS_ANNUAL`. Reconcile with
 `pnpm plus:reconcile`. Staff cannot mark subscriptions Active.
+
+Aiden concept generation uses the mock provider until a real adapter is reviewed.
+Queue a job at `/aiden/create`, then run `pnpm aiden:worker`. The HTTP request
+never calls the model. See [docs/aiden.md](docs/aiden.md).
 
 Placeholder Stripe keys (`sk_test_replace_me`) fail closed — checkout returns 503
 instead of faking paid. Forward webhooks locally with:
