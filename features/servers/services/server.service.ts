@@ -13,8 +13,9 @@ import {
 } from "@/features/servers/lib/types";
 import type { CreateServerInput, RconActionInput } from "@/features/servers/schemas/server.schemas";
 import { isPlusActive } from "@/features/plus/services/plus.service";
-import { protocolForGame } from "@/features/servers/lib/rcon/registry";
+import { queryProtocolForGame, rconProtocolForGame } from "@/features/servers/lib/rcon/registry";
 import { runRconCommand, SourceRconError } from "@/features/servers/lib/rcon/source-rcon";
+import { runWebRconCommand, WebRconError } from "@/features/servers/lib/rcon/rust-webrcon";
 import { queryServerInfo, SourceQueryError, type SourceServerInfo } from "@/features/servers/lib/rcon/source-query";
 import { getCachedServerStatus, setCachedServerStatus } from "@/features/servers/lib/status-cache";
 
@@ -146,7 +147,7 @@ export async function getLiveServerStatus(
   serverIdOrSlug: string,
 ): Promise<SourceServerInfo | null> {
   const server = await loadServer(serverIdOrSlug);
-  const protocol = protocolForGame(server.game, server.platformFamily);
+  const protocol = queryProtocolForGame(server.game, server.platformFamily);
   if (!protocol || !server.host || server.port == null) {
     return null;
   }
@@ -302,7 +303,7 @@ export async function testRconConnection(
 
   const host = server.host;
   const port = server.port;
-  const protocol = protocolForGame(server.game, server.platformFamily);
+  const protocol = rconProtocolForGame(server.game, server.platformFamily);
 
   let state: RconTestState;
   if (!host || port == null || !protocol) {
@@ -314,10 +315,14 @@ export async function testRconConnection(
     } else {
       try {
         const password = openSecret(credential);
-        await runRconCommand({ host, port, password, timeoutMs: 5000 });
+        if (protocol === "RUST_WEBRCON") {
+          await runWebRconCommand({ host, port, password, command: "status", timeoutMs: 5000 });
+        } else {
+          await runRconCommand({ host, port, password, timeoutMs: 5000 });
+        }
         state = "SUCCESS";
       } catch (error) {
-        if (error instanceof SourceRconError) {
+        if (error instanceof SourceRconError || error instanceof WebRconError) {
           state = error.kind === "AUTH_FAILED" ? "AUTH_FAILED" : "TIMEOUT";
         } else {
           state = "TIMEOUT";

@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { decodePacket, encodePacket } from "@/features/servers/lib/rcon/source-rcon";
 import { buildRequest, parseInfoResponse } from "@/features/servers/lib/rcon/source-query";
-import { protocolForGame } from "@/features/servers/lib/rcon/registry";
+import { queryProtocolForGame, rconProtocolForGame } from "@/features/servers/lib/rcon/registry";
+import { buildWebRconUrl } from "@/features/servers/lib/rcon/rust-webrcon";
 
 describe("Source RCON packet encode/decode", () => {
   it("round-trips id/type/body through encode then decode", () => {
@@ -94,20 +95,49 @@ describe("A2S_INFO response parsing", () => {
   });
 });
 
-describe("protocolForGame", () => {
-  it("returns SOURCE for PC Rust and Garry's Mod, case-insensitively", () => {
-    expect(protocolForGame("Rust", "PC")).toBe("SOURCE");
-    expect(protocolForGame("rust", "PC")).toBe("SOURCE");
-    expect(protocolForGame("Garry's Mod", "PC")).toBe("SOURCE");
+describe("rconProtocolForGame", () => {
+  it("returns RUST_WEBRCON for Rust on both PC and CONSOLE", () => {
+    expect(rconProtocolForGame("Rust", "PC")).toBe("RUST_WEBRCON");
+    expect(rconProtocolForGame("rust", "PC")).toBe("RUST_WEBRCON");
+    expect(rconProtocolForGame("Rust", "CONSOLE")).toBe("RUST_WEBRCON");
   });
 
-  it("returns null for any CONSOLE server regardless of game", () => {
-    expect(protocolForGame("Rust", "CONSOLE")).toBeNull();
-    expect(protocolForGame("Garry's Mod", "CONSOLE")).toBeNull();
+  it("returns SOURCE for PC Garry's Mod only", () => {
+    expect(rconProtocolForGame("Garry's Mod", "PC")).toBe("SOURCE");
+    expect(rconProtocolForGame("Garry's Mod", "CONSOLE")).toBeNull();
   });
 
-  it("returns null for a game with no known adapter", () => {
-    expect(protocolForGame("Minecraft", "PC")).toBeNull();
-    expect(protocolForGame("DayZ", "PC")).toBeNull();
+  it("returns null for a game with no known RCON adapter", () => {
+    expect(rconProtocolForGame("Minecraft", "PC")).toBeNull();
+    expect(rconProtocolForGame("DayZ", "PC")).toBeNull();
+  });
+});
+
+describe("buildWebRconUrl", () => {
+  it("puts the password in the URL path, not a query string", () => {
+    expect(buildWebRconUrl("play.example.com", 28016, "hunter2")).toBe(
+      "ws://play.example.com:28016/hunter2",
+    );
+  });
+
+  it("URL-encodes a password containing special characters", () => {
+    expect(buildWebRconUrl("play.example.com", 28016, "p@ss/word?")).toBe(
+      "ws://play.example.com:28016/p%40ss%2Fword%3F",
+    );
+  });
+});
+
+describe("queryProtocolForGame", () => {
+  it("returns SOURCE_A2S for PC Rust and Garry's Mod", () => {
+    expect(queryProtocolForGame("Rust", "PC")).toBe("SOURCE_A2S");
+    expect(queryProtocolForGame("Garry's Mod", "PC")).toBe("SOURCE_A2S");
+  });
+
+  it("returns null for CONSOLE regardless of game — not confirmed reachable, even for Rust", () => {
+    expect(queryProtocolForGame("Rust", "CONSOLE")).toBeNull();
+  });
+
+  it("returns null for a game with no known query adapter", () => {
+    expect(queryProtocolForGame("Minecraft", "PC")).toBeNull();
   });
 });
