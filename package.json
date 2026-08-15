@@ -20,6 +20,7 @@
     "servers:integrations": "node scripts/poll-rust-integrations.mjs",
     "plus:reconcile": "node scripts/reconcile-plus.mjs",
     "aiden:worker": "node scripts/run-aiden-worker.mjs",
+    "developers:webhooks": "node scripts/run-developer-webhooks.mjs",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",

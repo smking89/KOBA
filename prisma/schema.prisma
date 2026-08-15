@@ -86,6 +86,23 @@ enum AuditAction {
   AIDEN_ASSET_APPROVED
   AIDEN_ASSET_REJECTED
   DEV_PRODUCT_SUBMITTED
+  DEV_PROFILE_CREATED
+  DEV_PROFILE_UPDATED
+  DEV_MEMBER_CHANGED
+  DEV_APP_CREATED
+  DEV_APP_SUSPENDED
+  DEV_KEY_CREATED
+  DEV_KEY_REVOKED
+  DEV_KEY_ROTATED
+  DEV_WEBHOOK_CREATED
+  DEV_WEBHOOK_ROTATED
+  DEV_PRODUCT_APPROVED
+  DEV_PRODUCT_REJECTED
+  DEV_PRODUCT_SUSPENDED
+  DEV_VERSION_APPROVED
+  DEV_PURCHASE_COMPLETED
+  DEV_PURCHASE_REFUNDED
+  DEV_PUBLISHER_VERIFIED
 }
 
 model User {
@@ -147,8 +164,14 @@ model User {
   ledgerAccounts  LedgerAccount[]
   aidenJobs       AidenJob[]
   aidenAssets     AidenAsset[]
+  ownedDeveloperProfiles DeveloperProfile[] @relation("DeveloperProfileOwner")
+  developerMemberships DeveloperMember[]
   devProducts     DevProduct[]
   devInstalls     DevInstall[]
+  devPurchases    DevPurchase[]
+  devEntitlements DevEntitlement[]
+  devReviews      DevProductReview[]
+  developerApiKeys DeveloperApiKey[]
 }
 
 model Account {
@@ -217,6 +240,7 @@ model KobaIdentity {
   plusSubscription PlusSubscription?
   plusGrants       PlusEntitlementGrant[]
   aidenJobs        AidenJob[]
+  developerProfiles DeveloperProfile[]
 
   @@unique([userId, accountType])
   @@index([code])
@@ -1292,9 +1316,21 @@ enum DevProductKind {
   PLUGIN
 }
 
+enum DevProductCategory {
+  DISCORD_BOT
+  GAME_SERVER_PLUGIN
+  SERVER_MANAGEMENT
+  INTEGRATION
+  DOWNLOADABLE_PACK
+  API_SERVICE
+  UTILITY
+  THEME
+}
+
 enum DevPricing {
   FREE
   PAID
+  COMING_SOON
 }
 
 enum DevReviewState {
@@ -1302,9 +1338,56 @@ enum DevReviewState {
   SUBMITTED
   IN_REVIEW
   SECURITY_REVIEW
+  CHANGES_REQUESTED
   APPROVED
   REJECTED
+  PUBLISHED
+  SUSPENDED
+  ARCHIVED
   REVOKED
+}
+
+enum DeveloperMemberRole {
+  OWNER
+  ADMIN
+  DEVELOPER
+  SUPPORT
+  ANALYST
+}
+
+enum DeveloperAppEnvironment {
+  SANDBOX
+  PRODUCTION
+}
+
+enum DeveloperAppStatus {
+  ACTIVE
+  SUSPENDED
+  REVOKED
+}
+
+enum DevReleaseChannel {
+  STABLE
+  BETA
+  ALPHA
+}
+
+enum DevArtifactStatus {
+  QUARANTINE
+  APPROVED
+  REJECTED
+}
+
+enum DevPurchaseStatus {
+  PAID
+  REFUNDED
+}
+
+enum DevWebhookDeliveryStatus {
+  PENDING
+  DELIVERED
+  FAILED
+  CANCELLED
 }
 
 model InventoryItem {
@@ -1914,38 +1997,304 @@ model AidenAsset {
   @@index([moderation])
 }
 
-model DevProduct {
-  id            String         @id @default(cuid())
-  publicRef     String         @unique
-  ownerUserId   String
-  kind          DevProductKind
-  name          String
-  pricing       DevPricing     @default(FREE)
-  priceCents    Int            @default(0)
-  version       String         @default("0.1.0")
-  compatibility String[]
-  scopes        String[]
-  reviewState   DevReviewState @default(DRAFT)
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+model DeveloperProfile {
+  id              String    @id @default(cuid())
+  slug            String    @unique
+  displayName     String
+  description     String    @default("") @db.Text
+  avatarUrl       String?
+  bannerUrl       String?
+  websiteUrl      String?
+  supportUrl      String?
+  privacyUrl      String?
+  termsUrl        String?
+  contactEmail    String
+  verified        Boolean   @default(false)
+  verifiedAt      DateTime?
+  suspendedAt     DateTime?
+  games           String[]
+  platforms       String[]
+  ownerUserId     String
+  kobaIdentityId  String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
-  owner    User         @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
-  installs DevInstall[]
+  owner        User                  @relation("DeveloperProfileOwner", fields: [ownerUserId], references: [id], onDelete: Cascade)
+  identity     KobaIdentity?         @relation(fields: [kobaIdentityId], references: [id], onDelete: SetNull)
+  members      DeveloperMember[]
+  applications DeveloperApplication[]
+  products     DevProduct[]
+  webhooks     DeveloperWebhookEndpoint[]
+
+  @@index([ownerUserId])
+  @@index([verified, suspendedAt])
+}
+
+model DeveloperMember {
+  id        String               @id @default(cuid())
+  profileId String
+  userId    String
+  role      DeveloperMemberRole
+  createdAt DateTime             @default(now())
+
+  profile DeveloperProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  user    User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, userId])
+  @@index([userId])
+}
+
+model DeveloperApplication {
+  id                    String                   @id @default(cuid())
+  publicRef             String                   @unique
+  profileId             String
+  name                  String
+  description           String                   @default("") @db.Text
+  logoUrl               String?
+  environment           DeveloperAppEnvironment  @default(SANDBOX)
+  status                DeveloperAppStatus       @default(ACTIVE)
+  scopes                String[]
+  redirectUris          String[]
+  productionApprovedAt  DateTime?
+  suspendedAt           DateTime?
+  createdAt             DateTime                 @default(now())
+  updatedAt             DateTime                 @updatedAt
+
+  profile DeveloperProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  apiKeys DeveloperApiKey[]
+  webhooks DeveloperWebhookEndpoint[]
+
+  @@index([profileId, environment])
+  @@index([status])
+}
+
+model DeveloperApiKey {
+  id            String                   @id @default(cuid())
+  applicationId String
+  userId        String
+  name          String
+  prefix        String                   @unique
+  secretHash    String
+  scopes        String[]
+  environment   DeveloperAppEnvironment
+  expiresAt     DateTime?
+  lastUsedAt    DateTime?
+  revokedAt     DateTime?
+  rateLimitRpm  Int                      @default(60)
+  createdAt     DateTime                 @default(now())
+
+  application DeveloperApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  user        User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId, revokedAt])
+  @@index([secretHash])
+}
+
+model DeveloperWebhookEndpoint {
+  id               String    @id @default(cuid())
+  publicRef        String    @unique
+  profileId        String
+  applicationId    String?
+  url              String
+  events           String[]
+  secretCiphertext String    @db.Text
+  secretIv         String
+  secretAuthTag    String
+  secretKeyVersion Int       @default(1)
+  secretPrefix     String
+  disabledAt       DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  profile     DeveloperProfile          @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  application DeveloperApplication?     @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+  deliveries  DeveloperWebhookDelivery[]
+
+  @@index([profileId, disabledAt])
+}
+
+model DeveloperWebhookDelivery {
+  id            String                    @id @default(cuid())
+  deliveryId    String                    @unique
+  endpointId    String
+  eventType     String
+  payloadJson   String                    @db.Text
+  payloadHash   String
+  timestamp     DateTime
+  status        DevWebhookDeliveryStatus  @default(PENDING)
+  attempts      Int                       @default(0)
+  maxAttempts   Int                       @default(6)
+  runAfter      DateTime                  @default(now())
+  lastError     String?
+  claimedAt     DateTime?
+  version       Int                       @default(0)
+  createdAt     DateTime                  @default(now())
+  updatedAt     DateTime                  @updatedAt
+
+  endpoint DeveloperWebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+
+  @@index([status, runAfter])
+}
+
+model DevProduct {
+  id                 String              @id @default(cuid())
+  publicRef          String              @unique
+  slug               String              @unique
+  ownerUserId        String
+  profileId          String?
+  kind               DevProductKind
+  category           DevProductCategory  @default(UTILITY)
+  name               String
+  shortDescription   String              @default("")
+  description        String              @default("") @db.Text
+  pricing            DevPricing          @default(FREE)
+  priceCents         Int                 @default(0)
+  priceCoins         BigInt              @default(0)
+  version            String              @default("0.1.0")
+  compatibility      String[]
+  scopes             String[]
+  games              String[]
+  operatingSystems   String[]
+  serverPlatforms    String[]
+  screenshotsJson    String              @default("[]")
+  iconUrl            String?
+  docsUrl            String?
+  supportUrl         String?
+  privacyUrl         String?
+  changelog          String              @default("") @db.Text
+  reviewState        DevReviewState      @default(DRAFT)
+  publishedAt        DateTime?
+  suspendedAt        DateTime?
+  kobaOfficial       Boolean             @default(false)
+  ratingSum          Int                 @default(0)
+  ratingCount        Int                 @default(0)
+  downloadCount      Int                 @default(0)
+  moderationNote     String?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  owner         User                 @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+  profile       DeveloperProfile?    @relation(fields: [profileId], references: [id], onDelete: SetNull)
+  installs      DevInstall[]
+  versions      DevProductVersion[]
+  entitlements  DevEntitlement[]
+  purchases     DevPurchase[]
+  reviews       DevProductReview[]
 
   @@index([ownerUserId])
   @@index([kind, reviewState])
+  @@index([profileId, reviewState])
+  @@index([category, reviewState])
+  @@index([slug])
 }
 
 model DevInstall {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   productId String
   userId    String
   revokedAt DateTime?
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
 
   product DevProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
   user    User       @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([productId, userId])
   @@index([userId])
+}
+
+model DevProductVersion {
+  id              String            @id @default(cuid())
+  publicRef       String            @unique
+  productId       String
+  semver          String
+  changelog       String            @default("") @db.Text
+  channel         DevReleaseChannel @default(STABLE)
+  gameVersions    String[]
+  platforms       String[]
+  requirements    String            @default("")
+  reviewState     DevReviewState    @default(DRAFT)
+  releasedAt      DateTime?
+  deprecatedAt    DateTime?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  product   DevProduct           @relation(fields: [productId], references: [id], onDelete: Cascade)
+  artifacts DevProductArtifact[]
+
+  @@unique([productId, semver])
+  @@index([productId, reviewState])
+}
+
+model DevProductArtifact {
+  id            String            @id @default(cuid())
+  versionId     String
+  storageKey    String
+  sha256        String
+  byteSize      Int
+  mimeType      String
+  filename      String
+  status        DevArtifactStatus @default(QUARANTINE)
+  bytes         Bytes?
+  createdAt     DateTime          @default(now())
+
+  version DevProductVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+
+  @@index([versionId, status])
+}
+
+model DevEntitlement {
+  id        String    @id @default(cuid())
+  userId    String
+  productId String
+  source    String
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  user    User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product DevProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@index([productId])
+}
+
+model DevPurchase {
+  id                     String            @id @default(cuid())
+  publicRef              String            @unique
+  idempotencyKey         String            @unique
+  buyerUserId            String
+  productId              String
+  priceCoins             BigInt
+  feeCoins               BigInt
+  sellerCoins            BigInt
+  commissionBps          Int
+  status                 DevPurchaseStatus @default(PAID)
+  captureTxRef           String?
+  sellerTxRef            String?
+  refundTxRef            String?
+  refundReason           String?
+  proceedsUnrecoverable  Boolean           @default(false)
+  createdAt              DateTime          @default(now())
+  updatedAt              DateTime          @updatedAt
+
+  buyer   User       @relation(fields: [buyerUserId], references: [id], onDelete: Cascade)
+  product DevProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([buyerUserId, createdAt])
+  @@index([productId, status])
+}
+
+model DevProductReview {
+  id        String   @id @default(cuid())
+  productId String
+  userId    String
+  rating    Int
+  body      String   @default("") @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  product DevProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user    User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, userId])
+  @@index([productId])
 }
