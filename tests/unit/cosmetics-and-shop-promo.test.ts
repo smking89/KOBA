@@ -14,8 +14,15 @@ import { promoConfigUpdateSchema } from "@/features/shops/schemas/shop.schemas";
 import { rarityDistribution } from "@/features/shops/services/analytics.service";
 
 describe("cosmetic sub-type enum", () => {
-  it("is closed to exactly avatar decoration, profile effect, nameplate", () => {
-    expect(COSMETIC_SUB_TYPES).toEqual(["AVATAR_DECORATION", "PROFILE_EFFECT", "NAMEPLATE"]);
+  it("is closed to exactly the subscription-perk catalog", () => {
+    expect(COSMETIC_SUB_TYPES).toEqual([
+      "AVATAR_DECORATION",
+      "PROFILE_EFFECT",
+      "NAMEPLATE",
+      "PROFILE_FRAME",
+      "SHOP_BANNER",
+      "EMOJI",
+    ]);
   });
 
   it("rejects an unknown sub-type", () => {
