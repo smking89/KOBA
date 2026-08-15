@@ -606,6 +606,88 @@ async function main() {
     create: { shopId: pendingShop.id, userId: applicant.id, role: "OWNER" },
   });
 
+  // Phase 14C — transferable listed inventory for demo trades (same rarity tier).
+  const seedInventory = [
+    {
+      publicRef: "KOBA-INV-SEED0001",
+      ownerUserId: seller.id,
+      title: "Oxide Camo Crest",
+      game: "Rust",
+      platform: "STEAM" as const,
+      rarity: "EPIC" as const,
+    },
+    {
+      publicRef: "KOBA-INV-SEED0002",
+      ownerUserId: seller.id,
+      title: "Ironwright Ember Charm",
+      game: "Rust",
+      platform: "STEAM" as const,
+      rarity: "EPIC" as const,
+    },
+    {
+      publicRef: "KOBA-INV-SEED0003",
+      ownerUserId: seller.id,
+      title: "Raid Beacon Decal",
+      game: "ARK: Survival Ascended",
+      platform: "STEAM" as const,
+      rarity: "EPIC" as const,
+    },
+    {
+      publicRef: "KOBA-INV-SEED0004",
+      ownerUserId: applicant.id,
+      title: "Wyvern Profile Effect",
+      game: "ARK: Survival Ascended",
+      platform: "STEAM" as const,
+      rarity: "EPIC" as const,
+    },
+    {
+      publicRef: "KOBA-INV-SEED0005",
+      ownerUserId: applicant.id,
+      title: "Monument Blueprint Folio",
+      game: "Rust",
+      platform: "STEAM" as const,
+      rarity: "EPIC" as const,
+    },
+    {
+      publicRef: "KOBA-INV-SEED0006",
+      ownerUserId: applicant.id,
+      title: "Exiles Trade Token",
+      game: "Conan Exiles",
+      platform: "STEAM" as const,
+      rarity: "EPIC" as const,
+    },
+  ] as const;
+
+  for (const item of seedInventory) {
+    await prisma.inventoryItem.upsert({
+      where: { publicRef: item.publicRef },
+      update: {
+        ownerUserId: item.ownerUserId,
+        title: item.title,
+        game: item.game,
+        platform: item.platform,
+        rarity: item.rarity,
+        transferable: true,
+        listedForTrade: true,
+        status: "ACTIVE",
+        acquisitionSource: "SEED",
+        lockTradeOfferId: null,
+      },
+      create: {
+        publicRef: item.publicRef,
+        ownerUserId: item.ownerUserId,
+        title: item.title,
+        game: item.game,
+        platform: item.platform,
+        rarity: item.rarity,
+        transferable: true,
+        listedForTrade: true,
+        status: "ACTIVE",
+        acquisitionSource: "SEED",
+      },
+    });
+  }
+
   await prisma.product.upsert({
     where: { slug: "pending-oil-rig-kit" },
     update: {

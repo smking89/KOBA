@@ -14,3 +14,9 @@ export function generateTradeRef(
 ): string {
   return hexRef("KOBA-TRD-", bytesFn);
 }
+
+export function generateInventoryRef(
+  bytesFn: (size: number) => Uint8Array = (size) => randomBytes(size),
+): string {
+  return hexRef("KOBA-INV-", bytesFn);
+}

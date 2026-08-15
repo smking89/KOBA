@@ -6,8 +6,8 @@ squads; all on one KOBAID.
 
 ## Status
 
-**Phase 14B — KOBA Coins ledger** is in progress on `feat/koba-coins-ledger`
-(double-entry BigInt ledger, reservations, wallet APIs — no live Coin purchases).
+**Phase 14C — Item trading** is in progress on `feat/item-trading`
+(inventory ownership, locks, atomic accept — stacked on the Coins ledger).
 
 The HTML prototype remains the information-architecture reference:
 
@@ -19,13 +19,13 @@ live in `app/globals.css` and `lib/design-tokens.ts`.
 
 ### Owner expansion routes (UI foundations)
 
-| Path                                                     | Purpose                                    |
-| -------------------------------------------------------- | ------------------------------------------ |
-| `/trade`, `/trade/[tradeId]`                             | Trade discovery, composer, history (mock)  |
-| `/servers`, `/servers/[serverId]`, `/servers/connect`    | Server directory + RCON connect wizard     |
-| `/plus`                                                  | KOBA Plus plans and subscription states    |
-| `/aiden`, `/aiden/generate`, `/aiden/library`            | Aiden creator, jobs, asset library         |
-| `/wallet`                                                | KOBA Coins wallet (ledger-backed)          |
+| Path                                                  | Purpose                                   |
+| ----------------------------------------------------- | ----------------------------------------- |
+| `/trade`, `/trade/[tradeId]`                          | Trade discovery, composer, history (mock) |
+| `/servers`, `/servers/[serverId]`, `/servers/connect` | Server directory + RCON connect wizard    |
+| `/plus`                                               | KOBA Plus plans and subscription states   |
+| `/aiden`, `/aiden/generate`, `/aiden/library`         | Aiden creator, jobs, asset library        |
+| `/wallet`                                             | KOBA Coins wallet (ledger-backed)         |
 
 See [docs/wallet-ledger.md](docs/wallet-ledger.md) for the Phase 14B accounting model.
 Coin purchases, live AI capture, and cash withdrawal remain deferred.
@@ -403,8 +403,9 @@ self-registered. Group Admin/Moderator badges are community roles, not staff.
 16. **Fee tiers (8% / 4% verified)** ✅
 17. **Owner product expansion UI** ✅
 18. **Owner expansion backends** ✅
-19. **KOBA Coins double-entry ledger** ← current
-20. Influencer ads network / live Coin purchases (deferred)
+19. **KOBA Coins double-entry ledger** ✅
+20. **Player-to-player item trading** ← current
+21. Influencer ads network / live Coin purchases (deferred)
 
 ## License
 

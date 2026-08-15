@@ -1,4 +1,5 @@
 import type { GamePlatform, ProductRarity } from "@/features/marketplace/lib/catalog";
+import { assertSameRarityTrade, RARITY_VALUE_WARNING } from "@/features/trade/lib/rarity-policy";
 
 export const TRADE_STATES = [
   "DRAFT",
@@ -10,12 +11,14 @@ export const TRADE_STATES = [
   "COMPLETED",
   "DISPUTED",
   "COUNTERED",
+  "VOIDED",
 ] as const;
 
 export type TradeState = (typeof TRADE_STATES)[number];
 
 export type TradeItemView = {
   id: string;
+  inventoryPublicRef: string | null;
   title: string;
   game: string;
   platform: GamePlatform;
@@ -30,6 +33,7 @@ export type TradeItemView = {
 export type TradeOfferView = {
   publicRef: string;
   state: TradeState;
+  rarityTier: ProductRarity;
   createdAt: string;
   expiresAt: string | null;
   proposerHandle: string;
@@ -38,9 +42,14 @@ export type TradeOfferView = {
   requested: TradeItemView[];
   sameRarityRuleOk: boolean;
   note: string | null;
+  parentPublicRef: string | null;
+  valueWarning: string;
+  viewerRole: "proposer" | "counterparty" | null;
 };
 
-/** Owner rule: only items in the same rarity tier may be traded. Server must re-validate. */
+export { RARITY_VALUE_WARNING };
+
+/** UI/helper: true when all items share one rarity tier. */
 export function sameRarityTier(
   offered: readonly { rarity: ProductRarity }[],
   requested: readonly { rarity: ProductRarity }[],
@@ -48,8 +57,12 @@ export function sameRarityTier(
   if (offered.length === 0 || requested.length === 0) {
     return false;
   }
-  const tiers = new Set([...offered, ...requested].map((item) => item.rarity));
-  return tiers.size === 1;
+  try {
+    assertSameRarityTrade([...offered, ...requested]);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function tradeStateLabel(state: TradeState): string {
@@ -72,6 +85,8 @@ export function tradeStateLabel(state: TradeState): string {
       return "Disputed";
     case "COUNTERED":
       return "Counteroffer";
+    case "VOIDED":
+      return "Voided";
     default:
       return state;
   }
