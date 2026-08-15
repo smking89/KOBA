@@ -1,0 +1,271 @@
+{
+  "auditId": "KOBA-15A-2026-08-15",
+  "phase": "15A",
+  "date": "2026-08-15",
+  "branch": "docs/production-readiness-audit",
+  "head": "010495fbc6cbfce380f2c4b9bc340275945d2369",
+  "originMain": "86f6b7748e02166f2f6a924a0261c270abdc6b58",
+  "commitsAheadOfOriginMain": 83,
+  "phase14I": {
+    "completed": true,
+    "commit": "010495f",
+    "message": "feat(promotions): add influencer referrals and sponsored campaigns"
+  },
+  "license": "All Rights Reserved (unaltered)",
+  "readiness": {
+    "internalDevelopment": "READY WITH CONDITIONS",
+    "staging": "READY WITH CONDITIONS",
+    "closedBeta": "NOT READY",
+    "publicLaunch": "NOT READY",
+    "realMoney": "NOT READY"
+  },
+  "nextPhase": "15B",
+  "severityCounts": {
+    "CRITICAL": 0,
+    "HIGH": 14,
+    "MEDIUM": 23,
+    "LOW": 2,
+    "INFORMATIONAL": 8
+  },
+  "commands": [
+    {
+      "command": "pnpm format:check",
+      "result": "fail",
+      "detail": "Prettier issues in 151 files (CRLF/style)",
+      "predatesAudit": true,
+      "launchImpact": "pnpm ci and GitHub feat/** CI fail until format is normalized"
+    },
+    {
+      "command": "pnpm lint",
+      "result": "pass",
+      "detail": "eslint --max-warnings 0",
+      "predatesAudit": null,
+      "launchImpact": "none"
+    },
+    {
+      "command": "pnpm typecheck",
+      "result": "pass",
+      "detail": "tsc --noEmit",
+      "predatesAudit": null,
+      "launchImpact": "none"
+    },
+    {
+      "command": "pnpm test",
+      "result": "pass",
+      "detail": "301 passed, 18 skipped, 45 files passed, 4 skipped",
+      "predatesAudit": null,
+      "launchImpact": "skipped integration tests are not concurrency proof"
+    },
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "detail": "Next.js 15.5.23 production build; ~104kB first-load JS shared",
+      "predatesAudit": null,
+      "launchImpact": "none"
+    },
+    {
+      "command": "pnpm audit",
+      "result": "fail",
+      "detail": "5 advisories (3 high, 2 moderate); nested sharp@0.34.5 and postcss@8.4.31 via next@15.5.23",
+      "predatesAudit": null,
+      "launchImpact": "KOBA-DEP-001 public-launch blocker"
+    },
+    {
+      "command": "pnpm prisma validate",
+      "result": "pass",
+      "detail": "schema valid",
+      "predatesAudit": null,
+      "launchImpact": "none"
+    },
+    {
+      "command": "pnpm prisma generate",
+      "result": "pass",
+      "detail": "Prisma Client 7.9.1",
+      "predatesAudit": null,
+      "launchImpact": "none"
+    },
+    {
+      "command": "pnpm test:e2e",
+      "result": "fail",
+      "detail": "2 failed; reused non-KOBA process on port 3000; home.spec still mentions Phase 1",
+      "predatesAudit": true,
+      "launchImpact": "e2e not in CI; not a KOBA UI regression proof"
+    },
+    {
+      "command": "lighthouse",
+      "result": "not verified",
+      "detail": "not run; no trustworthy KOBA origin on :3000",
+      "predatesAudit": null,
+      "launchImpact": "performance scores not claimed"
+    }
+  ],
+  "launchBlockers": [
+    "KOBA-SEC-001",
+    "KOBA-SEC-002",
+    "KOBA-SEC-003",
+    "KOBA-SEC-004",
+    "KOBA-SEC-005",
+    "KOBA-MED-001",
+    "KOBA-PWA-001",
+    "KOBA-PWA-002",
+    "KOBA-OPS-001",
+    "KOBA-OPS-003",
+    "KOBA-LEG-001",
+    "KOBA-SEC-012",
+    "KOBA-DEP-001",
+    "KOBA-GIT-001"
+  ],
+  "findings": [
+    {
+      "id": "KOBA-SEC-001",
+      "title": "Seeded SUPERADMIN password is documented and reset on every seed",
+      "category": "secrets",
+      "severity": "HIGH",
+      "confidence": "high",
+      "component": "prisma/seed.ts",
+      "launchBlocking": true,
+      "evidence": "staff@koba.local password upserted; coin grants guarded by NODE_ENV, staff user is not"
+    },
+    {
+      "id": "KOBA-SEC-002",
+      "title": "Open redirect after login via callbackUrl",
+      "category": "unsafe-redirect",
+      "severity": "HIGH",
+      "confidence": "high",
+      "component": "features/auth/components/login-form.tsx",
+      "launchBlocking": true,
+      "evidence": "router.push(callbackUrl) with no allowlist"
+    },
+    {
+      "id": "KOBA-SEC-003",
+      "title": "No MFA on staff or other privileged workflows",
+      "category": "authentication",
+      "severity": "HIGH",
+      "confidence": "high",
+      "component": "auth/admin",
+      "launchBlocking": true,
+      "evidence": "no mfa/totp/webauthn matches in repository"
+    },
+    {
+      "id": "KOBA-SEC-004",
+      "title": "Client can write accountType into the JWT",
+      "category": "broken-access-control",
+      "severity": "HIGH",
+      "confidence": "high",
+      "component": "lib/auth/edge.config.ts",
+      "launchBlocking": true,
+      "evidence": "jwt update callback copies session.accountType from client"
+    },
+    {
+      "id": "KOBA-SEC-005",
+      "title": "Login authorize path is not rate-limited",
+      "category": "brute-force",
+      "severity": "HIGH",
+      "confidence": "high",
+      "component": "lib/auth/credentials-provider.ts",
+      "launchBlocking": true,
+      "evidence": "register/reset/verify are limited; authorize is not"
+    },
+    {
+      "id": "KOBA-MED-001",
+      "title": "Malware scanning is a dead hook; zip/tar artifacts allowed",
+      "category": "insecure-upload",
+      "severity": "HIGH",
+      "confidence": "high",
+      "component": "features/aiden/lib/malware-scan.ts",
+      "launchBlocking": true,
+      "evidence": "malwareScanningActive() always false; DEV_ALLOWED_ARTIFACT_EXT includes zip/tar"
+    },
+    {
+      "id": "KOBA-PWA-001",
+      "title": "Authenticated navigations use NetworkFirst page cache",
+      "category": "pwa-cache",
+      "severity": "HIGH",
+      "confidence": "high",
+      "component": "app/sw.ts",
+      "launchBlocking": true,
+      "evidence": "navigationHandler NetworkFirst for all documents; APIs NetworkOnly"
+    },
+    {
+      "id": "KOBA-PWA-002",
+      "title": "Logout does not clear service-worker caches",
+      "category": "pwa-cache",
+      "severity": "HIGH",
+      "confidence": "high",
+      "component": "components/koba/app-header.tsx",
+      "launchBlocking": true,
+      "evidence": "signOut without caches.delete; dev-only SW unregister"
+    },
+    {
+      "id": "KOBA-OPS-001",
+      "title": "No production backup or restore drill",
+      "category": "disaster-recovery",
+      "severity": "HIGH",
+      "confidence": "high",
+      "component": "docs/infra",
+      "launchBlocking": true,
+      "evidence": "no backup/restore runbook; compose volume is local only"
+    },
+    {
+      "id": "KOBA-OPS-003",
+      "title": "No error monitoring or financial alerting",
+      "category": "observability",
+      "severity": "HIGH",
+      "confidence": "high",
+      "component": "application",
+      "launchBlocking": true,
+      "evidence": "no Sentry/APM; console logs only"
+    },
+    {
+      "id": "KOBA-LEG-001",
+      "title": "No customer-facing operational policies",
+      "category": "legal",
+      "severity": "HIGH",
+      "confidence": "high",
+      "component": "app/",
+      "launchBlocking": true,
+      "evidence": "no ToS/privacy/refund/AUP routes; legal-tos-review.md is publisher research only"
+    },
+    {
+      "id": "KOBA-SEC-012",
+      "title": "No account deletion, privacy request, or user-level suspend",
+      "category": "privacy",
+      "severity": "HIGH",
+      "confidence": "high",
+      "component": "prisma User / settings",
+      "launchBlocking": true,
+      "evidence": "no deleteAccount/gdpr code; User has no suspendedAt"
+    },
+    {
+      "id": "KOBA-DEP-001",
+      "title": "Next.js nests sharp@0.34.5 with HIGH libvips advisories",
+      "category": "vulnerable-dependency",
+      "severity": "HIGH",
+      "confidence": "high",
+      "component": "pnpm-lock.yaml",
+      "launchBlocking": true,
+      "evidence": "GHSA-f88m-g3jw-g9cj; direct sharp is 0.35.3; GIF uploads allowed"
+    },
+    {
+      "id": "KOBA-GIT-001",
+      "title": "Product is 83 commits ahead of origin/main",
+      "category": "release-integrity",
+      "severity": "HIGH",
+      "confidence": "high",
+      "component": "git",
+      "launchBlocking": true,
+      "evidence": "Phases 14B-14I exist only on local stacked history"
+    }
+  ],
+  "secretsScan": {
+    "committedEnvFiles": [".env.example"],
+    "gitignoredEnv": [".env"],
+    "localEnvKeysObserved": ["DATABASE_URL"],
+    "localEnvClassification": "database connection string; not printed; appears local/misconfigured vs docker-compose koba user; not a committed production secret",
+    "trackedPemOrKeys": []
+  },
+  "malwareScanning": "hook-only-inactive",
+  "stripeLive": "blocked",
+  "recommendedCommitMessage": "docs(security): add production-readiness audit",
+  "recommendedPullRequestTitle": "docs: audit KOBA production readiness and launch risks"
+}
