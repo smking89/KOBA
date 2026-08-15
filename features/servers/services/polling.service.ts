@@ -5,7 +5,7 @@
 import { AuditAction } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/db";
 import { writeAuditLog } from "@/features/auth/services/audit-log.service";
-import { getAdapter } from "@/features/servers/adapters/registry";
+import { getRuntimeAdapter } from "@/features/servers/adapters/runtime";
 import type { NormalizedStatusResult } from "@/features/servers/adapters/types";
 import { computeFreshUntil } from "@/features/servers/lib/freshness";
 import { resolveSafeTarget, SsrfError, type ResolvedTarget } from "@/features/servers/lib/ssrf";
@@ -121,7 +121,7 @@ export async function pollServer(serverId: string): Promise<{
   }
 
   const checkedAt = new Date();
-  const adapter = getAdapter(server.adapterKey);
+  const adapter = getRuntimeAdapter(server.adapterKey);
   const hostname = server.hostname ?? server.host;
   const port = server.queryPort ?? server.gamePort ?? server.port ?? 0;
 

@@ -17,6 +17,7 @@
     "test:e2e": "playwright test",
     "icons:generate": "node scripts/generate-pwa-icons.mjs",
     "servers:poll": "node scripts/poll-servers.mjs",
+    "servers:integrations": "node scripts/poll-rust-integrations.mjs",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",

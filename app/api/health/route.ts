@@ -4,6 +4,7 @@ import { isEmailConfigured } from "@/lib/email/mailer";
 import { isUpstashConfigured } from "@/lib/security/rate-limit";
 import { isObjectStorageConfigured } from "@/features/media/lib/storage";
 import { getStripeReadiness } from "@/features/payments/lib/stripe-readiness";
+import { isCredentialEncryptionConfigured } from "@/lib/crypto/credential-box";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +33,7 @@ export async function GET(request: Request) {
       rateLimit: isUpstashConfigured() ? "upstash" : "memory",
       objectStorage: isObjectStorageConfigured() ? "configured" : "unset",
       stripe: stripe.mode,
+      credentialEncryption: isCredentialEncryptionConfigured() ? "configured" : "missing",
     },
   };
 
