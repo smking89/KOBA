@@ -659,9 +659,13 @@ for now. KOBAads stays planning-only until Phase 8 exists.
 - **Giftable**: a player can buy a Boost and give it to a favorite shop
   or influencer, who then applies it themselves — provenance (who gifted
   it) is tracked, not just current ownership.
-- **Applicable to multiple target kinds**: a product, a shop, or a group
-  — "or any supported feature," so the target-kind list is deliberately
-  designed to extend (e.g. LFG posts) without a schema rewrite.
+- **Applicable to multiple target kinds**: a product, a shop, a group, a
+  game server, or an influencer profile (expanded 2026-08-15 per client
+  clarification — "a way for players to support their favorite shops,
+  servers and influencers") — "or any supported feature," so the
+  target-kind list is deliberately designed to extend (e.g. LFG posts,
+  KOBAads units once Phase 15's ad model exists) without a schema
+  rewrite.
 - **Fixed effect**: 10-minute duration, 3x exposure multiplier. Not
   spend-until-exhausted — this resolves the phase's original open
   question in favor of the fixed-time-window model.
@@ -699,6 +703,66 @@ for now. KOBAads stays planning-only until Phase 8 exists.
   only, unchanged from before, blocked on Phase 8 + a KOBAads targeting/
   budget spec.
 
+### KOBAads ranking algorithm — design spec (2026-08-15, not yet buildable)
+
+Feed Engine (Phase 8) now exists for real (`features/social/lib/
+feed-ranking.ts`), so the piece that was actually missing before —
+somewhere to interleave ads *into* — is done. What's still missing is
+the `Ad`/`AdCampaign` data model itself (targeting/budget/creative), so
+this is a **ranking algorithm design**, grounded in how real ad auctions
+work (Google/Meta-style generalized second-price auctions with a quality
+multiplier — an ad wins the slot on total value, not raw bid), not an
+implementation — there's nothing to wire it to yet.
+
+**Total value formula per candidate ad, per slot:**
+
+```
+totalValue = bid × predictedCTR × qualityScore × boostMultiplier
+```
+
+- `bid` — advertiser's price per impression (KOBA Coins), set at
+  campaign creation — the one input this design doesn't get to invent,
+  it's a real business/pricing decision (self-serve minimum bid, auction
+  vs. fixed-price placement) for whoever specs the campaign model.
+- `predictedCTR` — reuses the *same* relevance signals
+  `computePostScore` already computes for organic ranking (following,
+  group membership, shop-follow relevance), plus the ad's own
+  historical CTR once it has impression data — cold-start ads (no
+  history yet) get a neutral prior rather than being ranked to zero or
+  guessed at.
+- `qualityScore` — penalizes ads with a high report/hide rate (reusing
+  the existing `ContentReport`/moderation signals Phase 8's organic
+  ranking already respects) so a low-quality ad can't just outbid its
+  way to a slot regardless of how badly viewers respond to it.
+- `boostMultiplier` — **this is where Boost and KOBAads become one
+  algorithm, not two bolted-together systems**, per the client's own
+  framing of Boost ("similar to koba ads... pushing their product 3x to
+  the koba algorithm"): a Boosted ad's `totalValue` is multiplied by
+  `BOOST_MULTIPLIER` (3x, `features/boost/lib/pricing.ts`) exactly like
+  a Boosted group's posts already get in organic ranking today.
+
+**Delivery mechanics (industry-standard, not KOBA-specific research):**
+
+- **Pacing**: spend each campaign's budget on a throttled curve across
+  its flight window (a simple proportional throttle — behind pace, win
+  more slots; ahead of pace, win fewer — is sufficient for v1; PID/MPC
+  pacing controllers are a real refinement, not a v1 requirement).
+- **Frequency capping**: cap distinct impressions of the same ad to the
+  same viewer per day (e.g. 3/day, matching common industry practice) —
+  same Redis-with-in-memory-fallback shape as `features/social/lib/
+  feed-cache.ts` and `lib/security/rate-limit.ts` would work for this.
+- **Interleaving cadence**: one ad slot per N organic posts (never two
+  ads adjacent) rather than a fixed position, so the feed doesn't feel
+  ad-heavy regardless of scroll speed.
+
+**Still genuinely open** (business inputs this design can't supply):
+minimum bid / self-serve vs. managed campaigns, targeting dimensions
+advertisers can select (game, category, audience?), and creative format
+constraints for a KCU. Once `Ad`/`AdCampaign` exists with those answered,
+wiring this into `listFeed` is additive — an ad-candidate fetch +
+scoring pass alongside the existing organic candidate pool, not a
+rewrite of Phase 8's ranking.
+
 **Dependencies**
 
 - Coins ledger + reservation/capture (done) — Boost purchase reuses it
@@ -712,10 +776,14 @@ for now. KOBAads stays planning-only until Phase 8 exists.
    (`features/boost/lib/pricing.ts`, clearly marked) so the feature is
    testable end-to-end; needs a real number before launch.
 2. The "any type of native ad" / "any supported feature" phrasing —
-   confirm the v1 target-kind list (product, shop, group) is right, or
-   whether LFG posts / KCU ad units themselves should be boostable
-   targets from day one.
-3. KOBAads campaign targeting/budget model — still fully open, see above.
+   target-kind list expanded 2026-08-15 to product, shop, group, server,
+   and influencer profile (client clarification). KCU ad units
+   themselves can't be a Boost target until Phase 15's `Ad`/`AdCampaign`
+   model exists — same blocker as item 3.
+3. KOBAads campaign targeting/budget model — the *ranking algorithm* is
+   now specified (see "KOBAads ranking algorithm" above); the data model
+   itself (bid amount, targeting dimensions, self-serve vs. managed) is
+   still fully open.
 
 ---
 

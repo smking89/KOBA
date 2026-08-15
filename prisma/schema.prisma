@@ -285,6 +285,8 @@ enum BoostTargetKind {
   PRODUCT
   SHOP
   GROUP
+  SERVER
+  INFLUENCER
 }
 
 enum BoostStatus {
