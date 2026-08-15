@@ -18,4 +18,12 @@ describe("capability matrix", () => {
   it("includes queue for Rust PC", () => {
     expect(supportsCapability("rust", "PC", "QUEUE_COUNT")).toBe(true);
   });
+
+  it("does not enable Rust write or unsupported map size", () => {
+    expect(supportsCapability("rust", "PC", "RCON_WRITE")).toBe(false);
+    expect(supportsCapability("rust", "PC", "MAP_SIZE")).toBe(false);
+    expect(supportsCapability("rust", "PC", "RCON_READ")).toBe(true);
+    expect(supportsCapability("rust", "PC", "PUBLIC_QUERY")).toBe(true);
+    expect(supportsCapability("rust", "PC", "PING")).toBe(true);
+  });
 });
