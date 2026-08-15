@@ -19,13 +19,13 @@ live in `app/globals.css` and `lib/design-tokens.ts`.
 
 ### Owner expansion routes (UI foundations)
 
-| Path                                                     | Purpose                                    |
-| -------------------------------------------------------- | ------------------------------------------ |
-| `/trade`, `/trade/[tradeId]`                             | Trade discovery, composer, history (mock)  |
-| `/servers`, `/servers/[serverId]`, `/servers/connect`    | Server directory + RCON connect wizard     |
-| `/plus`                                                  | KOBA Plus plans and subscription states    |
-| `/aiden`, `/aiden/generate`, `/aiden/library`            | Aiden creator, jobs, asset library         |
-| `/wallet`                                                | KOBA Coins wallet (ledger-backed)          |
+| Path                                                  | Purpose                                   |
+| ----------------------------------------------------- | ----------------------------------------- |
+| `/trade`, `/trade/[tradeId]`                          | Trade discovery, composer, history (mock) |
+| `/servers`, `/servers/[serverId]`, `/servers/connect` | Server directory + RCON connect wizard    |
+| `/plus`                                               | KOBA Plus plans and subscription states   |
+| `/aiden`, `/aiden/generate`, `/aiden/library`         | Aiden creator, jobs, asset library        |
+| `/wallet`                                             | KOBA Coins wallet (ledger-backed)         |
 
 See [docs/wallet-ledger.md](docs/wallet-ledger.md) for the Phase 14B accounting model.
 Coin purchases, live AI capture, and cash withdrawal remain deferred.
@@ -170,8 +170,22 @@ Staff (SA/AD) verify shops at `POST /api/admin/shops/[slug]/verify`. Follows and
 reviews require a signed-in user who is not the shop owner.
 
 Business dashboard analytics count live listings, drafts, followers, reviews,
-inventory, and orders. Connect payouts at `/business/payouts` before buyers can
-check out.
+inventory, orders, and a live-computed rarity distribution across the shop's
+catalog (no rollup job — recomputed on every dashboard read).
+
+Connect payouts at `/business/payouts` before buyers can check out.
+
+**Cosmetics** are a separate, closed-catalog track from `Product`: avatar
+decorations, profile effects, and nameplates, sold pre-made with no
+custom-build fields. Each cosmetic belongs to a shop (`ownerShopId`, a real
+FK). Sellers create/update drafts via `POST`/`PATCH /api/business/cosmetics`;
+the public catalog reads only `APPROVED` cosmetics via `GET /api/market/cosmetics`
+and `GET /api/market/cosmetics/[slug]`.
+
+**Promo settings** (`ShopPromoConfig`) let a shop opt into influencer
+eligibility and set payout terms — percent (basis points, 0–10000) or fixed
+(cents) — via `GET`/`PATCH /api/business/promo`. This is the shop-side half of
+a future influencer payout system; nothing reads these terms yet.
 
 ### Auctions (Phase 7)
 
