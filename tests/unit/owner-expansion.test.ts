@@ -30,6 +30,7 @@ describe("expansion navigation", () => {
     );
     expect(DESKTOP_PRIMARY_LINKS.some((link) => link.href === "/trade")).toBe(true);
     expect(DESKTOP_MORE_LINKS.some((link) => link.href === "/aiden")).toBe(true);
+    expect(DESKTOP_MORE_LINKS.some((link) => link.href === "/influencer")).toBe(true);
     expect(isNavActive("/trade/KOBA-TRD-DEMO0001", "/trade")).toBe(true);
     expect(isMoreSectionActive("/aiden/generate")).toBe(true);
   });

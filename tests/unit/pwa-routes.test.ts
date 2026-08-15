@@ -27,6 +27,8 @@ describe("isSensitivePath", () => {
     expect(isSensitivePath("/api/admin/plus")).toBe(true);
     expect(isSensitivePath("/api/aiden")).toBe(true);
     expect(isSensitivePath("/api/aiden/jobs")).toBe(true);
+    expect(isSensitivePath("/api/influencer/codes")).toBe(true);
+    expect(isSensitivePath("/api/influencer/payouts")).toBe(true);
   });
 
   it("allows public routes", () => {
