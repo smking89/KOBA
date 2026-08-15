@@ -408,17 +408,29 @@ export async function refundOrder(actorUserId: string, publicRef: string, actorI
     throw new PaymentError("Missing payment intent.", "NOT_FOUND");
   }
 
-  // Escrow-aware: the seller's payout is only ever transferred out of the
-  // platform's Stripe balance once escrow reaches RELEASED (see
-  // escrow.service.ts). Before that, no `transfer_data`/destination transfer
-  // exists on this PaymentIntent at all, so `reverse_transfer` would have
-  // nothing to reverse. Only pass it once escrow has actually released.
-  const escrowReleased = order.escrow?.status === "RELEASED";
+  // Escrow-aware: this PaymentIntent is a plain platform-balance charge with
+  // no `transfer_data` attached (see the checkout session creation above) —
+  // `reverse_transfer: true` on a refund only reverses a transfer that is
+  // attached to the *charge itself* (destination charges), which this is
+  // not. The seller's payout is a separate, manually-created
+  // `stripe.transfers.create()` call in escrow.service.ts#releaseEscrow,
+  // tracked via `OrderEscrow.stripeTransferId`. If that transfer already
+  // went out, we must explicitly reverse *that specific transfer* before
+  // refunding the buyer from the platform balance — otherwise the seller
+  // keeps the payout and the platform eats the refund with no recovery.
+  const stripe = getStripe();
+  if (order.escrow?.status === "RELEASED" && order.escrow.stripeTransferId) {
+    await stripe.transfers.createReversal(
+      order.escrow.stripeTransferId,
+      { amount: order.sellerPayoutCents },
+      { idempotencyKey: `transfer-reversal:${order.publicRef}` },
+    );
+  }
 
-  await getStripe().refunds.create({
-    payment_intent: order.stripePaymentIntentId,
-    ...(escrowReleased ? { reverse_transfer: true } : {}),
-  });
+  await stripe.refunds.create(
+    { payment_intent: order.stripePaymentIntentId },
+    { idempotencyKey: `refund:${order.publicRef}` },
+  );
 
   return markOrderRefunded(order.publicRef, actorUserId);
 }

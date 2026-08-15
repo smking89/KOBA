@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { writeAuditLog } from "@/features/auth/services/audit-log.service";
 import { PaymentError } from "@/features/payments/lib/errors";
 import { actorIsStaff } from "@/features/payments/lib/staff";
-import { canFlagDispute } from "@/features/payments/lib/escrow-rules";
+import { canFlagDispute, canReleaseEscrow } from "@/features/payments/lib/escrow-rules";
 import { getStripe, isStripeConfigured } from "@/features/payments/lib/stripe";
 import { markOrderRefunded } from "@/features/payments/services/checkout.service";
 
@@ -101,10 +101,11 @@ export async function resolveDispute(
     }
     // Distinct, simpler path than checkout.service.ts's refundOrder: since
     // escrow was still DISPUTED (never RELEASED), no seller transfer ever
-    // happened, so there is nothing for Stripe to reverse_transfer.
-    await getStripe().refunds.create({
-      payment_intent: order.stripePaymentIntentId,
-    });
+    // happened, so there is nothing to reverse.
+    await getStripe().refunds.create(
+      { payment_intent: order.stripePaymentIntentId },
+      { idempotencyKey: `refund:${order.publicRef}` },
+    );
     await markOrderRefunded(publicRef, staffUserId);
   }
 
@@ -139,7 +140,7 @@ export async function releaseEscrow(publicRef: string, actorUserId?: string | nu
   if (escrow.status === "RELEASED" || escrow.status === "REFUNDED") {
     return escrow;
   }
-  if (escrow.status !== "HOLDING" && escrow.status !== "DISPUTED") {
+  if (!canReleaseEscrow({ escrowStatus: escrow.status })) {
     throw new PaymentError("Escrow cannot be released from its current state.", "CONFLICT");
   }
 

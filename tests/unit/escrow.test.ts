@@ -105,9 +105,12 @@ describe("canResolveDispute", () => {
 });
 
 describe("canReleaseEscrow", () => {
-  it("only permits the auto-release sweep to act on HOLDING rows", () => {
+  it("permits release from HOLDING (auto-sweep) and DISPUTED (staff resolution)", () => {
     expect(canReleaseEscrow({ escrowStatus: "HOLDING" })).toBe(true);
-    expect(canReleaseEscrow({ escrowStatus: "DISPUTED" })).toBe(false);
+    expect(canReleaseEscrow({ escrowStatus: "DISPUTED" })).toBe(true);
+  });
+
+  it("rejects rows that have already reached a terminal state", () => {
     expect(canReleaseEscrow({ escrowStatus: "RELEASED" })).toBe(false);
     expect(canReleaseEscrow({ escrowStatus: "REFUNDED" })).toBe(false);
   });
