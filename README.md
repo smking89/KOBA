@@ -189,12 +189,17 @@ service worker.
 
 ### Payments (Phase 8)
 
-Stripe Connect **test mode** only. Destination charges take a platform fee of
+Stripe Connect **test mode** only. Platform fee of
 **8%** unverified / **4%** Blue-Badge verified
 (`KOBA_COMMISSION_BPS` default 800, `KOBA_COMMISSION_BPS_VERIFIED` default 400,
 cap 2500). Hosted Checkout is the
 payment UI. **Paid status comes only from signed webhooks** — the browser cannot
 mark an order paid (`?checkout=success` is ignored).
+
+Checkout charges settle to **KOBA's own Stripe balance** — no
+`transfer_data`/`application_fee_amount` on the PaymentIntent, so nothing moves
+to the seller's Connect account at charge time. See Escrow below for how and
+when the seller actually gets paid.
 
 | Path                                      | Purpose                                |
 | ----------------------------------------- | -------------------------------------- |
@@ -204,13 +209,17 @@ mark an order paid (`?checkout=success` is ignored).
 | `POST /api/business/orders/[ref]/fulfill` | Shop owner fulfill                     |
 | `POST /api/business/orders/[ref]/refund`  | Shop owner refund                      |
 | `POST /api/admin/orders/[ref]/refund`     | Staff (SA/AD) refund                   |
+| `POST /api/orders/[ref]/dispute`          | Buyer flags an escrow dispute          |
+| `POST /api/admin/orders/[ref]/resolve-dispute` | Staff (SA/AD) release or refund a dispute |
 | `/orders` · `/orders/[ref]`               | Buyer history and receipts             |
 | `/business/payouts`                       | Connect charges/payouts status         |
 
 Sellers and shop members cannot buy their own listings. Auction checkout requires
 `RESERVED`, the winning bidder, and a future `reservedUntil`. Inventory decrements
 when checkout starts and restores if the session expires or the order is refunded.
-Refunds reverse the Connect transfer and the application fee.
+Refunds after escrow has released reverse the Connect transfer; refunds before
+release (escrow still `HOLDING`/`DISPUTED`) skip `reverse_transfer` because no
+transfer to the seller ever happened.
 
 Placeholder Stripe keys (`sk_test_replace_me`) fail closed — checkout returns 503
 instead of faking paid. Forward webhooks locally with:
@@ -218,6 +227,27 @@ instead of faking paid. Forward webhooks locally with:
 ```bash
 stripe listen --forward-to localhost:3000/api/stripe/webhook
 ```
+
+#### Escrow (order holds and disputes)
+
+Digital goods deliver instantly, so a bad-faith seller or "not as described"
+item previously had zero recourse — the seller's payout used to transfer the
+instant the buyer paid. Now the seller's payout sits on KOBA's own Stripe
+balance in an `OrderEscrow` row (`HOLDING → RELEASED`) for a short hold window
+(`KOBA_ESCROW_HOLD_DAYS`, default 3 days, cap 30) after `markOrderPaid`, then
+auto-releases via `escrow.service.ts`'s `releaseEscrow` — a real
+`stripe.transfers.create` to the seller's Connect account.
+
+The buyer can flag a dispute any time before release
+(`POST /api/orders/[ref]/dispute`), which freezes the timer (`DISPUTED`).
+Staff (SA/AD) resolve manually (`POST /api/admin/orders/[ref]/resolve-dispute`)
+by releasing to the seller or refunding the buyer — no arbitration workflow or
+evidence upload. `Order.status` is untouched by any of this; escrow state
+lives entirely in the sibling `OrderEscrow` table.
+
+There is no cron here. `sweepExpiredEscrowHolds` (all `HOLDING` rows past
+`releaseAt`) is built to be invoked by a future scheduler or manually — same
+deferred-scheduler pattern used elsewhere in this codebase.
 
 ### Groups and LFG (Phase 9)
 
