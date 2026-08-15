@@ -472,9 +472,10 @@ left unmentioned.
 
 ## Phase 14 — Aiden AI Generation Suite (Vest / Graft / Terra)
 
-**Status: real pipeline built (Aiden Studio OS), no vendor wired yet.**
-See [docs/aiden-studio-os.md](docs/aiden-studio-os.md) for the full
-architecture. What's real:
+**Status: real pipeline built (Aiden Studio OS); Vest/Graft now call real
+vendors (Replicate + Tripo) for image/3D asset types; Terra (map/terrain)
+still has no vendor.** See [docs/aiden-studio-os.md](docs/aiden-studio-os.md)
+for the full architecture. What's real:
 
 - **Aiden Studio OS** (`features/aiden/os/`): a generic Master/Adapter/
   Orchestration/Category/Agent runtime — every node is a real Agent/
@@ -492,30 +493,49 @@ architecture. What's real:
   is still always captured in full at `coinCostPreview` — releasing the
   preview/actual delta is a deferred refinement (documented on the
   schema field itself).
-- **Vest/Graft/Terra providers** (`features/aiden/providers/*.ts`) each
-  fail closed on an unconfigured env var, same pattern as
-  `features/payments/lib/stripe.ts`'s `isStripeConfigured` — genuinely
-  ready for a real vendor SDK to be dropped in, zero changes needed
-  upstream of the provider file itself.
+- **Vest/Graft providers now call real vendors, split by asset type
+  within each product** (2026-08-15, client-specified model list):
+  `features/aiden/providers/replicate-provider.ts` (SDXL/Kandinsky image
+  generation, official-model endpoint, no pinned version hash to go
+  stale) and `features/aiden/providers/tripo-provider.ts` (text-to-3D,
+  optionally chained with an auto-rig pass). `CONCEPT_IMAGE`/`TEXTURE`
+  → Replicate; `SKIN` → Tripo text-to-3D + auto-rig (the original "fully
+  rigged, animated, game-ready" recommendation); `PROP` → Tripo
+  text-to-3D only (static prop); `ANIMATION` → Tripo + auto-rig. Both
+  fail closed on a missing `REPLICATE_API_TOKEN`/`TRIPO_API_KEY`, same
+  pattern as `isStripeConfigured`. **Terra has no vendor at all** — no
+  map/terrain model was in the client's list; `terraProvider` still
+  fails closed unconditionally, exactly as before.
+- **Confidence note on the Tripo integration**: the task create/poll
+  shape (`POST /v2/openapi/task`, `GET /v2/openapi/task/{id}`) is
+  confirmed against Tripo's published API examples. The auto-rig
+  chaining call's exact field name (`animate_rig` task type,
+  `original_model_task_id` field) is inferred from Tripo's documented
+  task-type list, not confirmed against a live example — their docs
+  site didn't render in this environment. Flagged in code
+  (`tripo-provider.ts`); verify before relying on it in production. If
+  wrong, it fails loudly (`TripoGenerationError`), not silently.
+- **Cost reconciliation is now real for wired models**: `coinCostForModel`
+  (`features/aiden/lib/model-costs.ts`) gives the fixed, known Coin cost
+  per model (Replicate/Tripo return no per-request USD figure to read
+  back), and `features/aiden/lib/cost-preview.ts`'s `coinCostForAssetType`
+  — the reservation amount taken *before* generation runs — was
+  corrected to match those real numbers (it previously held arbitrary
+  40-120 coin placeholders that had nothing to do with actual model
+  cost, a stale mismatch from before real vendors existed).
 - The `/aiden/generate` UI now actually submits to `POST /api/aiden/jobs`
   (previously a non-functional mock button) and shows real failure
   reasons; `/aiden/library` links to `assetUrl` once a real generation
   exists.
 
-**Still missing — the actual vendor call:**
+**Still missing:**
 
-- Real frontier-model API integration — three separate vendor
-  integrations, one per modality (image/skin generation for Vest, 3D
-  generation for Graft, map/terrain generation for Terra). **Vendor
-  research done**: Tripo AI recommended for Vest (pay-as-you-go, no
-  subscription — $0.01/credit — with auto-rig + auto-animation in one
-  API, the best fit for "fully rigged, animated, game-ready" skins).
-  Meshy ruled out (subscription-gated API access). Graft/Terra vendor
-  still open. Regardless of vendor: converting the generated
-  mesh/texture into a specific game's actual file format (FBX export,
-  skeleton retargeting to that game's animation set) is deterministic
-  glue work KOBA has to build itself (e.g. a headless Blender automation
-  service) — no vendor does this step.
+- **Terra (map/terrain) vendor** — genuinely unresolved, no model was
+  given for this modality. Also unresolved regardless of vendor:
+  converting a generated mesh/texture into a specific game's actual file
+  format (FBX export, skeleton retargeting to that game's animation set)
+  is deterministic glue work KOBA has to build itself (e.g. a headless
+  Blender automation service) — no vendor does this step.
 - ~~Successful generations publishing directly to the KOBA marketplace~~
   **shipped 2026-08-15**: `publishAssetToMarketplace`
   (`features/aiden/services/aiden.service.ts`) creates a real DRAFT
@@ -552,16 +572,13 @@ architecture. What's real:
 
 **Open questions for the client**
 
-1. Frontier model **provider** per modality — partially resolved
-   (2026-08-15): the client specified which *models* (SDXL, Kandinsky,
-   Hunyuan, Tripo, Luma, Flux — matching `features/aiden/lib/
-model-costs.ts`'s cost table exactly), but SDXL/Kandinsky/Hunyuan/Flux
-   are open-weight models with no single owning company/API — they need
-   a **hosting platform** decision (e.g. Replicate, fal.ai, Fireworks,
-   RunPod — each with different endpoint shapes, pricing, and
-   usage-reporting format) before any of those four can be wired. Tripo
-   and Luma each have their own direct API and don't need this decision.
-   Still blocks the actual-cost reconciliation for 4 of 6 models.
+1. Frontier model **provider** per modality — resolved for images and 3D
+   (2026-08-15): SDXL/Kandinsky via Replicate, Tripo via its own direct
+   API — both wired for real (`replicate-provider.ts`/`tripo-provider.ts`).
+   Video (Hunyuan/Luma/Flux) is explicitly **out of scope for now** per
+   client direction, so no hosting-platform decision is needed for those.
+   **Still open: Terra's vendor** — no map/terrain model was named at
+   all; this modality remains fully unresolved, not just unwired.
 2. Exchange rate: USD-cost-of-generation → KOBA Coins. Fixed multiplier,
    or does it track the same live Coin-purchase pricing (Phase 15,
    `features/wallet/lib/coin-packages.ts`)?

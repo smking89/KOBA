@@ -1,30 +1,37 @@
-import { isEnvConfigured } from "@/features/aiden/providers/env-gate";
+import { generateImage, isReplicateConfigured } from "@/features/aiden/providers/replicate-provider";
+import { generate3D, isTripoConfigured } from "@/features/aiden/providers/tripo-provider";
 import {
   AidenProviderNotConfiguredError,
+  type AidenGenerationInput,
   type AidenGenerationResult,
   type AidenProvider,
 } from "@/features/aiden/providers/types";
 
-const ENV_VAR = "AIDEN_VEST_PROVIDER_API_KEY";
+const IMAGE_ENV_VAR = "REPLICATE_API_TOKEN";
 
 /**
- * Vest: skin generation (image modality). No vendor is wired yet — this
- * fails closed exactly like an unconfigured Stripe key, ready for a real
- * image-generation vendor's SDK to be dropped into `generate()` once
- * AIDEN_VEST_PROVIDER_API_KEY is set to a real credential. Do not guess a
- * vendor here; that's a client decision (see ROADMAP.md Phase 14, open
- * question 1).
+ * Vest: skin generation. Per client direction (2026-08-15), this isn't
+ * one vendor — CONCEPT_IMAGE is a 2D image (Replicate: SDXL/Kandinsky),
+ * SKIN is a rigged 3D asset (Tripo: text-to-3D + auto-rig, the original
+ * "fully rigged, animated, game-ready" recommendation). isConfigured()
+ * is permissive (true if either backend is ready) since which one a
+ * given job actually needs depends on its assetType, checked in
+ * generate() — the precise per-vendor NotConfigured error still surfaces
+ * from there if the specific one needed is missing.
  */
 export const vestProvider: AidenProvider = {
   product: "VEST",
   isConfigured(): boolean {
-    return isEnvConfigured(ENV_VAR);
+    return isReplicateConfigured() || isTripoConfigured();
   },
-  async generate(): Promise<AidenGenerationResult> {
-    if (!this.isConfigured()) {
-      throw new AidenProviderNotConfiguredError("VEST", ENV_VAR);
+  async generate(input: AidenGenerationInput): Promise<AidenGenerationResult> {
+    if (input.assetType === "CONCEPT_IMAGE") {
+      if (!isReplicateConfigured()) {
+        throw new AidenProviderNotConfiguredError("VEST", IMAGE_ENV_VAR);
+      }
+      return generateImage({ prompt: input.prompt, model: "SDXL_IMAGE" });
     }
-    // TODO(aiden-vest): real vendor call goes here once a provider is chosen.
-    throw new AidenProviderNotConfiguredError("VEST", ENV_VAR);
+    // SKIN — fully rigged, game-ready 3D asset.
+    return generate3D({ prompt: input.prompt, withAutoRig: true });
   },
 };
