@@ -394,70 +394,71 @@ transactional and permission-heavy (orders, bids, payouts, RBAC), and
 
 ## Phase 14 — Aiden AI Generation Suite (Vest / Graft / Terra)
 
-**Aiden** is the umbrella brand for KOBA's AI-assisted asset generation,
-served at `aiden.koba.games` (see Phase 20). Under it, three named
-generators, each a distinct modality with its own frontier-model provider:
+**Status: real pipeline built (Aiden Studio OS), no vendor wired yet.**
+See [docs/aiden-studio-os.md](docs/aiden-studio-os.md) for the full
+architecture. What's real:
 
-- **Vest** — skin generation
-- **Graft** — custom monument/prop/asset generation
-- **Terra** — map generation
+- **Aiden Studio OS** (`features/aiden/os/`): a generic Master/Adapter/
+  Orchestration/Category/Agent runtime — every node is a real Agent/
+  Kernel/Engine/Sandbox component built from one shared factory
+  (`shared/compose.ts`). Five adapter kinds (external model, local model,
+  agent, tool, workflow) give it genuine plug-n-play: any of those can be
+  wrapped into the same routable shape. `GENERATION` is the only category
+  with real agents (Vest/Graft/Terra); `LOGIC`/`DATA`/`AUTOMATION`/
+  `INTERFACE` are real, routable category shells with empty registries,
+  ready for their first feature.
+- **Cost reconciliation**: `AidenJob.coinCostActual` +
+  `frontierModelUsageJson` record the provider's real cost (once a real
+  vendor exists) for audit, converted to Coins at the same $0.01 = 1 Coin
+  rate live purchases use (`features/aiden/lib/cost.ts`). The reservation
+  is still always captured in full at `coinCostPreview` — releasing the
+  preview/actual delta is a deferred refinement (documented on the
+  schema field itself).
+- **Vest/Graft/Terra providers** (`features/aiden/providers/*.ts`) each
+  fail closed on an unconfigured env var, same pattern as
+  `features/payments/lib/stripe.ts`'s `isStripeConfigured` — genuinely
+  ready for a real vendor SDK to be dropped in, zero changes needed
+  upstream of the provider file itself.
+- The `/aiden/generate` UI now actually submits to `POST /api/aiden/jobs`
+  (previously a non-functional mock button) and shows real failure
+  reasons; `/aiden/library` links to `assetUrl` once a real generation
+  exists.
 
-**Already scaffolded, not yet real** (confirmed against current code —
-do not rebuild these, extend them):
+**Still missing — the actual vendor call:**
 
-- `AidenJob` model exists (`prompt`, `game`, `platform`, `assetType`,
-  `state`, `coinCostPreview`, `reservationTxId`) with an `AidenAssetType`
-  enum already covering `SKIN` (→ Vest), `PROP`/`TEXTURE`/`ANIMATION` (→
-  Graft), `TERRAIN`/`CONCEPT_IMAGE` (→ Terra) — the Vest/Graft/Terra
-  brand names are a UI/marketing layer over asset types that already exist,
-  not a new taxonomy.
-- `reserveCoinsForGeneration` already exists in
-  `features/wallet/services/ledger.service.ts`, wired to the same
-  reserve → capture/release `CoinReservation` lifecycle used elsewhere.
-  Per `docs/wallet-ledger.md`: "today reserves then releases on stub
-  failure" — i.e. no real generation call happens yet, it's a reserve/
-  release round-trip with no actual model API in between.
-- `/aiden`, `/aiden/generate`, `/aiden/library` routes exist as UI shells
-  (owner-expansion "UI foundations," per README).
-
-**Scope, as engineering deliverables**
-
-- Real frontier-model API integration — three separate integrations, one
-  per modality (image/skin generation for Vest, 3D/asset generation for
-  Graft, procedural/heightmap or map-layout generation for Terra). Provider
-  choice is an open question below; these are not interchangeable APIs.
-- **Accurate Coin cost from real usage, not just a pre-call estimate.**
-  Today `AidenJob.coinCostPreview` is the only cost field. Add a
-  `coinCostActual` (or extend the reservation-capture flow) so that: (1)
-  a reservation is made at estimated cost before the call, (2) the actual
-  provider-reported usage/token cost is read back from the API response
-  after the call completes, (3) the ledger capture uses the _actual_
-  metered cost — not the estimate — with any surplus reservation released
-  back to the wallet. This is a real reconciliation step, not just
-  capturing the full reservation regardless of true cost.
-- Successful generations can publish directly to the KOBA marketplace as a
-  new `Product` or `Cosmetic` — skip manual re-upload, but still enter the
-  existing moderation queue (no bypass of `moderationStatus`).
-- Shops fund this via KOBA Coins (Phase 15's predecessor, live Coin
-  purchases — already shipped) — a shop must hold sufficient Coins before
-  a job can be queued; insufficient balance fails the reservation step
-  before any provider call is made (never call a paid API speculatively).
+- Real frontier-model API integration — three separate vendor
+  integrations, one per modality (image/skin generation for Vest, 3D
+  generation for Graft, map/terrain generation for Terra). **Vendor
+  research done**: Tripo AI recommended for Vest (pay-as-you-go, no
+  subscription — $0.01/credit — with auto-rig + auto-animation in one
+  API, the best fit for "fully rigged, animated, game-ready" skins).
+  Meshy ruled out (subscription-gated API access). Graft/Terra vendor
+  still open. Regardless of vendor: converting the generated
+  mesh/texture into a specific game's actual file format (FBX export,
+  skeleton retargeting to that game's animation set) is deterministic
+  glue work KOBA has to build itself (e.g. a headless Blender automation
+  service) — no vendor does this step.
+- Successful generations publishing directly to the KOBA marketplace as a
+  new `Product`/`Cosmetic` (still enters the existing moderation queue,
+  no bypass) — not built yet, the pipeline stops at asset creation today.
 
 **Data models / entities**
 
-- Extend `AidenJob`: `productType` (VEST | GRAFT | TERRA, the branded
-  label — separate from the existing lower-level `assetType` enum so the
-  brand names can be added without a breaking enum migration),
-  `frontierModelProvider`, `frontierModelUsageJson` (raw provider usage
-  response, for audit/reconciliation), `coinCostActual`.
+- `AidenJob.coinCostActual` (Int?), `AidenJob.frontierModelUsageJson`
+  (Text?), `AidenAsset.assetUrl` (Text?) — all shipped, additive.
+- No `productType` column was added — Vest/Graft/Terra are a pure
+  function of the existing `assetType` enum
+  (`features/aiden/providers/types.ts#productForAssetType`), not a second
+  source of truth.
 - No new reservation/ledger model needed — `CoinReservation` already
-  supports this shape (reserve/capture/release), per Phase 15/coins-ledger
-  work already shipped.
+  supports reserve/capture/release, per the Coins-ledger work already
+  shipped.
 
 **Dependencies**
 
 - Live Coin purchases (done — this phase's funding path).
 - `CoinReservation` lifecycle (done).
+- Aiden Studio OS (done, this phase).
 
 **Open questions for the client**
 
@@ -696,6 +697,28 @@ Client-specified domain structure:
 - Should land _after_ the routes it's exposing have real functionality
   (Phase 9 Developer Portal, Phase 14 Aiden) — doing this first is just
   infra churn on stub pages with nothing behind them yet.
+- **`aiden.koba.games` cross-domain login** ("Login with KOBA" button
+  that auto-detects and validates the user's KOBAID): only meaningful
+  once Aiden is a genuinely separate host from the main app — today
+  they're the same Next.js app/session, so there's nothing to bridge yet
+  (a signed-in user on `/aiden/*` is already the same session as
+  `koba.games`). Once split (either option above), this becomes a real
+  SSO flow: `aiden.koba.games` redirects to `koba.games`'s existing
+  Auth.js session, KOBA validates and hands back a signed token/cookie
+  scoped to the Aiden host. Do not build a fake/local version of this
+  before the real split exists — it would just be thrown away.
+- **Shared wallet, already true today**: KOBA Coins (`CoinWallet` and the
+  rest of the ledger) already live in one database used by the whole app,
+  including Aiden's Coin reservations
+  (`features/wallet/services/ledger.service.ts`). Splitting Aiden onto
+  its own host does not require a wallet migration either way — both
+  options above keep one shared database; this is only a routing/hosting
+  change, not a data-ownership change.
+- **Aiden access control**: a Business KOBAID is required to use any
+  Aiden tool — already enforced today
+  (`features/aiden/lib/require-business.ts`, gating every `/aiden/*` page
+  and `/api/aiden/*` route, same pattern as `/business`'s gate). This
+  carries over unchanged once Aiden moves to its own subdomain.
 
 **Dependencies**
 
@@ -792,7 +815,7 @@ Flagging rather than guessing on anything with real product/cost/legal consequen
 9. **Search** — tech stack above defaults to Postgres full-text to avoid a premature second system, but if catalog size/complexity is expected to be large at launch, a dedicated search engine (Meilisearch/Typesense/Algolia) might be worth building in from Phase 3 rather than retrofitting. Needs a call on expected catalog scale.
 10. **Console platforms and payments** — README's console list is kits/cosmetics-only (no modding/spawning). Confirm this doesn't imply a separate console storefront/app requirement (e.g., PlayStation/Xbox store compliance for in-app purchases) that would materially change Phase 3/4's payment integration scope.
 11. **Data residency / age requirements (COPPA-adjacent)** — social marketplace with DMs, payments, and game-server communities likely draws a broad age range. No age-gating or regional compliance requirement is mentioned anywhere in the source material; needs an explicit decision before Phase 1 (registration flow) and Phase 6 (DMs) are built, not after.
-12. **Aiden frontier-model providers** (Phase 14) — three modalities (Vest/Graft/Terra), plausibly three different vendors; blocks real cost-reconciliation work.
+12. **Aiden frontier-model providers** (Phase 14) — Vest recommended (Tripo AI, pay-as-you-go). Graft and Terra vendors still open; blocks wiring the actual API calls (the reconciliation pipeline itself is built and vendor-agnostic).
 13. **KOBAads vs. Boost relationship** (Phase 15) — one product or two.
 14. **KOBA Plus perks and pricing** (Phase 16) — nothing specified yet beyond "Discord Nitro equivalent."
 15. **Server "rarity" meaning** (Phase 17) — not a concept that exists on `GameServer` today; needs clarification on what it should represent.

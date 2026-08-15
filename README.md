@@ -6,12 +6,15 @@ squads; all on one KOBAID.
 
 ## Status
 
-**Phase 15 — Live KOBA Coin purchases** is done (Stripe Checkout against a
-fixed Coin package catalog, credited via the double-entry ledger on signed
-webhook). Item trading (Phase 14C, rarity-matched) is also merged. Next up
-is unscoped — see [ROADMAP.md](ROADMAP.md) Phases 14–20 for the newest
-client direction (Aiden real generation, KOBAads + Boost, KOBA Plus, live
-RCON, freebie products, multi-subdomain split), none of which are built yet.
+**Phase 14 — Aiden Studio OS** is built (a real, generic Master/Adapter/
+Orchestration/Category/Agent pipeline — see
+[docs/aiden-studio-os.md](docs/aiden-studio-os.md)), but **no AI vendor is
+wired yet** — Vest/Graft/Terra all fail closed until a provider API key is
+set. **Phase 15 — Live KOBA Coin purchases** is done (Stripe Checkout
+against a fixed Coin package catalog). Item trading (rarity-matched) is
+also merged. See [ROADMAP.md](ROADMAP.md) Phases 15–20 for what's still
+unbuilt (KOBAads + Boost, KOBA Plus, live RCON, freebie products,
+multi-subdomain split).
 
 The HTML prototype remains the information-architecture reference:
 
@@ -456,7 +459,7 @@ self-registered. Group Admin/Moderator badges are community roles, not staff.
 19. **KOBA Coins double-entry ledger** ✅
 20. **Player-to-player item trading** ✅ (rarity-matched — see ROADMAP.md Phase 19)
 21. **Live KOBA Coin purchases** ✅
-22. Aiden real generation (Vest/Graft/Terra frontier-model wiring — ROADMAP.md Phase 14)
+22. **Aiden Studio OS** ✅ (real pipeline; no AI vendor wired yet — ROADMAP.md Phase 14) ← current
 23. KOBAads + Boost (ROADMAP.md Phase 15)
 24. KOBA Plus subscriptions (ROADMAP.md Phase 16)
 25. Live RCON + server directory (real per-game protocols — ROADMAP.md Phase 17)
