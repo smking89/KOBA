@@ -1192,10 +1192,10 @@ surfaced once the bot actually exists.
   (gamertag) or PlayStation (PSN username).
 - **Live feeds**: Discord channel subscriptions to a KOBA group's feed or
   the marketplace feed, pushed via Discord webhooks on relevant events
-  (new post, new listing). Note: this rides on whatever feed exists
-  today — a plain reverse-chron feed (Phase 8's full ranked Feed Engine
-  isn't built yet), so "live feed" here means "new item posted," not a
-  ranked/curated stream.
+  (new post, new listing). Phase 8's real ranked Feed Engine now exists
+  (shipped 2026-08-15) — a Discord push could ride the same ranking, or
+  stay simple "new item posted" event-driven pushes; that's a product
+  choice, not an engineering blocker either way.
 - **Item delivery**: once a purchase completes, the bot delivers the
   in-game item. For server-deliverable items this should reuse Phase 17's
   RCON infrastructure (the bot triggers a give-item RCON command against
@@ -1234,6 +1234,61 @@ surfaced once the bot actually exists.
 3. Which feeds are in scope for v1 — group feeds and marketplace feeds
    are named explicitly; anything else (social posts, auctions ending)?
 4. Rate limits / bot permission scope for the Discord application itself.
+
+### Feature-parity request: Helios RCE (2026-08-15)
+
+Client wants KOBAbot to match [heliosrce.com](https://www.heliosrce.com/)
+— a mature, **Rust-specific** (their site says "Rust Console Server
+Management") Discord bot. This is a large scope increase over the
+original spec above (account linking + feed pushes + item delivery),
+not a small addition. Capturing the full advertised feature list here
+rather than guessing which parts matter for a v1:
+
+- **Monitoring**: live killfeed with event triggers, player activity
+  feed, raid alerts, a "command center" (players online, framerate,
+  uptime, entity count).
+- **Player systems**: teleport/home commands, zone management, auto-kits
+  + automated kit distribution, custom command binds, spawn binds.
+- **Economy & rewards**: an in-Discord shop, its own economy/currency
+  system, a battle pass, random item drops.
+- **Community**: clans, a bounty system, leaderboards/scoreboards, a
+  support ticket panel.
+- **Server management**: ZORP-style offline raid protection (configurable
+  zones), timed commands, wipe countdowns, restart warnings, recurring
+  automated messages.
+- **Admin tooling**: a centralized dashboard, shared Discord-wide
+  rules/permissions, per-module settings.
+- **Misc tools**: a kit builder, a server-config "parse" generator, an
+  in-game colored-text generator.
+
+**Why this can't be scoped as "build it" yet:** almost every item above
+needs one of two things that don't exist yet:
+
+1. **Real, live RCON command execution against the player's actual
+   server** — Phase 17 (this session) is building exactly this
+   foundation (real Source RCON protocol client), so killfeed/teleport/
+   kits/zones/timed-commands/raid-protection all become buildable *once
+   Phase 17 ships*, not before. This is the single biggest unblock.
+2. **A second economy layer** (shop, currency, battle pass, drops,
+   bounties) that is either a Discord-local currency distinct from KOBA
+   Coins, or literally KOBA Coins spent via Discord — a real product
+   decision (two currencies confuses users; one currency needs the bot
+   to talk to the same wallet ledger this app uses) that materially
+   changes the design, not an implementation detail.
+
+**Open questions for the client:**
+
+1. Is this KOBAbot feature set Rust-specific (matching Helios RCE's own
+   scope), or should it generalize to every game KOBA supports RCON for
+   (Phase 17's launch list is currently Rust + Garry's Mod)?
+2. Economy: a bot-local currency, or KOBA Coins spent through Discord?
+3. Priority order — killfeed/monitoring first (closest to what Phase 17
+   already provides), or the economy/community layer (clans, battle
+   pass, bounties) which needs new infrastructure regardless of Phase 17?
+4. Zone-based raid protection (ZORP) implies KOBA tracking spatial/base
+   data per player per server — a new data model with no current
+   equivalent anywhere in this codebase; confirm this is really wanted
+   for v1 given the size of that alone.
 
 ---
 
