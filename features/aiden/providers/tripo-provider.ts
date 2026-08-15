@@ -1,10 +1,23 @@
 import { isEnvConfigured } from "@/features/aiden/providers/env-gate";
-import { coinCostForModel } from "@/features/aiden/lib/model-costs";
-import { MODEL_COST_CENTS_PER_COIN } from "@/features/wallet/lib/coin-packages";
 import type { AidenGenerationResult } from "@/features/aiden/providers/types";
 
 const ENV_VAR = "TRIPO_API_KEY";
 const API_BASE = "https://api.tripo3d.ai/v2/openapi";
+
+/** Tripo's own published pricing (developers.tripo3d.ai/en/pricing,
+ * verified 2026-08-15): 1 credit = $0.01. actualCostUsd below is
+ * computed directly from these — Tripo's task-status response doesn't
+ * return a per-task USD/credit figure to read back, but unlike
+ * Replicate's compute-time-only metrics, Tripo's per-task-type price is
+ * itself fixed and published, so this is the vendor's real number, not
+ * a proxy borrowed from KOBA's own coin table (features/aiden/lib/
+ * model-costs.ts derives its coin price FROM these, not the other way
+ * around — see that file's comment on TRIPO_TEXT_TO_3D). */
+const TRIPO_CREDIT_USD = 0.01;
+const TRIPO_CREDITS = {
+  TEXT_TO_MODEL_TEXTURED: 20,
+  AUTO_RIG: 25,
+} as const;
 
 export class TripoNotConfiguredError extends Error {
   constructor() {
@@ -109,7 +122,16 @@ export async function generate3D(input: {
     throw new TripoNotConfiguredError();
   }
 
-  const modelTaskId = await createTask({ type: "text_to_model", prompt: input.prompt });
+  // texture: true — an untextured mesh is a bare gray shape, not a
+  // sellable marketplace skin/prop. Costs Tripo's textured tier ($0.20/
+  // 20 credits) rather than the cheaper untextured tier ($0.10/10
+  // credits); MODEL_COIN_COST.TRIPO_TEXT_TO_3D is priced to match this
+  // choice (see that file's comment).
+  const modelTaskId = await createTask({
+    type: "text_to_model",
+    prompt: input.prompt,
+    texture: true,
+  });
   const modelResult = await pollTask(modelTaskId);
 
   if (!input.withAutoRig) {
@@ -119,7 +141,7 @@ export async function generate3D(input: {
     return {
       assetUrl: modelResult.output.model_url,
       previewLabel: "Generated 3D model",
-      actualCostUsd: (coinCostForModel("TRIPO_TEXT_TO_3D") * MODEL_COST_CENTS_PER_COIN) / 100,
+      actualCostUsd: TRIPO_CREDITS.TEXT_TO_MODEL_TEXTURED * TRIPO_CREDIT_USD,
       usage: { provider: "tripo", taskId: modelTaskId, chained: false },
     };
   }
@@ -138,8 +160,7 @@ export async function generate3D(input: {
     assetUrl,
     previewLabel: "Generated + rigged 3D model",
     actualCostUsd:
-      (coinCostForModel("TRIPO_TEXT_TO_3D") * MODEL_COST_CENTS_PER_COIN) / 100 +
-      (coinCostForModel("TRIPO_AUTO_RIG") * MODEL_COST_CENTS_PER_COIN) / 100,
+      (TRIPO_CREDITS.TEXT_TO_MODEL_TEXTURED + TRIPO_CREDITS.AUTO_RIG) * TRIPO_CREDIT_USD,
     usage: { provider: "tripo", taskId: modelTaskId, rigTaskId, chained: true },
   };
 }

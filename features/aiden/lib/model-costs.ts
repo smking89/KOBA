@@ -11,13 +11,24 @@
  * confirmed pricing for when each vendor is actually integrated — adding
  * one is "write a provider file following the existing fail-closed
  * pattern," not a pricing decision, that part's already settled here.
+ *
+ * TRIPO_TEXT_TO_3D corrected 2026-08-15 against Tripo's real published
+ * pricing (developers.tripo3d.ai/en/pricing, 1 credit = $0.01): the
+ * original 1-coin figure matched Tripo's *untextured* tier ($0.10,
+ * 10 credits), but an untextured mesh isn't a sellable marketplace
+ * skin/prop — tripo-provider.ts requests texture:true (Tripo's textured
+ * tier, $0.20/20 credits), so the coin price now matches that real cost
+ * instead of quietly running at a $0.10-per-generation loss against
+ * KOBA's own confirmed cost basis. TRIPO_IMAGE_TO_3D/TRIPO_AUTO_RIG
+ * already matched Tripo's real textured/auto-rig pricing exactly
+ * ($0.30 and $0.25 respectively) and are unchanged.
  */
 export const MODEL_COIN_COST = {
   // Vest — image/skin generation
   SDXL_IMAGE: 1,
   KANDINSKY_IMAGE: 1,
   // Graft — 3D asset generation (vendor: Tripo AI)
-  TRIPO_TEXT_TO_3D: 1,
+  TRIPO_TEXT_TO_3D: 2,
   TRIPO_IMAGE_TO_3D: 3,
   TRIPO_AUTO_RIG: 3,
   // Video generation (product preview/showcase clips)
