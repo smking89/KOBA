@@ -6,8 +6,8 @@ squads; all on one KOBAID.
 
 ## Status
 
-**Phase 14C — Item trading** is in progress on `feat/item-trading`
-(inventory ownership, locks, atomic accept — stacked on the Coins ledger).
+**Phase 14E — Rust read-only RCON** is in progress on `feat/rcon-rust-readonly`
+(encrypted credentials, A2S + WebRCON, VPS worker). See [docs/rcon-rust.md](docs/rcon-rust.md).
 
 The HTML prototype remains the information-architecture reference:
 

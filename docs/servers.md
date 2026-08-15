@@ -101,4 +101,9 @@ Evidence and audit history are retained.
 
 ## RCON boundary (Phase 14E)
 
-Credential storage stubs may exist, but live RCON auth, admin commands, and credential UX belong to Phase 14E.
+Rust PC read-only integration is documented in [rcon-rust.md](rcon-rust.md).
+
+- Public query (A2S) and WebRCON stay in separate adapter modules
+- Credentials are AES-256-GCM sealed with a versioned env key
+- `RCON_WRITE` and administrative commands are not enabled
+- Worker: `pnpm servers:integrations` on the owner VPS
