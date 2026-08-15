@@ -37,6 +37,9 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-3xl font-semibold tracking-tight">{profile.name}</h1>
               <Badge>@{profile.handle}</Badge>
+              {profile.plusBadgeLabel ? (
+                <Badge tone="success">{profile.plusBadgeLabel}</Badge>
+              ) : null}
             </div>
             {profile.kobaId ? (
               <p className="mt-2 font-mono text-sm text-muted">{profile.kobaId}</p>

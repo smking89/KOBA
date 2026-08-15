@@ -11,7 +11,8 @@ import {
   visiblePlayerCount,
   visibleQueue,
 } from "@/features/servers/lib/types";
-import { getBySlugOrRef } from "@/features/servers/services/server.service";
+import { getBySlugOrRef, getServerBio } from "@/features/servers/services/server.service";
+import { ServerBioPanel } from "@/features/servers/components/server-bio-panel";
 
 export const metadata = { title: "Server detail" };
 
@@ -29,6 +30,9 @@ export default async function ServerDetailPage({
 
   const session = await auth();
   const showOwnerTools = canConnectGameServer(session?.user.accountType);
+  const myBio = session?.user.id
+    ? await getServerBio(session.user.id, server.slug).catch(() => null)
+    : null;
 
   const players = visiblePlayerCount(server);
   const queue = visibleQueue(server);
@@ -97,6 +101,20 @@ export default async function ServerDetailPage({
           {server.capabilities.map((capability) => (
             <StatusPill key={capability}>{capability}</StatusPill>
           ))}
+        </div>
+      </Card>
+
+      <Card>
+        <CardTitle>Your bio for this server</CardTitle>
+        <CardDescription>
+          A KOBA Plus perk — a bio just for this community, separate from your account bio.
+        </CardDescription>
+        <div className="mt-4">
+          <ServerBioPanel
+            serverSlug={server.slug}
+            initialBio={myBio}
+            signedIn={Boolean(session?.user.id)}
+          />
         </div>
       </Card>
 

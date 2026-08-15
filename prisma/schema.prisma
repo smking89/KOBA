@@ -76,6 +76,7 @@ enum AuditAction {
   BOOST_GIFTED
   BOOST_APPLIED
   AIDEN_ASSET_PUBLISHED
+  PLUS_ACTIVATED
 }
 
 // Major, independently-toggleable platform functions. This is the registry
@@ -154,6 +155,7 @@ model User {
   tradeEvents     TradeEvent[]
   ownedServers    GameServer[]
   plusSubscription PlusSubscription?
+  serverBios       ServerBio[]
   coinWallet      CoinWallet?
   ledgerAccounts  LedgerAccount[]
   aidenJobs       AidenJob[]
@@ -1574,6 +1576,7 @@ model GameServer {
   owner       User             @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
   shop        Shop?            @relation(fields: [shopId], references: [id], onDelete: SetNull)
   credential  ServerCredential?
+  bios        ServerBio[]
 
   @@index([ownerUserId])
   @@index([game, region])
@@ -1593,17 +1596,47 @@ model ServerCredential {
   server GameServer @relation(fields: [serverId], references: [id], onDelete: Cascade)
 }
 
+// A row exists per-user from their first visit to /plus (ensureSubscription
+// upserts eagerly, state NONE) — so `createdAt` is NOT a tenure anchor,
+// it's "first time this page was loaded." `firstActivatedAt` is the real
+// tenure clock: set once, the first time state transitions to ACTIVE, and
+// never touched again (a lapse-and-resubscribe does not reset it — see
+// features/plus/lib/tenure.ts for why that's the deliberate choice, not
+// an oversight).
 model PlusSubscription {
-  id        String                @id @default(cuid())
-  userId    String                @unique
-  state     PlusSubscriptionState @default(NONE)
-  planId    String?
-  interval  PlusPlanInterval?
-  renewsAt  DateTime?
-  createdAt DateTime              @default(now())
-  updatedAt DateTime              @updatedAt
+  id                   String                @id @default(cuid())
+  userId               String                @unique
+  state                PlusSubscriptionState @default(NONE)
+  planId               String?
+  interval             PlusPlanInterval?
+  renewsAt             DateTime?
+  stripeCustomerId     String?
+  stripeSubscriptionId String?               @unique
+  cancelAtPeriodEnd    Boolean               @default(false)
+  firstActivatedAt     DateTime?
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Plus perk: a bio that can differ per game-server community, distinct
+// from AccountProfile.bio (account-wide). Gated to active Plus
+// subscribers at the service layer, not enforced at the schema level
+// (same pattern as every other perk gate in this codebase).
+model ServerBio {
+  id           String   @id @default(cuid())
+  userId       String
+  gameServerId String
+  bio          String   @db.Text
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user   User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  server GameServer @relation(fields: [gameServerId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, gameServerId])
+  @@index([gameServerId])
 }
 
 model CoinWallet {

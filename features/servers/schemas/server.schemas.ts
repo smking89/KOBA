@@ -39,3 +39,9 @@ export const rconActionSchema = z.discriminatedUnion("action", [
 ]);
 
 export type RconActionInput = z.infer<typeof rconActionSchema>;
+
+export const serverBioSchema = z.object({
+  bio: z.string().trim().min(1).max(280),
+});
+
+export type ServerBioInput = z.infer<typeof serverBioSchema>;

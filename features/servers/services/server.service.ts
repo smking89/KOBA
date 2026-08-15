@@ -12,6 +12,7 @@ import {
   type ServerCapability,
 } from "@/features/servers/lib/types";
 import type { CreateServerInput, RconActionInput } from "@/features/servers/schemas/server.schemas";
+import { isPlusActive } from "@/features/plus/services/plus.service";
 
 const ownerSelect = {
   id: true,
@@ -309,4 +310,42 @@ export async function handleRconAction(
     default:
       throw new ServerError("Unknown RCON action.", "INVALID");
   }
+}
+
+/** Public read — no Plus gate, everyone can see a per-server bio, only
+ * setting one is a Plus perk. Null if the user hasn't set one. */
+export async function getServerBio(
+  userId: string,
+  serverIdOrSlug: string,
+): Promise<string | null> {
+  const server = await loadServer(serverIdOrSlug);
+  const bio = await prisma.serverBio.findUnique({
+    where: { userId_gameServerId: { userId, gameServerId: server.id } },
+  });
+  return bio?.bio ?? null;
+}
+
+/** KOBA Plus perk: a bio that can differ per game-server community,
+ * distinct from AccountProfile.bio (account-wide). Gated to active Plus
+ * subscribers — checked here, not at the route, so the rule can't be
+ * bypassed by calling the service directly from another surface later. */
+export async function setServerBio(
+  userId: string,
+  serverIdOrSlug: string,
+  bio: string,
+): Promise<string> {
+  const [server, hasPlus] = await Promise.all([
+    loadServer(serverIdOrSlug),
+    isPlusActive(userId),
+  ]);
+  if (!hasPlus) {
+    throw new ServerError("Per-server bios are a KOBA Plus perk.", "FORBIDDEN");
+  }
+
+  const row = await prisma.serverBio.upsert({
+    where: { userId_gameServerId: { userId, gameServerId: server.id } },
+    create: { userId, gameServerId: server.id, bio },
+    update: { bio },
+  });
+  return row.bio;
 }

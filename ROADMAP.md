@@ -789,9 +789,61 @@ rewrite of Phase 8's ranking.
 
 ## Phase 16 — KOBA Plus (subscriptions)
 
+**Status: real Stripe Subscriptions shipped (2026-08-15), single tier
+$4.99/month (client-confirmed), replacing the previous `/plus` UI shell**
+(a fake "checkout handoff" that never charged anyone — `startCheckoutHandoff`
+literally commented "No Stripe charge... without activating"). Tenure
+badges and per-server bio are real, live perks. Everything else listed
+below as a perk is either deliberately deferred (client said so this
+turn) or blocked on a prerequisite feature that doesn't exist at all
+(not just unwired) — see "What's real" / "Deferred" below.
+
 A recurring paid subscription tier — subscription-style profile/shop
-customization and platform perks, not gameplay advantages. `/plus`
-already exists as a UI shell (owner-expansion "UI foundations").
+customization and platform perks, not gameplay advantages.
+
+**What's real:**
+
+- Real Stripe Checkout in `mode: "subscription"`
+  (`features/plus/services/plus.service.ts`), webhook-driven state sync
+  (`customer.subscription.created/updated/deleted` —
+  `features/payments/services/webhook.service.ts`). `invoice.payment_failed`
+  deliberately has no separate handler: Stripe already transitions the
+  subscription to `past_due` on a failed invoice, which fires
+  `subscription.updated` and lands the same state via the existing
+  mapping — a dedicated handler would just be a redundant second write.
+- **Tenure badges**: `firstActivatedAt` set once, the first time a
+  subscription becomes ACTIVE (deliberately never reset by a
+  lapse-and-resubscribe — the more generous, standard choice, still
+  flagged for confirmation, see open questions). Four tiers
+  (Bronze/Silver/Gold/Diamond) at 0/3/6/12 months
+  (`features/plus/lib/tenure.ts`) — thresholds are a placeholder, not
+  client-specified, same convention as Boost's placeholder price.
+  Rendered on the public profile page.
+- **Per-server bio** (`ServerBio` model): gated to `state === "ACTIVE"`
+  at the service layer (`setServerBio`), public to read, Plus-only to
+  write. Wired into `/servers/[serverId]`.
+- **Cancel is at period end, not immediate** — Plus perks stay active
+  through what's already been paid for. A deliberate default (matches
+  standard subscription-product behavior), not a guess left unflagged —
+  see open questions.
+
+**Deferred, per client direction this turn (2026-08-15) — not silently
+dropped:**
+
+- The multiplier/boost perk — explicitly held out of this build; add
+  once its target mechanic is specified.
+
+**Blocked on a prerequisite that doesn't exist at all, not just
+unwired:**
+
+- **Animated avatar & profile banner** — there is no avatar/banner
+  upload feature for *any* account today (only `User.image`, a static
+  OAuth-provider URL, no banner field anywhere). Gating the *animated*
+  variant of a feature that doesn't exist yet has nothing to attach to.
+- **Custom themes, app icons, notification sounds** — no theming system
+  exists anywhere in this codebase.
+- **KOBA Shop member discount / Cosmetic sub-type access** — both
+  correctly blocked on Phase 23 (KOBA Shop), which doesn't exist yet.
 
 **Perks, per client direction (2026-08-15):**
 
@@ -835,36 +887,43 @@ deleted`, `invoice.paid`, `invoice.payment_failed`), and a plan/tier
 
 **Data models / entities**
 
-- `SubscriptionPlan` (tier name, price, Stripe price ID, perks list).
-- `UserSubscription` (userId, planId, status, stripeSubscriptionId,
-  currentPeriodEnd, cancelAtPeriodEnd).
+- `PlusSubscription` — pre-existing scaffolding (from earlier "owner
+  expansion backends" work), extended rather than replaced with a new
+  `UserSubscription` model: added `stripeCustomerId`,
+  `stripeSubscriptionId`, `cancelAtPeriodEnd`, `firstActivatedAt`.
+  `renewsAt` (pre-existing) doubles as `currentPeriodEnd`. No separate
+  `SubscriptionPlan` table — single tier is an in-code constant
+  (`features/plus/lib/types.ts`), same "known simplification" convention
+  as `coin-packages.ts`; add a real plan table if/when a second tier
+  ships.
 - `ServerBio` (userId, gameServerId, bio) — new, for the per-server bio
-  perk; today `AccountProfile.bio` is account-wide only.
-- Badge-tier derivation needs a tenure clock — likely
-  `UserSubscription.createdAt` (first-subscribed date) rather than a
-  separate field, pending confirmation there's no "reset on lapse" rule
-  (see open questions).
+  perk; `AccountProfile.bio` remains account-wide only.
+- `firstActivatedAt` is the tenure clock, not `createdAt` —
+  `PlusSubscription` rows are upserted eagerly on first `/plus` page
+  visit (state `NONE`), so `createdAt` means "first viewed the page," not
+  "first paid."
 
 **Dependencies**
 
 - Stripe integration patterns already established (`features/payments/
-lib/stripe.ts`, webhook signature verification) extend naturally, but
-  this is new Stripe API surface, not a copy-paste of checkout.service.ts.
+lib/stripe.ts`, webhook signature verification) extended for real —
+  subscription mode Checkout + a new webhook event set, not a
+  copy-paste of checkout.service.ts.
 - Phase 23 (KOBA Shop) for the member-discount perk to have something to
-  discount.
+  discount — still blocking, unchanged.
 
 **Open questions for the client**
 
 1. The multiplier/boost perk — what platform mechanic does it apply to,
-   and what's the multiplier value (flat, or does it scale with tenure
-   badge like the profile badge perk)?
-2. Price point(s) — single tier, or multiple tiers with different perk
-   subsets (e.g. animated avatar at tier 1, per-server bio at tier 2)?
-3. Member discount rate on KOBA Shop cosmetics — flat percentage, or
-   tiered like the multiplier perk?
-4. Does a lapsed/cancelled subscription revoke perks immediately at
-   period end, or is there a grace period? And does tenure badge progress
-   reset on lapse, or persist/resume?
+   and what's the multiplier value? (Deliberately deferred out of this
+   build per client direction 2026-08-15, not guessed.)
+2. Tenure badge thresholds (0/3/6/12 months, Bronze/Silver/Gold/Diamond)
+   — a placeholder, not client-specified; confirm or retune.
+3. Does tenure progress reset on a lapse-and-resubscribe, or persist?
+   Shipped assuming persist (the more generous default) — needs
+   confirmation, not just a coded assumption.
+4. Member discount rate on KOBA Shop cosmetics — flat percentage, or
+   tiered? Still blocked on Phase 23 existing at all.
 
 ---
 
@@ -1341,7 +1400,7 @@ Flagging rather than guessing on anything with real product/cost/legal consequen
 11. **Data residency / age requirements (COPPA-adjacent)** — social marketplace with DMs, payments, and game-server communities likely draws a broad age range. No age-gating or regional compliance requirement is mentioned anywhere in the source material; needs an explicit decision before Phase 1 (registration flow) and Phase 6 (DMs) are built, not after.
 12. **Aiden frontier-model providers** (Phase 14) — Vest recommended (Tripo AI, pay-as-you-go). Graft and Terra vendors still open; blocks wiring the actual API calls (the reconciliation pipeline itself is built and vendor-agnostic).
 13. **KOBAads vs. Boost relationship** (Phase 15) — one product or two.
-14. **KOBA Plus perks** — mostly specified (2026-08-15, see Phase 16): tenure badges, animated avatar/banner, per-server bio, themes/icons/sounds, KOBA Shop member discount, and Cosmetic sub-type access. Still open: the exact multiplier/boost perk mechanic, price point(s), member discount rate, and lapse/grace-period behavior.
+14. **KOBA Plus perks** — shipped 2026-08-15 (see Phase 16): real Stripe Subscriptions, $4.99/mo single tier, tenure badges, per-server bio. Animated avatar/banner and themes/icons/sounds are blocked on prerequisite features that don't exist at all (no avatar/banner upload, no theming system) — not just unwired. KOBA Shop discount + Cosmetic access still blocked on Phase 23. Multiplier perk deliberately deferred. Still open: tenure badge threshold values (placeholder), lapse-reset behavior (shipped assuming persist).
 15. **Server "rarity" meaning** (Phase 17) — not a concept that exists on `GameServer` today; needs clarification on what it should represent.
 16. **Subdomain deployment strategy** (Phase 20) — single-app rewrite vs. separate deployments, and who owns DNS/TLS for `koba.games`.
 17. **KOBA Shop details** (Phase 23) — cosmetic checkout model (reuse `Order` or a dedicated `CosmeticOrder`), application review workflow/SLA, hero section display logic, and how the Plus member discount interacts with the 2.5% seller fee.
