@@ -12,11 +12,12 @@ import { AuthCard } from "@/components/koba/auth-card";
 import { AuthAlert } from "@/features/auth/components/auth-alert";
 import { FormField } from "@/features/auth/components/form-field";
 import { loginSchema, type LoginInput } from "@/features/auth/schemas/auth.schemas";
+import { safeInternalPath } from "@/lib/security/safe-redirect";
 
 export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") ?? "/enter";
+  const callbackUrl = safeInternalPath(searchParams.get("callbackUrl"));
   const verified = searchParams.get("verified") === "1";
   const [formError, setFormError] = useState<string | null>(null);
 

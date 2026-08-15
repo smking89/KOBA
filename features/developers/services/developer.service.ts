@@ -5,6 +5,7 @@ import { writeAuditLog } from "@/features/auth/services/audit-log.service";
 import type { DevProductKind, DevProductView } from "@/features/developer-portal/lib/types";
 import {
   DEV_MAX_ARTIFACT_BYTES,
+  artifactBytesMatchExtension,
   isAllowedArtifact,
   sanitizeArtifactFilename,
 } from "@/features/developers/lib/artifacts";
@@ -284,6 +285,9 @@ export async function attachArtifact(
   if (file.bytes.byteLength <= 0 || file.bytes.byteLength > DEV_MAX_ARTIFACT_BYTES) {
     throw new DeveloperError("Artifact exceeds the size limit.", "INVALID");
   }
+  if (!artifactBytesMatchExtension(file.bytes, filename)) {
+    throw new DeveloperError("Artifact content does not match its file type.", "INVALID");
+  }
   const scan = await scanDeveloperArtifact(file.bytes, file.mime);
   if (scan.scanned && !scan.clean) {
     throw new DeveloperError(scan.reason ?? "Artifact failed scanning.", "INVALID");
@@ -334,7 +338,11 @@ export async function signArtifactDownload(userId: string, versionRef: string) {
     where: { id: entitlement.productId },
     data: { downloadCount: { increment: 1 } },
   });
-  const url = await signDeveloperObjectUrl(artifact.storageKey, DEVELOPER_SIGNED_URL_TTL_SECONDS);
+  const url = await signDeveloperObjectUrl(
+    artifact.storageKey,
+    DEVELOPER_SIGNED_URL_TTL_SECONDS,
+    artifact.filename,
+  );
   if (url) return { mode: "redirect" as const, url, filename: artifact.filename };
   if (!artifact.bytes) throw new DeveloperError("Artifact is not available.", "NOT_FOUND");
   return {

@@ -12,6 +12,14 @@ import {
   DESKTOP_PRIMARY_LINKS,
   isNavActive,
 } from "@/features/navigation/lib/nav";
+import { clearPageCaches } from "@/lib/pwa/clear-caches";
+
+async function handleSignOut(): Promise<void> {
+  // KOBA-PWA-002: drop cached documents before the session ends so the next
+  // user of this device cannot replay authenticated pages from Cache Storage.
+  await clearPageCaches();
+  await signOut({ callbackUrl: "/" });
+}
 
 function isStaffSessionType(value: string | null | undefined): boolean {
   return value === "SUPERADMIN" || value === "ADMIN" || value === "MODERATOR";
@@ -111,7 +119,7 @@ export function AppHeader() {
               >
                 {session?.user.kobaId ?? "Settings"}
               </Link>
-              <Button variant="ghost" size="sm" onClick={() => void signOut({ callbackUrl: "/" })}>
+              <Button variant="ghost" size="sm" onClick={() => void handleSignOut()}>
                 Sign out
               </Button>
             </>

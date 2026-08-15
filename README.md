@@ -370,7 +370,10 @@ hide posts), issue staff KOBAIDs, and refund orders by public ref (SA/AD).
 | `POST /api/admin/plus/grants`             | Audited compensatory entitlement   |
 | `POST /api/admin/posts/[ref]/hide`        | Hide a live post                   |
 
-Local seed staff: `staff@koba.local` / `KobaStaff1!` (SUPERADMIN). Queues include
+Local seed staff: `staff@koba.local` (SUPERADMIN). The password is generated on
+first seed and printed once to the terminal (override with `SEED_STAFF_PASSWORD`
+locally). Reseeding never resets it, and seeding refuses to run when
+`NODE_ENV=production`. Queues include
 `pending-oil-rig-kit`, shop `raid-ready-maps`, and report `KOBA-RPT-STAFF001`.
 
 ### Production readiness (Phase 13)

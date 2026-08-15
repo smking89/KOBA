@@ -264,8 +264,142 @@
     "localEnvClassification": "database connection string; not printed; appears local/misconfigured vs docker-compose koba user; not a committed production secret",
     "trackedPemOrKeys": []
   },
-  "malwareScanning": "hook-only-inactive",
+  "malwareScanning": "hook-only-inactive; 15B added magic-byte validation and forced attachment downloads, scanner still not wired",
   "stripeLive": "blocked",
   "recommendedCommitMessage": "docs(security): add production-readiness audit",
-  "recommendedPullRequestTitle": "docs: audit KOBA production readiness and launch risks"
+  "recommendedPullRequestTitle": "docs: audit KOBA production readiness and launch risks",
+  "phase15B": {
+    "date": "2026-08-15",
+    "branch": "fix/critical-security-hardening",
+    "scope": "HIGH launch blockers plus SEC-006/SEC-010 (assigned to 15B by the 15A roadmap) and DEP-002 (same lockfile pass as DEP-001)",
+    "prismaMigrations": "none required",
+    "remediation": [
+      {
+        "id": "KOBA-SEC-001",
+        "status": "resolved",
+        "fix": "lib/security/seed-guard.ts aborts seed when NODE_ENV=production; seed never resets or hardcodes the staff password; random one-time password printed on first seed",
+        "files": ["lib/security/seed-guard.ts", "prisma/seed.ts", "README.md"],
+        "tests": ["tests/unit/security-hardening.test.ts (seed guard)"],
+        "residualRisk": "databases seeded before this fix still hold the old password; rotate locally",
+        "launchBlocking": false
+      },
+      {
+        "id": "KOBA-SEC-002",
+        "status": "resolved",
+        "fix": "safeInternalPath allowlist for callbackUrl (relative single-slash paths only; no backslashes or control chars)",
+        "files": ["lib/security/safe-redirect.ts", "features/auth/components/login-form.tsx"],
+        "tests": ["tests/unit/security-hardening.test.ts (safe redirect)"],
+        "residualRisk": "none identified",
+        "launchBlocking": false
+      },
+      {
+        "id": "KOBA-SEC-004",
+        "status": "resolved",
+        "fix": "edge JWT callback ignores client update() payloads; node auth re-derives kobaId/accountType/kobaIdRevealed from getAccountSnapshot (DB) on the update trigger",
+        "files": ["lib/auth/edge.config.ts", "lib/auth/index.ts"],
+        "tests": ["tests/unit/security-hardening.test.ts (JWT claims)"],
+        "residualRisk": "JWT lifetime/rotation remains KOBA-SEC-008 (15C)",
+        "launchBlocking": false
+      },
+      {
+        "id": "KOBA-SEC-005",
+        "status": "resolved",
+        "fix": "credentials authorize throttled per IP (20/15min) and per email (10/15min) before any DB read; throttled attempts indistinguishable from bad credentials",
+        "files": ["features/auth/lib/login-throttle.ts", "lib/auth/credentials-provider.ts"],
+        "tests": ["tests/unit/security-hardening.test.ts (login throttling)"],
+        "residualRisk": "per-process limiter without Upstash (KOBA-SEC-009 staging condition)",
+        "launchBlocking": false
+      },
+      {
+        "id": "KOBA-MED-001",
+        "status": "partially-mitigated",
+        "fix": "magic-byte validation for artifacts (zip/gzip/tar signatures; PE/ELF/Mach-O rejected; text must be NUL-free); signed downloads forced to Content-Disposition attachment + octet-stream; quarantine unchanged",
+        "files": [
+          "features/developers/lib/artifacts.ts",
+          "features/developers/lib/storage.ts",
+          "features/developers/services/developer.service.ts"
+        ],
+        "tests": ["tests/unit/security-hardening.test.ts (artifact content)"],
+        "residualRisk": "no real malware scanner; archive contents not inspected",
+        "launchBlocking": true
+      },
+      {
+        "id": "KOBA-PWA-001",
+        "status": "resolved",
+        "fix": "sensitive documents served NetworkOnly (offline fallback kept); page cache versioned to koba-pages-v2; legacy cache deleted on activate",
+        "files": ["lib/pwa/sensitive-routes.ts", "app/sw.ts"],
+        "tests": ["tests/unit/security-hardening.test.ts (sensitive document caching)"],
+        "residualRisk": "none identified",
+        "launchBlocking": false
+      },
+      {
+        "id": "KOBA-PWA-002",
+        "status": "resolved",
+        "fix": "sign-out clears page caches from the window and messages the SW (CLEAR_PAGE_CACHES) before signOut",
+        "files": ["lib/pwa/clear-caches.ts", "components/koba/app-header.tsx", "app/sw.ts"],
+        "tests": ["cache versioning assertions; manual checklist for browser cache APIs"],
+        "residualRisk": "browser-API path verified manually",
+        "launchBlocking": false
+      },
+      {
+        "id": "KOBA-DEP-001",
+        "status": "resolved",
+        "fix": "pnpm override sharp>=0.35.3; lockfile updated; pnpm audit clean",
+        "files": ["package.json", "pnpm-lock.yaml"],
+        "tests": ["pnpm audit; full pnpm test; production pnpm build"],
+        "residualRisk": "Next pins sharp 0.34.5 internally; spot-check image optimization in staging",
+        "launchBlocking": false
+      },
+      {
+        "id": "KOBA-DEP-002",
+        "status": "resolved",
+        "fix": "pnpm override postcss>=8.5.23 in the same lockfile pass",
+        "files": ["package.json", "pnpm-lock.yaml"],
+        "tests": ["pnpm audit"],
+        "residualRisk": "same as KOBA-DEP-001",
+        "launchBlocking": false
+      },
+      {
+        "id": "KOBA-SEC-006",
+        "status": "resolved-with-exception",
+        "fix": "CSP, HSTS (non-dev), nosniff, Referrer-Policy, Permissions-Policy, frame denial on all routes; unsafe-eval and websockets dev-only",
+        "files": ["next.config.ts"],
+        "tests": ["production build"],
+        "residualRisk": "script/style unsafe-inline retained for Next App Router; nonce CSP deferred and documented",
+        "launchBlocking": false
+      },
+      {
+        "id": "KOBA-SEC-010",
+        "status": "resolved",
+        "fix": "resolveAuthSecret throws at production runtime without AUTH_SECRET; build-phase placeholder only during next build",
+        "files": ["lib/auth/secret.ts"],
+        "tests": ["tests/unit/security-hardening.test.ts (auth secret)"],
+        "residualRisk": "operators must set AUTH_SECRET or production will not boot (intended)",
+        "launchBlocking": false
+      }
+    ],
+    "stillOpenBlockers": [
+      "KOBA-SEC-003",
+      "KOBA-MED-001",
+      "KOBA-OPS-001",
+      "KOBA-OPS-003",
+      "KOBA-LEG-001",
+      "KOBA-SEC-012",
+      "KOBA-GIT-001"
+    ],
+    "manualActions": [
+      "rotate staff@koba.local password in databases seeded before this fix",
+      "set a >=32-char AUTH_SECRET wherever NODE_ENV=production runs",
+      "pnpm install on other machines to apply dependency overrides"
+    ],
+    "readiness": {
+      "internalDevelopment": "READY WITH CONDITIONS",
+      "staging": "READY WITH CONDITIONS",
+      "closedBeta": "NOT READY",
+      "publicLaunch": "NOT READY",
+      "realMoney": "NOT READY"
+    },
+    "recommendedCommitMessage": "fix(security): resolve critical production launch blockers",
+    "recommendedPullRequestTitle": "fix: harden KOBA authorization and critical security controls"
+  }
 }

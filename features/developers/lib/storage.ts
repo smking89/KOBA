@@ -40,6 +40,7 @@ export async function storeDeveloperObject(input: {
 export async function signDeveloperObjectUrl(
   key: string,
   expiresInSeconds = 120,
+  downloadFilename?: string,
 ): Promise<string | null> {
   if (!isObjectStorageConfigured()) return null;
   const { S3Client, GetObjectCommand } = await import("@aws-sdk/client-s3");
@@ -54,9 +55,17 @@ export async function signDeveloperObjectUrl(
       secretAccessKey: process.env.S3_SECRET_ACCESS_KEY!.trim(),
     },
   });
+  // KOBA-MED-001: force download semantics so signed URLs can never render
+  // artifact content inline in the browser.
+  const safeName = sanitizeArtifactFilename(downloadFilename ?? key.split("/").pop() ?? "artifact");
   return getSignedUrl(
     client,
-    new GetObjectCommand({ Bucket: process.env.S3_BUCKET!.trim(), Key: key }),
+    new GetObjectCommand({
+      Bucket: process.env.S3_BUCKET!.trim(),
+      Key: key,
+      ResponseContentDisposition: `attachment; filename="${safeName}"`,
+      ResponseContentType: "application/octet-stream",
+    }),
     { expiresIn: expiresInSeconds },
   );
 }
