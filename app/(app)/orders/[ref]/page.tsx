@@ -79,7 +79,7 @@ export default async function OrderReceiptPage({ params }: { params: Promise<{ r
               <span className="font-medium">
                 {new Date(receipt.escrow.releaseAt).toLocaleString()}
               </span>{" "}
-              — report a problem before then if something's wrong with this order.
+              — report a problem before then if something&apos;s wrong with this order.
             </p>
             {receipt.viewerIsBuyer ? (
               <div className="mt-3">
@@ -92,7 +92,7 @@ export default async function OrderReceiptPage({ params }: { params: Promise<{ r
           <div className="rounded-lg border border-border bg-surface p-5">
             <Badge tone="warning">Under review</Badge>
             <p className="mt-2 text-sm text-muted">
-              This order is under review by KOBA staff. We'll resolve it and update this page.
+              This order is under review by KOBA staff. We&apos;ll resolve it and update this page.
             </p>
           </div>
         ) : null}

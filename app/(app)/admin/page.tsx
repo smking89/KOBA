@@ -145,7 +145,7 @@ export default async function AdminPage() {
       <Card>
         <CardTitle>Disputed orders</CardTitle>
         <CardDescription>
-          Escrow holds a seller's payout until it auto-releases. Resolve buyer disputes here —
+          Escrow holds a seller&apos;s payout until it auto-releases. Resolve buyer disputes here —
           release to the seller or refund the buyer (SA/AD).
         </CardDescription>
         <div className="mt-4">

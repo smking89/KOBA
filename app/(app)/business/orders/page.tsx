@@ -22,7 +22,7 @@ export default async function BusinessOrdersPage() {
           <h1 className="text-3xl font-semibold tracking-tight">Orders</h1>
           <p className="mt-1 text-sm text-muted">
             Paid status comes from signed Stripe webhooks. Fulfill after you deliver. Payouts are
-            held in escrow on KOBA's balance and auto-release after the hold window unless the
+            held in escrow on KOBA&apos;s balance and auto-release after the hold window unless the
             buyer reports a problem. Refunds after release reverse the Connect transfer and the
             platform fee.
           </p>
