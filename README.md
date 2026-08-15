@@ -6,7 +6,10 @@ squads; all on one KOBAID.
 
 ## Status
 
-**Phase 14H — Developer portal and app marketplace MVP** is in progress on
+**Phase 14I — Influencer promo and referrals** is in progress on
+`feat/influencer-promo`. See [docs/influencer.md](docs/influencer.md).
+
+**Phase 14H — Developer portal and app marketplace MVP** remains on
 `feat/developer-marketplace`. See [docs/developers.md](docs/developers.md).
 
 **Phase 14G — Aiden AI generation MVP** remains on `feat/aiden-generation`
@@ -36,13 +39,15 @@ live in `app/globals.css` and `lib/design-tokens.ts`.
 | `/aiden`, `/aiden/create`, `/aiden/library`           | Aiden concept generation + private library |
 | `/aiden/jobs/[jobId]`                                 | Generation job status                      |
 | `/developers`, `/developers/dashboard`, `/apps`       | Developer portal + app/plugin marketplace  |
+| `/influencer`, `/promo/[handle]`, `/r/[code]`         | Influencer referrals and public promo page |
 | `/library/apps`, `/orders/apps`                       | Owned developer products and purchases     |
 | `/wallet`                                             | KOBA Coins wallet (ledger-backed)          |
 
 See [docs/wallet-ledger.md](docs/wallet-ledger.md) for the Phase 14B accounting model,
 [docs/plus.md](docs/plus.md) for Plus ownership, entitlements, and webhooks,
 [docs/aiden.md](docs/aiden.md) for Aiden generation, pricing, and worker recovery, and
-[docs/developers.md](docs/developers.md) for the developer portal, API keys, and marketplace.
+[docs/developers.md](docs/developers.md) for the developer portal, API keys, and marketplace,
+and [docs/influencer.md](docs/influencer.md) for referral codes and influencer payouts.
 Coin purchases, live paid AI providers, and cash withdrawal remain deferred. Promotional
 Plus Coins are not granted until the owner approves amount and refund policy.
 
