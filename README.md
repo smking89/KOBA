@@ -8,8 +8,10 @@ squads; all on one KOBAID.
 
 **Phase 15 — Live KOBA Coin purchases** is done (Stripe Checkout against a
 fixed Coin package catalog, credited via the double-entry ledger on signed
-webhook). Item trading (Phase 14C) is also merged. Next: the influencer ads
-network (deferred).
+webhook). Item trading (Phase 14C, rarity-matched) is also merged. Next up
+is unscoped — see [ROADMAP.md](ROADMAP.md) Phases 14–20 for the newest
+client direction (Aiden real generation, KOBAads + Boost, KOBA Plus, live
+RCON, freebie products, multi-subdomain split), none of which are built yet.
 
 The HTML prototype remains the information-architecture reference:
 
@@ -452,9 +454,17 @@ self-registered. Group Admin/Moderator badges are community roles, not staff.
 17. **Owner product expansion UI** ✅
 18. **Owner expansion backends** ✅
 19. **KOBA Coins double-entry ledger** ✅
-20. **Player-to-player item trading** ✅
-21. **Live KOBA Coin purchases** ✅ ← current
-22. Influencer ads network (deferred)
+20. **Player-to-player item trading** ✅ (rarity-matched — see ROADMAP.md Phase 19)
+21. **Live KOBA Coin purchases** ✅
+22. Aiden real generation (Vest/Graft/Terra frontier-model wiring — ROADMAP.md Phase 14)
+23. KOBAads + Boost (ROADMAP.md Phase 15)
+24. KOBA Plus subscriptions (ROADMAP.md Phase 16)
+25. Live RCON + server directory (real per-game protocols — ROADMAP.md Phase 17)
+26. Freebie products (ROADMAP.md Phase 18)
+27. Multi-subdomain split (koba.games / developer. / app. / admin. / aiden. — ROADMAP.md Phase 20)
+
+See [ROADMAP.md](ROADMAP.md) for the full scope, data models, and open
+questions behind each of 22–27 — none of them are built yet.
 
 ## License
 

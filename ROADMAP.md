@@ -1,19 +1,27 @@
 # KOBA — Build Roadmap
 
-Status: Phase 0 (UI/UX design system) is complete and committed at
-[`design/ui-ux-design-system.html`](design/ui-ux-design-system.html).
-Everything below is planning only — no backend, schema, or app code exists yet.
+Status: Phases 0–13 (the original client outline below) are all built and
+merged to `main`, well beyond "planning only" — see `README.md`'s "Status"
+and "Build plan" sections for the actively-maintained, ground-truth account
+of what's actually shipped (this file drifted out of sync with reality
+before; README is now the source of truth for _current_ status). This file
+remains the canonical place for **forward-looking scope**: Phases 14+ below
+are not yet built (except where a phase note says otherwise) and capture
+product direction from the client that hasn't shipped yet.
 
-This document turns the client's 13-phase outline into an actionable,
+This document turns the client's evolving outline into an actionable,
 engineering-level build plan: concrete deliverables, data models, phase
 dependencies, a single consistent tech stack, a sequencing plan, and the
 open questions that need client decisions before (or during) each phase.
 
 > Numbering note: this roadmap keeps the same phase numbers/order as the
-> original outline (Phase 1 → Phase 13). The repo README's "Build plan"
-> list uses 1-indexed _steps_ that include Phase 0 as step 1 — this
-> ROADMAP.md is the canonical phase numbering going forward; update the
-> README's list to link here once this is merged.
+> original outline (Phase 1 → Phase 13), then continues sequentially for
+> newer client direction (Phase 14+). The repo README's "Build plan" list
+> uses its own 1-indexed _steps_ that has evolved independently and no
+> longer maps cleanly onto this file's numbering step-for-step — treat
+> README as "what's done, in the order it shipped" and this file as
+> "what each phase actually requires," cross-referenced by name/topic
+> rather than by number.
 
 ---
 
@@ -33,6 +41,13 @@ open questions that need client decisions before (or during) each phase.
 - [Phase 11 — Role System (RBAC)](#phase-11--role-system-rbac)
 - [Phase 12 — Database Schema (full integration)](#phase-12--database-schema-full-integration)
 - [Phase 13 — API Routes](#phase-13--api-routes)
+- [Phase 14 — Aiden AI Generation Suite (Vest / Graft / Terra)](#phase-14--aiden-ai-generation-suite-vest--graft--terra)
+- [Phase 15 — KOBAads + Boost](#phase-15--kobaads--boost)
+- [Phase 16 — KOBA Plus (subscriptions)](#phase-16--koba-plus-subscriptions)
+- [Phase 17 — Game Server Directory + Live RCON](#phase-17--game-server-directory--live-rcon)
+- [Phase 18 — Freebie Products](#phase-18--freebie-products)
+- [Phase 19 — Rarity-Matched Trading (status: done)](#phase-19--rarity-matched-trading-status-done)
+- [Phase 20 — Multi-Subdomain Architecture](#phase-20--multi-subdomain-architecture)
 - [Sequencing / milestones](#sequencing--milestones)
 - [Open questions for the client](#open-questions-for-the-client)
 
@@ -377,6 +392,329 @@ transactional and permission-heavy (orders, bids, payouts, RBAC), and
 
 ---
 
+## Phase 14 — Aiden AI Generation Suite (Vest / Graft / Terra)
+
+**Aiden** is the umbrella brand for KOBA's AI-assisted asset generation,
+served at `aiden.koba.games` (see Phase 20). Under it, three named
+generators, each a distinct modality with its own frontier-model provider:
+
+- **Vest** — skin generation
+- **Graft** — custom monument/prop/asset generation
+- **Terra** — map generation
+
+**Already scaffolded, not yet real** (confirmed against current code —
+do not rebuild these, extend them):
+
+- `AidenJob` model exists (`prompt`, `game`, `platform`, `assetType`,
+  `state`, `coinCostPreview`, `reservationTxId`) with an `AidenAssetType`
+  enum already covering `SKIN` (→ Vest), `PROP`/`TEXTURE`/`ANIMATION` (→
+  Graft), `TERRAIN`/`CONCEPT_IMAGE` (→ Terra) — the Vest/Graft/Terra
+  brand names are a UI/marketing layer over asset types that already exist,
+  not a new taxonomy.
+- `reserveCoinsForGeneration` already exists in
+  `features/wallet/services/ledger.service.ts`, wired to the same
+  reserve → capture/release `CoinReservation` lifecycle used elsewhere.
+  Per `docs/wallet-ledger.md`: "today reserves then releases on stub
+  failure" — i.e. no real generation call happens yet, it's a reserve/
+  release round-trip with no actual model API in between.
+- `/aiden`, `/aiden/generate`, `/aiden/library` routes exist as UI shells
+  (owner-expansion "UI foundations," per README).
+
+**Scope, as engineering deliverables**
+
+- Real frontier-model API integration — three separate integrations, one
+  per modality (image/skin generation for Vest, 3D/asset generation for
+  Graft, procedural/heightmap or map-layout generation for Terra). Provider
+  choice is an open question below; these are not interchangeable APIs.
+- **Accurate Coin cost from real usage, not just a pre-call estimate.**
+  Today `AidenJob.coinCostPreview` is the only cost field. Add a
+  `coinCostActual` (or extend the reservation-capture flow) so that: (1)
+  a reservation is made at estimated cost before the call, (2) the actual
+  provider-reported usage/token cost is read back from the API response
+  after the call completes, (3) the ledger capture uses the _actual_
+  metered cost — not the estimate — with any surplus reservation released
+  back to the wallet. This is a real reconciliation step, not just
+  capturing the full reservation regardless of true cost.
+- Successful generations can publish directly to the KOBA marketplace as a
+  new `Product` or `Cosmetic` — skip manual re-upload, but still enter the
+  existing moderation queue (no bypass of `moderationStatus`).
+- Shops fund this via KOBA Coins (Phase 15's predecessor, live Coin
+  purchases — already shipped) — a shop must hold sufficient Coins before
+  a job can be queued; insufficient balance fails the reservation step
+  before any provider call is made (never call a paid API speculatively).
+
+**Data models / entities**
+
+- Extend `AidenJob`: `productType` (VEST | GRAFT | TERRA, the branded
+  label — separate from the existing lower-level `assetType` enum so the
+  brand names can be added without a breaking enum migration),
+  `frontierModelProvider`, `frontierModelUsageJson` (raw provider usage
+  response, for audit/reconciliation), `coinCostActual`.
+- No new reservation/ledger model needed — `CoinReservation` already
+  supports this shape (reserve/capture/release), per Phase 15/coins-ledger
+  work already shipped.
+
+**Dependencies**
+
+- Live Coin purchases (done — this phase's funding path).
+- `CoinReservation` lifecycle (done).
+
+**Open questions for the client**
+
+1. Frontier model provider per modality — Vest (image gen), Graft (3D/
+   asset gen), Terra (procedural map gen) plausibly need three different
+   vendors. Which, and what's the pricing/usage-reporting shape for each
+   (needed to build the actual-cost reconciliation)?
+2. Exchange rate: USD-cost-of-generation → KOBA Coins. Fixed multiplier,
+   or does it track the same live Coin-purchase pricing (Phase 15,
+   `features/wallet/lib/coin-packages.ts`)?
+3. Failure/retry policy — if a frontier-model call fails or returns a
+   low-quality result, is the reservation fully released, partially
+   captured (compute was spent even if output was rejected), or does the
+   user get one free retry?
+
+---
+
+## Phase 15 — KOBAads + Boost
+
+Client has now named the original outline's "Phase 7 — KOBA Ads" as
+**KOBAads**, and named a second, related spend mechanic: **Boost**.
+
+**Scope, as engineering deliverables**
+
+- **KOBAads** — native ad units (KOBA Content Units / KCUs, per the
+  original outline) interleaved into the feed (Phase 8 — Feed Engine
+  scope, still not built beyond a plain reverse-chron feed per README).
+  Billed in KOBA Coins via the same `CoinReservation` capture pattern
+  already used for marketplace commissions and Aiden generation.
+- **Boost** — a lighter-weight promotion mechanic that raises a listing's
+  or shop's visibility/ranking (e.g. in marketplace search/category
+  sort) without being a full ad unit. Needs a client decision (below) on
+  whether this is a KOBAads sub-product or a fully separate surface.
+- The `sponsored: Boolean` field already on `Post` (per current schema) is
+  the only thing that exists today — a presentation-only hook, no
+  campaign, targeting, billing, or impression tracking behind it yet.
+
+**Data models / entities**
+
+- `Ad` / `AdCampaign` (advertiser, target, budget in Coins, status,
+  start/end), `AdImpressionLog`, `AdClickLog` (for billing and Phase 8's
+  ranking signal input) — as originally specified.
+- `Boost` (target type: product | shop, duration or Coin-spend-until-
+  exhausted model, rank-weight applied at query time) — new, shape
+  pending the open question below.
+
+**Dependencies**
+
+- Coins ledger + reservation/capture (done).
+- Feed Engine (Phase 8, not yet built beyond basic reverse-chron) — full
+  KCU interleaving needs real ranking infrastructure first.
+
+**Open questions for the client**
+
+1. Is Boost a KOBAads sub-feature (shares the campaign/billing model) or
+   a fully separate product with its own pricing and mechanics?
+2. Boost duration model — fixed time window, or "spend N Coins, ranked
+   boost lasts until the budget is exhausted by impressions/clicks"?
+
+---
+
+## Phase 16 — KOBA Plus (subscriptions)
+
+The "Discord Nitro equivalent" — a recurring paid subscription tier.
+`/plus` already exists as a UI shell (owner-expansion "UI foundations").
+
+**Scope, as engineering deliverables**
+
+- Real Stripe **Subscriptions** — a materially different Stripe surface
+  than anything built so far in this codebase. Every payment flow shipped
+  to date (`features/payments/**`, live Coin purchases) is a one-off
+  Stripe Checkout Session; subscriptions need recurring billing, a
+  different webhook event set (`customer.subscription.created/updated/
+deleted`, `invoice.paid`, `invoice.payment_failed`), and a plan/tier
+  concept that doesn't exist anywhere yet.
+- Perk gating — what KOBA Plus actually unlocks is not specified anywhere
+  in the source material (see open question below); this phase can't be
+  scoped tightly until that's answered.
+
+**Data models / entities**
+
+- `SubscriptionPlan` (tier name, price, Stripe price ID, perks list).
+- `UserSubscription` (userId, planId, status, stripeSubscriptionId,
+  currentPeriodEnd, cancelAtPeriodEnd).
+
+**Dependencies**
+
+- Stripe integration patterns already established (`features/payments/
+lib/stripe.ts`, webhook signature verification) extend naturally, but
+  this is new Stripe API surface, not a copy-paste of checkout.service.ts.
+
+**Open questions for the client**
+
+1. What perks, specifically? (Cosmetic flair, reduced platform commission
+   rate — mirroring the existing Blue-Badge-verified tier discount —
+   priority Aiden generation queue, ad-free feed, something else?)
+2. Price point(s) — single tier or multiple (like Nitro Basic/Nitro)?
+3. Does a lapsed/cancelled subscription revoke perks immediately at
+   period end, or is there a grace period?
+
+---
+
+## Phase 17 — Game Server Directory + Live RCON
+
+`/servers`, `/servers/[serverId]`, `/servers/connect` already exist with
+real scaffolding — this phase is about making the "live" part actually
+live, not building from scratch.
+
+**Already built, confirmed against current code:**
+
+- `GameServer` model: `game`, `platformFamily` (PC | CONSOLE), `region`,
+  `tags[]`, `livePlayers`, `maxPlayers`, `queue`, `mapName`, `mapSize`,
+  `host`/`port`, `rconTestState` — covers nearly every field the client
+  asked for (live player count, player queue, map size, tags, console-or-
+  PC) except **rarity**, which has no server-level concept today (rarity
+  is currently a `Product`/`Cosmetic` field — see open question below).
+- `ServerCredential`: RCON credentials stored encrypted at rest
+  (ciphertext/iv/authTag — AES-GCM-shaped), never plaintext.
+- Full connect wizard UI (`features/servers/components/server-connect-
+wizard.tsx`) and directory UI (`server-directory.tsx`), gated to
+  Business/Influencer accounts (`assertBusinessOrInfluencer`).
+- `testRconConnection` exists but **is a stub** — it only checks whether
+  `host`/`port` are set and reports `SUCCESS`/`UNSUPPORTED` accordingly;
+  it does not open a real RCON connection to any game server today.
+
+**Scope, as engineering deliverables**
+
+- Real per-game RCON protocol adapters. Different games use different
+  RCON implementations (e.g. Source RCON for Rust and other Source-
+  engine titles is one well-known protocol, but it is not universal) —
+  this needs a protocol-adapter architecture keyed by `game`, not one
+  integration. Launch game list is an open question below.
+- Live polling to keep `livePlayers`/`queue`/`mapName`/`mapSize` current
+  — needs an architecture decision (poll on a schedule vs. a persistent
+  connection per server) with real infra-cost implications at scale.
+- Resolve the "rarity" requirement — either add a server-level rarity/
+  tier field (distinct from product rarity) or confirm the client meant
+  something else (e.g. rarity of items _available_ on that server).
+
+**Dependencies**
+
+- Shop (done) — servers already link to an owning shop.
+- `ServerCapability`/`ServerOnlineStatus`/`RconTestState` enums (done).
+
+**Open questions for the client**
+
+1. Launch game list — which games' RCON protocols need day-one support?
+2. What does "rarity" mean for a server? A new server-level field, or a
+   summary of the rarest item(s) available/tradeable there?
+3. Polling cadence vs. persistent-connection budget for live stats.
+
+---
+
+## Phase 18 — Freebie Products
+
+Sellers can mark a product free — **permanently**, or **for a fixed
+initial quantity** (e.g. "first 15 free," then it reverts to its normal
+paid price). Surfaced on a dedicated "Freebie" tab. Not built yet;
+no existing schema field or route covers this.
+
+**Scope, as engineering deliverables**
+
+- Extend `Product` with a freebie policy: none / permanent / limited-
+  quantity-then-paid, plus a remaining-free-quantity counter.
+- Claim path: a **separate flow from paid checkout** — a $0 Stripe
+  Checkout Session is possible but wasteful for a $0 transaction; prefer
+  a direct claim endpoint that creates a `FULFILLED` `Order` at
+  `totalCents: 0` without touching Stripe at all.
+- Concurrency: decrementing the free-quantity counter needs the same
+  care as auction bidding / inventory decrement already built (atomic,
+  can't go negative under concurrent claims) — reuse that established
+  pattern, don't reinvent it.
+- One-claim-per-buyer enforcement (don't let a buyer claim the same
+  freebie twice, even across quantity-reset edge cases).
+
+**Data models / entities**
+
+- Extend `Product`: `freebiePolicy` (`NONE` | `PERMANENT` |
+  `LIMITED_QUANTITY`), `freebieQuantityRemaining` (nullable Int,
+  meaningful only for `LIMITED_QUANTITY`).
+- `Order.totalCents = 0` is already a representable state in the existing
+  `Order` model — no new order-side model needed, just the $0 claim path
+  above bypassing Stripe.
+
+**Dependencies**
+
+- Product / Order (done) — additive only.
+
+**Open questions for the client**
+
+1. Does a limited-quantity freebie ever replenish (e.g. weekly reset), or
+   is "first 15" a one-time lifetime pool per product?
+2. Does claiming a freebie count toward the same per-buyer purchase
+   limits/analytics as a paid order, or is it tracked separately?
+
+---
+
+## Phase 19 — Rarity-Matched Trading (status: done)
+
+**This phase is already built** — flagged here only so it's tracked
+alongside the rest of this document, not because it's outstanding work.
+
+Client rule: only items of the **same rarity tier** may be traded against
+each other (fairness constraint). Confirmed live in
+`features/trade/lib/rarity-policy.ts#assertSameRarityTrade`, enforced by
+the trade offer/accept flow shipped with item trading. No gap here.
+
+---
+
+## Phase 20 — Multi-Subdomain Architecture
+
+Client-specified domain structure:
+
+| Subdomain              | Purpose                        | Current state                          |
+| ---------------------- | ------------------------------ | -------------------------------------- |
+| `koba.games`           | Main site                      | This app, path-based routing           |
+| `developer.koba.games` | Developer portal               | Exists at `/developers` (mock/UI-only) |
+| `app.koba.games`       | App store                      | Exists at `/developers/apps` (mock)    |
+| `admin.koba.games`     | Staff admin backend login      | Exists at `/admin`                     |
+| `aiden.koba.games`     | AI generation suite (Phase 14) | Exists at `/aiden` (UI shell)          |
+
+**Scope, as engineering deliverables**
+
+- This is an infra/routing decision, not a feature — two real options:
+  1. **Middleware-based subdomain rewrite within the same deployment**:
+     Next.js middleware inspects the `Host` header and rewrites e.g.
+     `developer.koba.games/*` to the existing `/developers/*` route
+     internally. Least work, single deployment, single database
+     connection — probably the right MVP choice for most of these.
+  2. **Genuinely separate deployments/apps** sharing the same database,
+     talking over internal APIs. More isolation — likely worth it
+     specifically for `admin.koba.games`, given it's the highest-
+     privilege surface in the whole system and benefits from a separate
+     security perimeter (different deploy pipeline, stricter network
+     access, no shared client-side bundle with the public app).
+- Should land _after_ the routes it's exposing have real functionality
+  (Phase 9 Developer Portal, Phase 14 Aiden) — doing this first is just
+  infra churn on stub pages with nothing behind them yet.
+
+**Dependencies**
+
+- Soft dependency on Phase 9 (Developer Portal), Phase 14 (Aiden) —
+  sequence after, not before, so the subdomain split has real
+  functionality to expose.
+
+**Open questions for the client**
+
+1. Single-deployment subdomain rewrite (option 1) vs. genuinely separate
+   apps (option 2) — cost/complexity/isolation tradeoff, especially
+   whether `admin.koba.games` specifically warrants its own deployment
+   regardless of what's chosen for the others.
+2. DNS/TLS ownership — who manages the `koba.games` zone and subdomain
+   records (affects whether this can be done from within the app repo
+   at all, or needs coordination outside it)?
+
+---
+
 ## Sequencing / milestones
 
 ```
@@ -454,7 +792,12 @@ Flagging rather than guessing on anything with real product/cost/legal consequen
 9. **Search** — tech stack above defaults to Postgres full-text to avoid a premature second system, but if catalog size/complexity is expected to be large at launch, a dedicated search engine (Meilisearch/Typesense/Algolia) might be worth building in from Phase 3 rather than retrofitting. Needs a call on expected catalog scale.
 10. **Console platforms and payments** — README's console list is kits/cosmetics-only (no modding/spawning). Confirm this doesn't imply a separate console storefront/app requirement (e.g., PlayStation/Xbox store compliance for in-app purchases) that would materially change Phase 3/4's payment integration scope.
 11. **Data residency / age requirements (COPPA-adjacent)** — social marketplace with DMs, payments, and game-server communities likely draws a broad age range. No age-gating or regional compliance requirement is mentioned anywhere in the source material; needs an explicit decision before Phase 1 (registration flow) and Phase 6 (DMs) are built, not after.
+12. **Aiden frontier-model providers** (Phase 14) — three modalities (Vest/Graft/Terra), plausibly three different vendors; blocks real cost-reconciliation work.
+13. **KOBAads vs. Boost relationship** (Phase 15) — one product or two.
+14. **KOBA Plus perks and pricing** (Phase 16) — nothing specified yet beyond "Discord Nitro equivalent."
+15. **Server "rarity" meaning** (Phase 17) — not a concept that exists on `GameServer` today; needs clarification on what it should represent.
+16. **Subdomain deployment strategy** (Phase 20) — single-app rewrite vs. separate deployments, and who owns DNS/TLS for `koba.games`.
 
 ---
 
-_This roadmap is planning only — no code, schema, or scaffolding has been created as part of producing this document._
+_Phases 0–13 above are the original client outline and are now fully built (see README.md for ground truth). Phases 14–20 are newer client direction, captured here as planning — not yet built except where individually noted (Phase 19)._
