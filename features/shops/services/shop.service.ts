@@ -363,6 +363,6 @@ export async function listShopOrders(userId: string) {
     where: { shopId: shop.id },
     orderBy: { createdAt: "desc" },
     take: 50,
-    include: { items: true, buyer: { select: { name: true } } },
+    include: { items: true, buyer: { select: { name: true } }, escrow: true },
   });
 }

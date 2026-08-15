@@ -336,6 +336,7 @@ export async function getOrderReceipt(publicRef: string, viewerUserId: string, i
       items: true,
       shop: { select: { slug: true, name: true, ownerUserId: true } },
       buyer: { select: { id: true, name: true, email: true } },
+      escrow: true,
     },
   });
   if (!order) {
@@ -365,6 +366,14 @@ export async function getOrderReceipt(publicRef: string, viewerUserId: string, i
       unitPriceCents: item.unitPriceCents,
     })),
     confirming: order.status === "PENDING",
+    viewerIsBuyer: isBuyer,
+    escrow: order.escrow
+      ? {
+          status: order.escrow.status,
+          releaseAt: order.escrow.releaseAt.toISOString(),
+          disputeReason: isBuyer || isSeller || isStaff ? order.escrow.disputeReason : null,
+        }
+      : null,
   };
 }
 

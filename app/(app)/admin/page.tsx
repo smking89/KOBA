@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
+import { DisputedOrdersPanel } from "@/features/admin/components/disputed-orders-panel";
 import { IssueStaffForm } from "@/features/admin/components/issue-staff-form";
 import { PendingProductsPanel } from "@/features/admin/components/pending-products-panel";
 import { PendingShopsPanel } from "@/features/admin/components/pending-shops-panel";
@@ -15,6 +16,7 @@ import {
 } from "@/features/admin/lib/access";
 import {
   getAdminOverview,
+  listDisputedOrders,
   listOpenReports,
   listPendingProducts,
   listPendingShops,
@@ -47,10 +49,11 @@ export default async function AdminPage() {
   const actorTypes = snapshot.identities.map((identity) => identity.accountType);
   const overview = await getAdminOverview(session.user.id);
 
-  const [products, shops, reports] = await Promise.all([
+  const [products, shops, reports, disputedOrders] = await Promise.all([
     canStaffApproveListing(actorTypes) ? listPendingProducts(session.user.id) : Promise.resolve([]),
     canStaffVerifyShop(actorTypes) ? listPendingShops(session.user.id) : Promise.resolve([]),
     canStaffModerateContent(actorTypes) ? listOpenReports(session.user.id) : Promise.resolve([]),
+    canStaffRefund(actorTypes) ? listDisputedOrders(session.user.id) : Promise.resolve([]),
   ]);
 
   const canIssue =
@@ -136,6 +139,17 @@ export default async function AdminPage() {
           ) : (
             <p className="text-sm text-muted">Your staff role cannot moderate reports.</p>
           )}
+        </div>
+      </Card>
+
+      <Card>
+        <CardTitle>Disputed orders</CardTitle>
+        <CardDescription>
+          Escrow holds a seller's payout until it auto-releases. Resolve buyer disputes here —
+          release to the seller or refund the buyer (SA/AD).
+        </CardDescription>
+        <div className="mt-4">
+          <DisputedOrdersPanel orders={disputedOrders} canResolve={canStaffRefund(actorTypes)} />
         </div>
       </Card>
 
