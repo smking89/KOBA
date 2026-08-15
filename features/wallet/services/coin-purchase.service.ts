@@ -94,7 +94,10 @@ export async function createCoinPurchaseCheckout(
           price_data: {
             currency: "usd",
             unit_amount: pack.priceCents,
-            product_data: { name: `KOBA Coins — ${pack.label} (${pack.coinAmount} Coins)` },
+            product_data: {
+              name: `KOBA Coins — ${pack.coinAmount} Coins`,
+              description: "Non-refundable. Coins credit to your KOBA wallet after payment.",
+            },
           },
         },
       ],
