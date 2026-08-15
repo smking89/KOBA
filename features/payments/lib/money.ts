@@ -2,6 +2,21 @@ export const DEFAULT_COMMISSION_BPS = 800;
 export const DEFAULT_VERIFIED_COMMISSION_BPS = 400;
 export const MAX_COMMISSION_BPS = 2500;
 
+/**
+ * Stripe's absolute per-charge ceiling: $999,999.99 in the smallest currency
+ * unit. A single listing is already capped well under this (see
+ * priceCents/amountCents max on the product, cosmetic, and bid schemas —
+ * $100,000), but fixed-price checkout allows quantity up to 10, so
+ * priceCents(max) * quantity(max) can reach $1,000,000.00 and exceed it.
+ * Guard the computed total explicitly rather than letting Stripe reject the
+ * charge with an opaque error at checkout time.
+ */
+export const STRIPE_MAX_CHARGE_CENTS = 99_999_999;
+
+export function exceedsStripeChargeLimit(totalCents: number): boolean {
+  return totalCents > STRIPE_MAX_CHARGE_CENTS;
+}
+
 export function parseCommissionBps(
   raw: string | undefined,
   fallback: number = DEFAULT_COMMISSION_BPS,

@@ -7,6 +7,7 @@ import { generateOrderRef } from "@/features/payments/lib/order-ref";
 import {
   canCheckoutListing,
   canPayReservedAuction,
+  exceedsStripeChargeLimit,
   resolveCommissionBps,
   splitPayment,
 } from "@/features/payments/lib/money";
@@ -127,6 +128,12 @@ export async function createCheckoutSession(
   }
 
   const totalCents = unitPriceCents * quantity;
+  if (exceedsStripeChargeLimit(totalCents)) {
+    throw new PaymentError(
+      "This order total is too large for a single checkout. Try a smaller quantity, or contact KOBA staff to arrange this purchase.",
+      "AMOUNT_TOO_LARGE",
+    );
+  }
   const feeBps = resolveCommissionBps(shop.verificationStatus);
   const split = splitPayment(totalCents, feeBps);
   const publicRef = existing?.publicRef ?? (await allocateOrderRef());
