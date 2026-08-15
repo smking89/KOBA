@@ -39,6 +39,9 @@ enum AuditAction {
   ORDER_PAID
   ORDER_REFUNDED
   ORDER_FULFILLED
+  ORDER_ESCROW_RELEASED
+  ORDER_ESCROW_DISPUTED
+  ORDER_ESCROW_DISPUTE_RESOLVED
   CONNECT_ONBOARDED
   GROUP_CREATED
   GROUP_JOINED
@@ -89,6 +92,8 @@ model User {
   shopFollows    ShopFollow[]
   shopReviews    ShopReview[]     @relation("ShopReviewAuthor")
   ordersBought   Order[]          @relation("OrderBuyer")
+  escrowDisputesFiled    OrderEscrow[] @relation("OrderEscrowDisputedBy")
+  escrowDisputesResolved OrderEscrow[] @relation("OrderEscrowResolvedBy")
   bids           Bid[]
   wonAuctions    Auction[]        @relation("AuctionWinner")
   ownedGroups    Group[]          @relation("GroupOwner")
@@ -462,13 +467,47 @@ model Order {
   createdAt               DateTime    @default(now())
   updatedAt               DateTime    @updatedAt
 
-  shop  Shop        @relation(fields: [shopId], references: [id], onDelete: Restrict)
-  buyer User        @relation("OrderBuyer", fields: [buyerUserId], references: [id], onDelete: Restrict)
-  items OrderItem[]
+  shop   Shop         @relation(fields: [shopId], references: [id], onDelete: Restrict)
+  buyer  User         @relation("OrderBuyer", fields: [buyerUserId], references: [id], onDelete: Restrict)
+  items  OrderItem[]
+  escrow OrderEscrow?
 
   @@index([shopId, createdAt])
   @@index([buyerUserId])
   @@index([status])
+}
+
+enum EscrowStatus {
+  HOLDING
+  DISPUTED
+  RELEASED
+  REFUNDED
+}
+
+/// Holds the seller's payout on the platform's own Stripe balance for a short
+/// window after payment. Auto-releases (transfer to the seller's Connect
+/// account) once `releaseAt` passes, unless the buyer flags a dispute first.
+/// Deliberately kept as a sibling table to `Order` — `Order.status` keeps its
+/// existing meaning and existing code paths reading it are unaffected.
+model OrderEscrow {
+  id               String       @id @default(cuid())
+  orderId          String       @unique
+  status           EscrowStatus @default(HOLDING)
+  releaseAt        DateTime
+  disputedAt       DateTime?
+  disputeReason    String?      @db.Text
+  disputedByUserId String?
+  resolvedAt       DateTime?
+  resolvedByUserId String?
+  stripeTransferId String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  order      Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  disputedBy User? @relation("OrderEscrowDisputedBy", fields: [disputedByUserId], references: [id], onDelete: SetNull)
+  resolvedBy User? @relation("OrderEscrowResolvedBy", fields: [resolvedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([status, releaseAt])
 }
 
 model ProcessedStripeEvent {
