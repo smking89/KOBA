@@ -32,8 +32,16 @@ import { listStaffPromotionQueue } from "@/features/promotions/services/moderati
 import { getAccountSnapshot } from "@/features/accounts/services/account.service";
 import { isStaffAccountType } from "@/features/koba-id/lib/format";
 import { auth } from "@/lib/auth";
+import {
+  challengePath,
+  enrollmentPath,
+  readElevationCookie,
+} from "@/features/staff-mfa/lib/assurance";
+import { userHasActiveStaffMfa } from "@/features/staff-mfa/lib/staff-user";
+import { getActiveElevation } from "@/features/staff-mfa/services/staff-session.service";
 
 export const metadata = { title: "Staff" };
+export const dynamic = "force-dynamic";
 
 export default async function AdminPage() {
   const session = await auth();
@@ -52,6 +60,16 @@ export default async function AdminPage() {
 
   if (staffIdentities.length === 0) {
     redirect("/enter");
+  }
+
+  const enrolled = await userHasActiveStaffMfa(session.user.id);
+  if (!enrolled) {
+    redirect(enrollmentPath());
+  }
+  const raw = await readElevationCookie();
+  const elevation = raw ? await getActiveElevation(session.user.id, raw) : null;
+  if (!elevation) {
+    redirect(challengePath("/admin"));
   }
 
   const actorTypes = snapshot.identities.map((identity) => identity.accountType);

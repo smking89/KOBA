@@ -31,6 +31,26 @@ export function LoginForm() {
 
   const onSubmit = handleSubmit(async (values) => {
     setFormError(null);
+    const gateResponse = await fetch("/api/staff-mfa/login-start", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      cache: "no-store",
+      body: JSON.stringify({ email: values.email, password: values.password }),
+    });
+    const gate = (await gateResponse.json().catch(() => null)) as
+      | { next?: string; error?: string }
+      | null;
+    if (!gateResponse.ok) {
+      setFormError(
+        "Invalid email or password, or your email is not verified yet. Check your inbox for the verification link.",
+      );
+      return;
+    }
+    if (gate?.next === "mfa") {
+      router.push(`/login/mfa?callbackUrl=${encodeURIComponent(callbackUrl)}`);
+      return;
+    }
+
     const result = await signIn("credentials", {
       email: values.email,
       password: values.password,
@@ -44,7 +64,7 @@ export function LoginForm() {
       return;
     }
 
-    router.push(callbackUrl);
+    router.push(gate?.next === "enroll" ? "/settings/security/mfa" : callbackUrl);
     router.refresh();
   });
 

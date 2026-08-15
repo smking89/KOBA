@@ -15,9 +15,12 @@ import {
 import { clearPageCaches } from "@/lib/pwa/clear-caches";
 
 async function handleSignOut(): Promise<void> {
-  // KOBA-PWA-002: drop cached documents before the session ends so the next
-  // user of this device cannot replay authenticated pages from Cache Storage.
   await clearPageCaches();
+  try {
+    await fetch("/api/staff-mfa/sessions", { method: "DELETE", cache: "no-store" });
+  } catch {
+    // Elevation cookie clearing must never block sign-out.
+  }
   await signOut({ callbackUrl: "/" });
 }
 

@@ -12,6 +12,7 @@ export const NEVER_CACHE_PATH_PREFIXES = [
   "/api/orders",
   "/api/accounts",
   "/api/admin",
+  "/api/staff-mfa",
   "/api/market/favorites",
   "/api/shops",
   "/api/business",
@@ -48,6 +49,7 @@ export function isSensitivePath(pathname: string): boolean {
  */
 export const SENSITIVE_DOCUMENT_PREFIXES = [
   "/admin",
+  "/login/mfa",
   "/wallet",
   "/messages",
   "/orders",

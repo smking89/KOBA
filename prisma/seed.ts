@@ -508,6 +508,8 @@ async function main() {
   // KOBA-SEC-001: never reseed a known constant password and never reset an
   // existing staff password. New local installs get SEED_STAFF_PASSWORD or a
   // random password that is printed exactly once below.
+  // No StaffMfaFactor / recovery codes are seeded. First privileged login
+  // requires authenticator enrollment at /settings/security/mfa.
   const existingStaff = await prisma.user.findUnique({
     where: { email: "staff@koba.local" },
     select: { id: true },
@@ -771,6 +773,9 @@ async function main() {
   if (staffPassword) {
     console.info(
       `Local staff login: staff@koba.local / ${staffPassword} (printed once — save it now)`,
+    );
+    console.info(
+      "Staff MFA is not seeded. After password login, enroll an authenticator at /settings/security/mfa.",
     );
   } else {
     console.info("Local staff login: staff@koba.local (existing password left untouched)");

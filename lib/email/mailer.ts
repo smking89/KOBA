@@ -76,6 +76,25 @@ export async function sendVerificationEmail(email: string, token: string): Promi
   });
 }
 
+/**
+ * Staff security notifications (Phase 15C). Best-effort by design: callers
+ * must treat delivery failure as non-fatal so an already-applied security
+ * action (revocation, reset) is never rolled back because email failed.
+ */
+export async function sendSecurityEmail(
+  email: string,
+  subject: string,
+  lines: string[],
+): Promise<void> {
+  const text = `${lines.join("\n")}\n\nIf this was not you, secure your account immediately.\n`;
+  await deliver({
+    to: email,
+    subject,
+    text,
+    html: `<p>${lines.map((line) => line.replace(/</g, "&lt;")).join("</p><p>")}</p><p>If this was not you, secure your account immediately.</p>`,
+  });
+}
+
 export async function sendPasswordResetEmail(email: string, token: string): Promise<void> {
   const url = buildPasswordResetUrl(email, token);
   await deliver({

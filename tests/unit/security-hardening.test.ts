@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { safeInternalPath } from "@/lib/security/safe-redirect";
+import { safeInternalPath, safeStaffCallbackPath } from "@/lib/security/safe-redirect";
 import { assertSeedAllowed } from "@/lib/security/seed-guard";
 import { resolveAuthSecret } from "@/lib/auth/secret";
 import { edgeAuthConfig } from "@/lib/auth/edge.config";
@@ -35,6 +35,14 @@ describe("KOBA-SEC-002 safe redirect", () => {
     expect(safeInternalPath("")).toBe("/enter");
     expect(safeInternalPath(null)).toBe("/enter");
     expect(safeInternalPath(undefined, "/")).toBe("/");
+  });
+
+  it("restricts post-MFA staff redirects to an internal allowlist", () => {
+    expect(safeStaffCallbackPath("/admin/reports")).toBe("/admin/reports");
+    expect(safeStaffCallbackPath("/settings/security/mfa")).toBe("/settings/security/mfa");
+    expect(safeStaffCallbackPath("/enter")).toBe("/enter");
+    expect(safeStaffCallbackPath("/wallet")).toBe("/admin");
+    expect(safeStaffCallbackPath("https://evil.example")).toBe("/admin");
   });
 });
 

@@ -124,6 +124,21 @@ enum AuditAction {
   PROMOTION_COMMISSION_REVERSED
   SPONSORED_CAMPAIGN_CREATED
   SPONSORED_CAMPAIGN_MODERATED
+  STAFF_MFA_ENROLLMENT_STARTED
+  STAFF_MFA_ENROLLED
+  STAFF_MFA_CHALLENGE_SUCCEEDED
+  STAFF_MFA_CHALLENGE_FAILED
+  STAFF_MFA_RECOVERY_CODE_USED
+  STAFF_MFA_RECOVERY_CODES_REGENERATED
+  STAFF_MFA_DISABLED
+  STAFF_MFA_ADMIN_RESET
+  STAFF_STEP_UP_SUCCEEDED
+  STAFF_STEP_UP_FAILED
+  STAFF_SESSION_CREATED
+  STAFF_SESSION_REVOKED
+  STAFF_SESSIONS_REVOKED_ALL
+  STAFF_ROLE_CHANGED
+  STAFF_PASSWORD_CHANGED
 }
 
 model User {
@@ -141,6 +156,9 @@ model User {
   profile        AccountProfile?
   kobaIdentities KobaIdentity[]
   auditLogs      AuditLog[]     @relation("AuditActor")
+  staffMfaFactor StaffMfaFactor?
+  staffMfaChallenges StaffMfaChallenge[]
+  staffSessions  StaffSession[]
   products       Product[]
   favorites      ProductFavorite[]
   ownedShop      Shop?            @relation("ShopOwner")
@@ -2828,4 +2846,92 @@ model DevProductReview {
 
   @@unique([productId, userId])
   @@index([productId])
+}
+
+// ---------------------------------------------------------------------------
+// Staff MFA and privileged session security (Phase 15C)
+// ---------------------------------------------------------------------------
+
+enum StaffMfaFactorStatus {
+  PENDING
+  ACTIVE
+}
+
+/// One TOTP factor per staff user (MVP). The secret is stored with
+/// AES-256-GCM (purpose-separated staff MFA key) — never plaintext.
+model StaffMfaFactor {
+  id                  String               @id @default(cuid())
+  userId              String               @unique
+  status              StaffMfaFactorStatus @default(PENDING)
+  secretCiphertext    String
+  secretIv            String
+  secretAuthTag       String
+  keyVersion          Int
+  /// Highest TOTP time step already accepted — blocks code replay.
+  lastAcceptedStep    BigInt?
+  /// PENDING enrollments expire; abandoned secrets become unusable.
+  enrollmentExpiresAt DateTime?
+  confirmedAt         DateTime?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+
+  user          User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recoveryCodes StaffRecoveryCode[]
+
+  @@index([status])
+}
+
+/// One-time recovery codes. Only SHA-256 hashes are stored.
+model StaffRecoveryCode {
+  id        String    @id @default(cuid())
+  factorId  String
+  codeHash  String    @unique
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  factor StaffMfaFactor @relation(fields: [factorId], references: [id], onDelete: Cascade)
+
+  @@index([factorId])
+}
+
+/// Short-lived, single-use MFA-pending transaction issued after password
+/// authentication. Stores only a token hash; invalidated on repeated failures.
+model StaffMfaChallenge {
+  id         String    @id @default(cuid())
+  tokenHash  String    @unique
+  userId     String
+  purpose    String    @default("staff-login")
+  attempts   Int       @default(0)
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+/// AAL2 staff elevation record backing the HttpOnly elevation cookie.
+/// Stores only a token hash. Revocable, idle- and absolute-expiring.
+model StaffSession {
+  id            String    @id @default(cuid())
+  tokenHash     String    @unique
+  userId        String
+  createdAt     DateTime  @default(now())
+  lastSeenAt    DateTime  @default(now())
+  /// Most recent successful MFA verification — drives step-up freshness.
+  lastMfaAt     DateTime  @default(now())
+  expiresAt     DateTime
+  revokedAt     DateTime?
+  revokedReason String?   @db.VarChar(64)
+  /// Privacy: only a salted hash of the client IP is stored.
+  ipHash        String?   @db.VarChar(64)
+  /// Sanitized, truncated user-agent for the sessions dashboard.
+  userAgent     String?   @db.VarChar(160)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
 }

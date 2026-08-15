@@ -143,8 +143,8 @@
       "severity": "HIGH",
       "confidence": "high",
       "component": "auth/admin",
-      "launchBlocking": true,
-      "evidence": "no mfa/totp/webauthn matches in repository"
+      "launchBlocking": false,
+      "evidence": "Phase 15C: mandatory TOTP + AAL2 elevation; see docs/staff-mfa.md"
     },
     {
       "id": "KOBA-SEC-004",
@@ -379,7 +379,6 @@
       }
     ],
     "stillOpenBlockers": [
-      "KOBA-SEC-003",
       "KOBA-MED-001",
       "KOBA-OPS-001",
       "KOBA-OPS-003",
@@ -390,7 +389,11 @@
     "manualActions": [
       "rotate staff@koba.local password in databases seeded before this fix",
       "set a >=32-char AUTH_SECRET wherever NODE_ENV=production runs",
-      "pnpm install on other machines to apply dependency overrides"
+      "pnpm install on other machines to apply dependency overrides",
+      "set KOBA_STAFF_MFA_ENCRYPTION_KEY (openssl rand -base64 32); never reuse the RCON key",
+      "enable NTP on the VPS",
+      "apply prisma migration 20260815160000_staff_mfa_sessions",
+      "enroll seed staff at /settings/security/mfa (no TOTP is seeded)"
     ],
     "readiness": {
       "internalDevelopment": "READY WITH CONDITIONS",
@@ -401,5 +404,51 @@
     },
     "recommendedCommitMessage": "fix(security): resolve critical production launch blockers",
     "recommendedPullRequestTitle": "fix: harden KOBA authorization and critical security controls"
+  },
+  "phase15C": {
+    "date": "2026-08-15",
+    "branch": "feat/staff-mfa",
+    "scope": "Mandatory staff TOTP MFA, AAL2 privileged sessions, recovery codes, step-up, session revocation",
+    "prismaMigrations": ["20260815160000_staff_mfa_sessions"],
+    "remediation": [
+      {
+        "id": "KOBA-SEC-003",
+        "status": "resolved",
+        "fix": "Mandatory TOTP for SUPERADMIN/ADMIN/MODERATOR; AAL1 cannot access staff routes; AES-256-GCM secrets; hashed recovery codes; step-up; admin reset; session listing/revocation",
+        "files": [
+          "features/staff-mfa/",
+          "lib/crypto/totp.ts",
+          "lib/crypto/staff-mfa-box.ts",
+          "prisma/schema.prisma"
+        ],
+        "tests": ["tests/unit/staff-mfa.test.ts", "tests/unit/staff-mfa-flows.test.ts"],
+        "residualRisk": "WebAuthn not implemented; platform user suspend is still KOBA-SEC-012",
+        "launchBlocking": false
+      },
+      {
+        "id": "KOBA-SEC-008",
+        "status": "partially-mitigated",
+        "fix": "Staff AAL2 sessions hashed, idle/absolute timeout, listed, revocable on password/MFA/role events",
+        "files": ["features/staff-mfa/services/staff-session.service.ts"],
+        "tests": ["tests/unit/staff-mfa.test.ts (session policy)"],
+        "residualRisk": "public Auth.js JWT remains 30 days",
+        "launchBlocking": false
+      }
+    ],
+    "stillOpenBlockers": [
+      "KOBA-MED-001",
+      "KOBA-OPS-001",
+      "KOBA-OPS-003",
+      "KOBA-LEG-001",
+      "KOBA-SEC-012",
+      "KOBA-GIT-001"
+    ],
+    "readiness": {
+      "internalDevelopment": "READY WITH CONDITIONS",
+      "staging": "READY WITH CONDITIONS",
+      "closedBeta": "NOT READY",
+      "publicLaunch": "NOT READY",
+      "realMoney": "NOT READY"
+    }
   }
 }

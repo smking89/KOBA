@@ -3,6 +3,7 @@ import { PromotionError, promotionErrorStatus } from "@/features/promotions/lib/
 import { InfluencerError, influencerErrorStatus } from "@/features/influencer/lib/errors";
 import { WalletError, walletErrorStatus } from "@/features/wallet/lib/errors";
 import { PaymentError, paymentErrorStatus } from "@/features/payments/lib/errors";
+import { staffMfaErrorResponse } from "@/features/staff-mfa/lib/http";
 
 export const promotionNoStore = { "Cache-Control": "no-store" };
 
@@ -14,6 +15,8 @@ export function jsonPromotionError(
   error: unknown,
   fallback = "Could not complete promotion action.",
 ) {
+  const mfa = staffMfaErrorResponse(error);
+  if (mfa) return mfa;
   if (error instanceof PromotionError) {
     return NextResponse.json(
       { error: error.message, code: error.code },

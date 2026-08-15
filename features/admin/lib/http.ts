@@ -6,8 +6,11 @@ import { KobaIdError } from "@/features/koba-id/services/koba-id-error";
 import { PaymentError, paymentErrorStatus } from "@/features/payments/lib/errors";
 import { DeveloperError, developerErrorStatus } from "@/features/developers/lib/errors";
 import { WalletError, walletErrorStatus } from "@/features/wallet/lib/errors";
+import { staffMfaErrorResponse } from "@/features/staff-mfa/lib/http";
 
 export function jsonAdminError(error: unknown, fallback = "Could not complete staff action.") {
+  const mfa = staffMfaErrorResponse(error);
+  if (mfa) return mfa;
   if (error instanceof AdminError) {
     return NextResponse.json(
       { error: error.message, code: error.code },

@@ -15,8 +15,10 @@ import {
 import { staffSetCommissionStatus } from "@/features/promotions/services/commission.service";
 import { staffSetInfluencerVerification } from "@/features/promotions/services/profile.service";
 import { suspendPromoCode } from "@/features/promotions/services/promo-code.service";
+import { assertStaffAal2 } from "@/features/staff-mfa/lib/assurance";
 
-async function requirePromotionStaff(actorUserId: string, verify = false) {
+async function requirePromotionStaff(actorUserId: string, verify = false, stepUp = false) {
+  await assertStaffAal2(actorUserId, { stepUp });
   const snapshot = await getAccountSnapshot(actorUserId);
   const types = snapshot?.identities.map((row) => row.accountType) ?? [];
   const allowed = verify ? canStaffVerifyInfluencer(types) : canStaffModeratePromotions(types);

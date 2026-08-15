@@ -100,7 +100,7 @@ export async function issueCompensatoryGrant(
   actorUserId: string,
   input: { kobaIdentityId: string; code: string; reason: string; expiresAt?: string | null },
 ) {
-  await requireAnyStaff(actorUserId);
+  await requireAnyStaff(actorUserId, { stepUp: true });
   if (!isApprovedEntitlement(input.code)) {
     throw new PlusError("Only approved entitlement codes can be granted.", "INVALID");
   }

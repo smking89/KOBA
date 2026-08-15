@@ -9,17 +9,10 @@ import {
 import { DeveloperError } from "@/features/developers/lib/errors";
 import { assertDevProductTransition } from "@/features/developers/lib/state-machine";
 import { enqueueWebhookEvent } from "@/features/developers/services/webhook.service";
+import { assertStaffAal2 } from "@/features/staff-mfa/lib/assurance";
 
-async function loadActorTypes(userId: string) {
-  const actor = await prisma.user.findUnique({
-    where: { id: userId },
-    include: { kobaIdentities: { select: { accountType: true } } },
-  });
-  return actor?.kobaIdentities.map((row) => row.accountType) ?? [];
-}
-
-async function requireListingStaff(userId: string) {
-  const types = await loadActorTypes(userId);
+async function requireListingStaff(userId: string, opts?: { stepUp?: boolean }) {
+  const { types } = await assertStaffAal2(userId, opts);
   if (!canStaffApproveListing(types) && !canStaffModerateContent(types)) {
     throw new DeveloperError("Staff only.", "FORBIDDEN");
   }
@@ -55,7 +48,9 @@ export async function moderateDeveloperProduct(
   reason: string,
   ipAddress?: string | null,
 ) {
-  const types = await requireListingStaff(actorUserId);
+  const types = await requireListingStaff(actorUserId, {
+    stepUp: action === "reject" || action === "suspend",
+  });
   if ((action === "approve" || action === "publish") && !canStaffApproveListing(types)) {
     throw new DeveloperError("Listing approval permission required.", "FORBIDDEN");
   }
@@ -175,7 +170,7 @@ export async function verifyDeveloperPublisher(
   reason: string,
   ipAddress?: string | null,
 ) {
-  const types = await loadActorTypes(actorUserId);
+  const types = await requireListingStaff(actorUserId, { stepUp: true });
   if (!canStaffVerifyShop(types)) {
     throw new DeveloperError(
       "Publisher verification requires shop-verify staff permission.",
@@ -206,8 +201,7 @@ export async function suspendDeveloperPublisher(
   reason: string,
   ipAddress?: string | null,
 ) {
-  await requireListingStaff(actorUserId);
-  if (!reason.trim()) throw new DeveloperError("A suspension reason is required.", "INVALID");
+  await requireListingStaff(actorUserId, { stepUp: true });
   const profile = await prisma.developerProfile.findUnique({ where: { slug } });
   if (!profile) throw new DeveloperError("Publisher not found.", "NOT_FOUND");
   await prisma.developerProfile.update({
@@ -235,7 +229,7 @@ export async function approveProductionApplication(
   reason: string,
   ipAddress?: string | null,
 ) {
-  const types = await loadActorTypes(actorUserId);
+  const types = await requireListingStaff(actorUserId, { stepUp: true });
   if (!canStaffApproveListing(types)) {
     throw new DeveloperError("Staff approval required.", "FORBIDDEN");
   }

@@ -10,21 +10,14 @@ import {
 } from "@/features/admin/lib/access";
 import { AdminError } from "@/features/admin/lib/errors";
 import { hidePost } from "@/features/social/services/post.service";
+import { assertStaffAal2 } from "@/features/staff-mfa/lib/assurance";
 
-async function loadActorTypes(userId: string) {
-  const actor = await prisma.user.findUnique({
-    where: { id: userId },
-    include: { kobaIdentities: { select: { accountType: true } } },
-  });
-  return actor?.kobaIdentities.map((row) => row.accountType) ?? [];
-}
-
-export async function requireAnyStaff(userId: string) {
-  const types = await loadActorTypes(userId);
-  if (!isAnyStaff(types)) {
+export async function requireAnyStaff(userId: string, opts?: { stepUp?: boolean }) {
+  const assurance = await assertStaffAal2(userId, opts);
+  if (!isAnyStaff(assurance.types)) {
     throw new AdminError("Staff only.", "FORBIDDEN");
   }
-  return types;
+  return assurance.types;
 }
 
 export async function getAdminOverview(actorUserId: string) {
@@ -173,7 +166,7 @@ export async function resolveReport(
   input: { status: "REVIEWED" | "DISMISSED"; hidePost?: boolean | undefined },
   ipAddress?: string | null,
 ) {
-  const types = await requireAnyStaff(actorUserId);
+  const types = await requireAnyStaff(actorUserId, { stepUp: Boolean(input.hidePost) });
   if (!canStaffModerateContent(types)) {
     throw new AdminError("Staff only.", "FORBIDDEN");
   }
@@ -219,7 +212,7 @@ export async function staffRejectProduct(
   note?: string,
   ipAddress?: string | null,
 ) {
-  const types = await requireAnyStaff(actorUserId);
+  const types = await requireAnyStaff(actorUserId, { stepUp: true });
   if (!canStaffApproveListing(types)) {
     throw new AdminError("Staff only.", "FORBIDDEN");
   }
@@ -285,7 +278,7 @@ export async function staffReviewAidenAsset(
   action: "approve" | "reject",
   ipAddress?: string | null,
 ) {
-  const types = await requireAnyStaff(actorUserId);
+  const types = await requireAnyStaff(actorUserId, { stepUp: action === "reject" });
   if (!canStaffModerateContent(types)) {
     throw new AdminError("Staff only.", "FORBIDDEN");
   }
@@ -330,7 +323,7 @@ export async function staffReviewAidenAsset(
 }
 
 export async function assertCanStaffRefund(actorUserId: string) {
-  const types = await requireAnyStaff(actorUserId);
+  const types = await requireAnyStaff(actorUserId, { stepUp: true });
   if (!canStaffRefund(types)) {
     throw new AdminError("Only Admin or Superadmin can refund.", "FORBIDDEN");
   }

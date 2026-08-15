@@ -59,6 +59,10 @@ export default async function SettingsPage() {
           ) : null}
         </CardDescription>
         <p className="mt-3 text-sm text-muted">
+          <Link href="/settings/security" className="text-neon-lime hover:underline">
+            Security
+          </Link>
+          {" · "}
           <Link href="/plus" className="text-neon-lime hover:underline">
             Manage KOBA Plus
           </Link>{" "}

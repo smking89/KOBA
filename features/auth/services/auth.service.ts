@@ -203,6 +203,20 @@ export async function resetPassword(
     }),
   ]);
 
+  const { revokeAllStaffSessions } =
+    await import("@/features/staff-mfa/services/staff-session.service");
+  await revokeAllStaffSessions({
+    userId: user.id,
+    reason: "password-reset",
+    ip: ipAddress ?? null,
+  });
+
+  const { notifyStaffSecurity } = await import("@/features/staff-mfa/lib/notifications");
+  await notifyStaffSecurity(user.email, "KOBA password changed", [
+    "Your KOBA password was reset.",
+    "Privileged staff sessions, if any, were signed out.",
+  ]);
+
   await writeAuditLog({
     actorUserId: user.id,
     action: AuditAction.PASSWORD_RESET_COMPLETED,

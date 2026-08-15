@@ -119,6 +119,24 @@ export async function mintStaffKobaId(input: {
     ipAddress: input.ipAddress ?? null,
   });
 
+  await writeAuditLog({
+    actorUserId: input.actorUserId,
+    action: AuditAction.STAFF_ROLE_CHANGED,
+    targetType: "User",
+    targetId: input.targetUserId,
+    metadata: { accountType: input.accountType, granted: true },
+    ipAddress: input.ipAddress ?? null,
+  });
+
+  const { revokeAllStaffSessions } =
+    await import("@/features/staff-mfa/services/staff-session.service");
+  await revokeAllStaffSessions({
+    userId: input.targetUserId,
+    reason: "staff-role-changed",
+    actorUserId: input.actorUserId,
+    ip: input.ipAddress ?? null,
+  });
+
   return identity;
 }
 

@@ -211,7 +211,8 @@ Severity is not inflated: a theoretical issue without a demonstrated path is not
 - **Impact:** Stolen staff password (or seed password) is full platform control.
 - **Remediation:** Phase 15C — mandatory WebAuthn or TOTP for staff types; step-up for refunds and credential views.
 - **Validation:** Staff routes return 403 without a verified second factor.
-- **Launch-blocking:** Yes (public, closed beta, real-money).
+- **Launch-blocking:** No after Phase 15C (was yes for public, closed beta, and real-money). Residual: no WebAuthn; MFA is not a substitute for backups, observability, or legal pages.
+- **Phase 15C status: RESOLVED.** Mandatory TOTP for SUPERADMIN/ADMIN/MODERATOR. AAL1 password sessions cannot call `requireAnyStaff` / `/admin` / staff APIs. Enrollment requires password confirmation, a generated secret, TOTP confirmation, hashed recovery codes, and audit events. Secrets are AES-256-GCM with a purpose-separated key. Tests: `tests/unit/staff-mfa.test.ts`, `tests/unit/staff-mfa-flows.test.ts`. Residual: no WebAuthn yet (designed as a future factor); staff MFA is not a substitute for backups/observability/legal.
 
 #### KOBA-SEC-004 — Client can write `accountType` into the JWT
 
@@ -365,6 +366,7 @@ Listed once in blockers as financial-incident blindness. Same evidence.
 - **Evidence:** `session.maxAge` 30 days. `SESSION_REVOKED` unused. Password reset does not demonstrate token version bump in this audit.
 - **Impact:** Stolen cookie works for up to 30 days.
 - **Launch-blocking:** No for internal; yes as a **condition** of closed beta (pair with 15C).
+- **Phase 15C status: PARTIALLY MITIGATED.** Staff AAL2 sessions are hashed, idle- and absolute-expiring, listed, and revocable (logout, logout-all, password reset, MFA enroll/disable/admin reset). The public Auth.js JWT remains 30 days without a global token-version bump. Residual: stolen public JWT still works for non-staff surfaces until expiry.
 
 #### KOBA-SEC-009 — Rate limits are per-process without Upstash
 
@@ -507,7 +509,7 @@ Treat these as **blocking public production** (and where noted, closed beta / re
 
 1. **KOBA-SEC-001** Seed SUPERADMIN password — **RESOLVED in 15B**
 2. **KOBA-SEC-002** Open redirect — **RESOLVED in 15B**
-3. **KOBA-SEC-003** Staff MFA missing — open (15C)
+3. **KOBA-SEC-003** Staff MFA missing — **RESOLVED in 15C**
 4. **KOBA-SEC-004** Client-writable JWT `accountType` — **RESOLVED in 15B**
 5. **KOBA-SEC-005** Unrate-limited login — **RESOLVED in 15B**
 6. **KOBA-MED-001** Archive uploads without an active malware scanner — **partially mitigated in 15B; still blocking** (no real scanner)
@@ -543,9 +545,9 @@ Staging is **not** “configured in repository.” Classify deploy pieces as **e
 
 ## 8. Closed-beta decision
 
-**Status: NOT READY** (unchanged after 15B)
+**Status: NOT READY** (unchanged after 15C)
 
-Blockers remaining after 15B: staff MFA, legal pages, backups, no user suspend/deletion, observability. Resolved in 15B: seed password, open redirect, login brute force, JWT claim spoof. Invite-only users still deserve the remaining controls if they can pay, message, or upload.
+Blockers remaining: legal pages, backups, no user suspend/deletion, observability. Resolved in 15C: staff MFA / AAL2. Invite-only users still deserve the remaining controls if they can pay, message, or upload.
 
 ---
 
@@ -699,16 +701,36 @@ Branch: `fix/critical-security-hardening` (created from `docs/production-readine
 | KOBA-SEC-006 | MEDIUM            | `next.config.ts`                                                             | CSP, HSTS (prod), nosniff, referrer, permissions, frame denial; dev/prod aware                                        | Verified via production build                 | `unsafe-inline` script/style kept (Next App Router); nonce CSP deferred, documented | Resolved with exception |
 | KOBA-SEC-010 | MEDIUM            | `lib/auth/secret.ts`                                                         | Production runtime throws without `AUTH_SECRET`; build-phase placeholder; dev fallback unchanged                      | auth secret suite                             | Operators must set the secret before boot (manual action)                           | Resolved                |
 
-### 16.2 Explicitly out of 15B scope (still open)
+### 16.2 Explicitly out of 15B scope (still open at that time)
 
-KOBA-SEC-003 (staff MFA → 15C), KOBA-OPS-001 (backups → 15E), KOBA-OPS-003/FIN-002 (observability → 15D), KOBA-LEG-001 (legal → 15F), KOBA-SEC-012 (deletion/suspend → 15F), KOBA-GIT-001 (integration process), KOBA-FIN-003 (auction settle worker → 15H). None of these had an immediate critical dependency on the 15B fixes.
+KOBA-SEC-003 was assigned to 15C (now resolved). Remaining: KOBA-OPS-001 (backups → 15E), KOBA-OPS-003/FIN-002 (observability → 15D), KOBA-LEG-001 (legal → 15F), KOBA-SEC-012 (deletion/suspend → 15F), KOBA-GIT-001 (integration process), KOBA-FIN-003 (auction settle worker → 15H).
+
+---
+
+## 17. Phase 15C remediation (2026-08-15)
+
+Branch: `feat/staff-mfa`. Prisma migration `20260815160000_staff_mfa_sessions` adds `StaffMfaFactor`, `StaffRecoveryCode`, `StaffMfaChallenge`, `StaffSession`, and staff MFA audit actions. Existing staff rows receive no silent AAL2 — they must enroll.
+
+| Finding ID   | Original severity | Fix implemented                                                                                           | Tests                                                                | Remaining risk                                              | Status              |
+| ------------ | ----------------- | --------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- | ----------------------------------------------------------- | ------------------- |
+| KOBA-SEC-003 | HIGH              | Mandatory TOTP, AAL2 cookie, enrollment, recovery codes, step-up, admin reset, session revocation         | `tests/unit/staff-mfa.test.ts`, `tests/unit/staff-mfa-flows.test.ts` | No WebAuthn; public JWT still 30d; no platform user suspend | Resolved            |
+| KOBA-SEC-008 | MEDIUM            | Staff session hashing, idle/absolute timeout, listing, revocation on password reset/change/MFA/role grant | session policy + flows tests                                         | Public JWT still 30 days                                    | Partially mitigated |
+
+Manual actions: set `KOBA_STAFF_MFA_ENCRYPTION_KEY`; enable NTP on the VPS; enroll seed staff locally; apply the Prisma migration with `prisma migrate deploy`. Do not treat closed beta as READY because of this phase.
+
+---
+
+## Appendix A — Part 1 Git integrity
 
 ### 16.3 Manual actions required from the owner
 
 1. Rotate the `staff@koba.local` password in any database seeded before this fix (local/staging).
 2. Set a strong (≥32 chars) `AUTH_SECRET` everywhere `NODE_ENV=production` runs — the app now refuses to boot without it.
 3. Reinstall dependencies (`pnpm install`) on other machines to pick up the `sharp`/`postcss` overrides.
-4. No production secrets were found, printed, or rotated by this phase.
+4. Set `KOBA_STAFF_MFA_ENCRYPTION_KEY` (`openssl rand -base64 32`) and enable NTP on the VPS before staff enroll.
+5. Apply `20260815160000_staff_mfa_sessions` with `prisma migrate deploy` (never `migrate reset`).
+6. Enroll seed staff at `/settings/security/mfa` — no TOTP secret is stored by seed.
+7. No production secrets were found, printed, or rotated by this phase.
 
 ### 16.4 Phase 15B command evidence
 
@@ -790,7 +812,7 @@ Representative flows were **code-reviewed**, not WCAG-certified. Login uses labe
 | ------------- | -------- | ------------------- |
 | KOBA-SEC-001  | HIGH     | Yes                 |
 | KOBA-SEC-002  | HIGH     | Yes                 |
-| KOBA-SEC-003  | HIGH     | Yes                 |
+| KOBA-SEC-003  | HIGH     | No (resolved 15C)   |
 | KOBA-SEC-004  | HIGH     | Yes                 |
 | KOBA-SEC-005  | HIGH     | Yes                 |
 | KOBA-MED-001  | HIGH     | Yes                 |

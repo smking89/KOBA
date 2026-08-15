@@ -59,11 +59,18 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   outputFileTracingRoot: path.join(__dirname),
   async headers() {
+    const noStore = [{ key: "Cache-Control", value: "no-store, no-cache, must-revalidate" }];
     return [
       {
         source: "/(.*)",
         headers: securityHeaders,
       },
+      { source: "/login/mfa", headers: noStore },
+      { source: "/admin", headers: noStore },
+      { source: "/admin/:path*", headers: noStore },
+      { source: "/settings/security", headers: noStore },
+      { source: "/settings/security/:path*", headers: noStore },
+      { source: "/api/staff-mfa/:path*", headers: noStore },
     ];
   },
 };

@@ -15,3 +15,15 @@ export function safeInternalPath(raw: string | null | undefined, fallback = "/en
   if (/[\u0000-\u001f\u007f]/.test(value)) return fallback;
   return value;
 }
+
+/**
+ * After staff MFA, only allowlisted internal destinations are honoured.
+ * Open redirects are already rejected by `safeInternalPath`.
+ */
+export function safeStaffCallbackPath(raw: string | null | undefined): string {
+  const path = safeInternalPath(raw, "/admin");
+  if (path === "/admin" || path.startsWith("/admin/")) return path;
+  if (path === "/settings/security" || path.startsWith("/settings/security/")) return path;
+  if (path === "/enter" || path === "/dashboard") return path;
+  return "/admin";
+}

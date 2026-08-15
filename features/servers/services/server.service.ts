@@ -5,7 +5,7 @@ import { prisma } from "@/lib/db";
 import { sealSecret } from "@/lib/crypto/secret-box";
 import { writeAuditLog } from "@/features/auth/services/audit-log.service";
 import { getAccountSnapshot } from "@/features/accounts/services/account.service";
-import { isAnyStaff } from "@/features/admin/lib/access";
+import { assertStaffAal2 } from "@/features/staff-mfa/lib/assurance";
 import { getAdapter, resolveAdapterKey } from "@/features/servers/adapters/registry";
 import { ServerError } from "@/features/servers/lib/errors";
 import { buildFreshness, metricState } from "@/features/servers/lib/freshness";
@@ -650,13 +650,9 @@ export async function staffModerateServer(
   input: StaffServerActionInput,
   ipAddress?: string | null,
 ): Promise<GameServerView> {
-  const identities = await prisma.kobaIdentity.findMany({
-    where: { userId: actorUserId },
-    select: { accountType: true },
+  await assertStaffAal2(actorUserId, {
+    stepUp: input.action === "reject" || input.action === "suspend",
   });
-  if (!isAnyStaff(identities.map((row) => row.accountType))) {
-    throw new ServerError("Staff only.", "FORBIDDEN");
-  }
 
   const server = await loadServer(serverIdOrSlug);
   let data: Prisma.GameServerUpdateInput;
@@ -720,13 +716,7 @@ export async function staffModerateServer(
 }
 
 export async function listPendingServers(actorUserId: string): Promise<GameServerOwnerView[]> {
-  const identities = await prisma.kobaIdentity.findMany({
-    where: { userId: actorUserId },
-    select: { accountType: true },
-  });
-  if (!isAnyStaff(identities.map((row) => row.accountType))) {
-    throw new ServerError("Staff only.", "FORBIDDEN");
-  }
+  await assertStaffAal2(actorUserId);
 
   const servers = await prisma.gameServer.findMany({
     where: { verificationStatus: "PENDING" },

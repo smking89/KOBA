@@ -100,6 +100,7 @@ Required env for auth (add to `.env.local`):
 - `DATABASE_URL` — Postgres connection string
 - `AUTH_SECRET` — at least 32 random characters (`openssl rand -base64 32`)
 - `AUTH_URL` — usually `http://localhost:3000`
+- `KOBA_STAFF_MFA_ENCRYPTION_KEY` — 32-byte base64 AES key for staff TOTP secrets (`openssl rand -base64 32`). Never reuse the RCON credential key. The VPS must run NTP because TOTP uses server time.
 
 ### Quality checks
 
@@ -373,7 +374,9 @@ hide posts), issue staff KOBAIDs, and refund orders by public ref (SA/AD).
 Local seed staff: `staff@koba.local` (SUPERADMIN). The password is generated on
 first seed and printed once to the terminal (override with `SEED_STAFF_PASSWORD`
 locally). Reseeding never resets it, and seeding refuses to run when
-`NODE_ENV=production`. Queues include
+`NODE_ENV=production`. **No TOTP secret is seeded.** On first privileged login
+the staff user is sent to `/settings/security/mfa` to enroll an authenticator.
+See `docs/staff-mfa.md`. Queues include
 `pending-oil-rig-kit`, shop `raid-ready-maps`, and report `KOBA-RPT-STAFF001`.
 
 ### Production readiness (Phase 13)

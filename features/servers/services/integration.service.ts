@@ -10,7 +10,6 @@ import {
 } from "@/lib/crypto/credential-box";
 import { writeAuditLog } from "@/features/auth/services/audit-log.service";
 import { getAccountSnapshot } from "@/features/accounts/services/account.service";
-import { isAnyStaff } from "@/features/admin/lib/access";
 import { createRustAdapter, mergePublicAndRcon } from "@/features/servers/adapters/rust";
 import { getRuntimeAdapter } from "@/features/servers/adapters/runtime";
 import { isReadOnlyIntegrationAdapter } from "@/features/servers/adapters/types";
@@ -539,13 +538,8 @@ export async function getRustIntegration(
 ): Promise<RustIntegrationHealth> {
   assertNotImpersonating(opts?.actor);
   if (opts?.staffInspect) {
-    const identities = await prisma.kobaIdentity.findMany({
-      where: { userId },
-      select: { accountType: true },
-    });
-    if (!isAnyStaff(identities.map((row) => row.accountType))) {
-      throw new ServerError("Staff only.", "FORBIDDEN");
-    }
+    const { assertStaffAal2 } = await import("@/features/staff-mfa/lib/assurance");
+    await assertStaffAal2(userId);
     const server = await prisma.gameServer.findFirst({
       where: {
         OR: [{ id: serverIdOrSlug }, { slug: serverIdOrSlug }, { publicRef: serverIdOrSlug }],
