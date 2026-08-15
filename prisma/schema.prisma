@@ -67,6 +67,8 @@ enum AuditAction {
   COIN_LEDGER_POSTED
   AIDEN_JOB_CREATED
   AIDEN_JOB_CANCELLED
+  AIDEN_JOB_COMPLETED
+  AIDEN_JOB_FAILED
   DEV_PRODUCT_SUBMITTED
 }
 
@@ -1621,6 +1623,18 @@ model AidenJob {
   assetType       AidenAssetType
   state           AidenJobState  @default(QUEUED)
   coinCostPreview Int
+  /// Actual Coin-equivalent cost reported by the frontier-model provider's
+  /// usage response, once real providers are wired (features/aiden/providers).
+  /// Recorded for audit/margin analysis only in this phase — the reservation
+  /// is still always captured in full at coinCostPreview; reconciling the
+  /// delta (releasing coinCostPreview - coinCostActual back to the wallet
+  /// when the real cost is lower) is a deferred refinement, same pattern as
+  /// this codebase's other "deferred: X" spots.
+  coinCostActual  Int?
+  /// Raw provider usage payload (tokens, compute units, whatever that
+  /// provider's response shape is), stored as-is for audit. Null until a
+  /// real (non-stub) provider is configured and actually called.
+  frontierModelUsageJson String?     @db.Text
   reservationTxId String?
   failureReason   String?
   createdAt       DateTime       @default(now())
@@ -1644,6 +1658,9 @@ model AidenAsset {
   moderation       AidenModerationState  @default(PRIVATE)
   game             String
   previewLabel     String
+  /// Generated output location (image/model/map file URL). Null for
+  /// CONCEPT_ONLY assets and anything created before real generation existed.
+  assetUrl         String?
   createdAt        DateTime              @default(now())
   updatedAt        DateTime              @updatedAt
 
