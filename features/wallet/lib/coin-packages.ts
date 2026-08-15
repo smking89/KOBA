@@ -42,3 +42,14 @@ export function isCoinPackageConsistent(pack: CoinPackage): boolean {
   const expectedMinimum = baseCoins + (baseCoins * BigInt(pack.bonusPercent)) / 100n;
   return pack.coinAmount >= expectedMinimum;
 }
+
+// Runtime guardrail: a future edit to COIN_PACKAGES that breaks the
+// price/Coin ratio fails fast at module load (and therefore at build/test
+// time) rather than only in the unit test file that exercises this same
+// function — no client input reaches this catalog, but a bad constant edit
+// should never silently ship.
+for (const pack of COIN_PACKAGES) {
+  if (!isCoinPackageConsistent(pack)) {
+    throw new Error(`Inconsistent Coin package "${pack.id}": price/coinAmount/bonus mismatch.`);
+  }
+}

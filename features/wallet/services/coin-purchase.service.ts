@@ -142,7 +142,14 @@ export async function markCoinPurchasePaid(input: {
     userId: purchase.userId,
     amount: purchase.coinAmount,
     memo: `Coin purchase ${purchase.publicRef} (${purchase.packageId})`,
-    idempotencyKey: purchase.idempotencyKey,
+    // LedgerTransaction.idempotencyKey is a single GLOBAL unique namespace
+    // shared across every ledger flow (grants, reservations, captures,
+    // trade fees, ...). purchase.idempotencyKey is client-supplied (any
+    // 8-80 char string per coinPurchaseSchema, not enforced to be a UUID)
+    // — prefix it so it can never collide with an unrelated flow's key in
+    // that shared namespace, matching every other call site's convention
+    // (reserve-tx:, trade-fee-capture:, aiden-reserve:, expire:, ...).
+    idempotencyKey: `coin-purchase:${purchase.idempotencyKey}`,
     externalRef: input.sessionId,
   });
 
