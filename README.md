@@ -6,8 +6,12 @@ squads; all on one KOBAID.
 
 ## Status
 
-**Phase 14E — Rust read-only RCON** is in progress on `feat/rcon-rust-readonly`
-(encrypted credentials, A2S + WebRCON, VPS worker). See [docs/rcon-rust.md](docs/rcon-rust.md).
+**Phase 14F — KOBA Plus subscriptions** is in progress on `feat/koba-plus`
+(per-KOBAID entitlements, Stripe test-mode Billing, webhook-authoritative
+activation). See [docs/plus.md](docs/plus.md).
+
+Phase 14E Rust read-only RCON remains on `feat/rcon-rust-readonly`. See
+[docs/rcon-rust.md](docs/rcon-rust.md).
 
 The HTML prototype remains the information-architecture reference:
 
@@ -23,12 +27,14 @@ live in `app/globals.css` and `lib/design-tokens.ts`.
 | ----------------------------------------------------- | ----------------------------------------- |
 | `/trade`, `/trade/[tradeId]`                          | Trade discovery, composer, history (mock) |
 | `/servers`, `/servers/[serverId]`, `/servers/connect` | Server directory + RCON connect wizard    |
-| `/plus`                                               | KOBA Plus plans and subscription states   |
+| `/plus`                                               | KOBA Plus membership and test checkout    |
 | `/aiden`, `/aiden/generate`, `/aiden/library`         | Aiden creator, jobs, asset library        |
 | `/wallet`                                             | KOBA Coins wallet (ledger-backed)         |
 
-See [docs/wallet-ledger.md](docs/wallet-ledger.md) for the Phase 14B accounting model.
-Coin purchases, live AI capture, and cash withdrawal remain deferred.
+See [docs/wallet-ledger.md](docs/wallet-ledger.md) for the Phase 14B accounting model
+and [docs/plus.md](docs/plus.md) for Plus ownership, entitlements, and webhooks.
+Coin purchases, live AI capture, and cash withdrawal remain deferred. Promotional
+Plus Coins are not granted until the owner approves amount and refund policy.
 
 ## Stack
 
@@ -212,6 +218,12 @@ Sellers and shop members cannot buy their own listings. Auction checkout require
 when checkout starts and restores if the session expires or the order is refunded.
 Refunds reverse the Connect transfer and the application fee.
 
+KOBA Plus uses platform Stripe Billing (not Connect destination charges).
+Membership is per active KOBAID. The browser success redirect never activates
+Plus — only a verified webhook does. Plan Price IDs come from
+`STRIPE_PRICE_PLUS_MONTHLY` / `STRIPE_PRICE_PLUS_ANNUAL`. Reconcile with
+`pnpm plus:reconcile`. Staff cannot mark subscriptions Active.
+
 Placeholder Stripe keys (`sk_test_replace_me`) fail closed — checkout returns 503
 instead of faking paid. Forward webhooks locally with:
 
@@ -327,6 +339,9 @@ hide posts), issue staff KOBAIDs, and refund orders by public ref (SA/AD).
 | `POST /api/admin/reports/[ref]/resolve`   | Review / dismiss (+ optional hide) |
 | `POST /api/admin/kobaid`                  | Issue staff KOBAID                 |
 | `POST /api/admin/orders/[ref]/refund`     | Staff refund                       |
+| `GET /api/admin/plus`                     | Search Plus subscriptions          |
+| `POST /api/admin/plus/reconcile`          | Reconcile Plus from Stripe         |
+| `POST /api/admin/plus/grants`             | Audited compensatory entitlement   |
 | `POST /api/admin/posts/[ref]/hide`        | Hide a live post                   |
 
 Local seed staff: `staff@koba.local` / `KobaStaff1!` (SUPERADMIN). Queues include
