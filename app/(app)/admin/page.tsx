@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { IssueStaffForm } from "@/features/admin/components/issue-staff-form";
 import { PendingAidenPanel } from "@/features/admin/components/pending-aiden-panel";
+import { PendingDeveloperProductsPanel } from "@/features/admin/components/pending-developer-products-panel";
 import { PendingProductsPanel } from "@/features/admin/components/pending-products-panel";
 import { PendingServersPanel } from "@/features/admin/components/pending-servers-panel";
 import { PendingShopsPanel } from "@/features/admin/components/pending-shops-panel";
@@ -25,6 +26,7 @@ import {
   listPendingServers,
   listPendingShops,
 } from "@/features/admin/services/admin.service";
+import { listPendingDeveloperProducts } from "@/features/developers/services/moderation.service";
 import { getAccountSnapshot } from "@/features/accounts/services/account.service";
 import { isStaffAccountType } from "@/features/koba-id/lib/format";
 import { auth } from "@/lib/auth";
@@ -53,13 +55,16 @@ export default async function AdminPage() {
   const actorTypes = snapshot.identities.map((identity) => identity.accountType);
   const overview = await getAdminOverview(session.user.id);
 
-  const [products, shops, reports, pendingServers, pendingAiden] = await Promise.all([
+  const [products, shops, reports, pendingServers, pendingAiden, pendingDev] = await Promise.all([
     canStaffApproveListing(actorTypes) ? listPendingProducts(session.user.id) : Promise.resolve([]),
     canStaffVerifyShop(actorTypes) ? listPendingShops(session.user.id) : Promise.resolve([]),
     canStaffModerateContent(actorTypes) ? listOpenReports(session.user.id) : Promise.resolve([]),
     isAnyStaff(actorTypes) ? listPendingServers(session.user.id) : Promise.resolve([]),
     canStaffModerateContent(actorTypes)
       ? listPendingAidenAssets(session.user.id)
+      : Promise.resolve([]),
+    canStaffApproveListing(actorTypes) || canStaffModerateContent(actorTypes)
+      ? listPendingDeveloperProducts(session.user.id).catch(() => [])
       : Promise.resolve([]),
   ]);
 
@@ -112,6 +117,12 @@ export default async function AdminPage() {
             {overview.counts.pendingAidenAssets}
           </CardTitle>
           <CardDescription>Aiden review queue</CardDescription>
+        </Card>
+        <Card>
+          <CardTitle className="text-2xl tabular-nums">
+            {overview.counts.pendingDevProducts}
+          </CardTitle>
+          <CardDescription>Developer product queue</CardDescription>
         </Card>
       </div>
 
@@ -168,6 +179,37 @@ export default async function AdminPage() {
             <PendingAidenPanel assets={pendingAiden} />
           ) : (
             <p className="text-sm text-muted">Your staff role cannot moderate Aiden assets.</p>
+          )}
+        </div>
+      </Card>
+
+      <Card>
+        <CardTitle>Developer marketplace queue</CardTitle>
+        <CardDescription>
+          Review publisher submissions. Approval does not execute uploaded code. Users cannot
+          self-verify.
+        </CardDescription>
+        <div className="mt-4">
+          {canStaffApproveListing(actorTypes) || canStaffModerateContent(actorTypes) ? (
+            <PendingDeveloperProductsPanel
+              products={pendingDev.map((product) => ({
+                publicRef: product.publicRef,
+                slug: product.slug,
+                name: product.name,
+                reviewState: product.reviewState,
+                category: product.category,
+                publisher: product.profile?.displayName ?? null,
+                publisherSlug: product.profile?.slug ?? null,
+                versions: product.versions.map((version) => ({
+                  publicRef: version.publicRef,
+                  semver: version.semver,
+                  reviewState: version.reviewState,
+                  artifacts: version.artifacts,
+                })),
+              }))}
+            />
+          ) : (
+            <p className="text-sm text-muted">Your staff role cannot review developer products.</p>
           )}
         </div>
       </Card>

@@ -30,27 +30,37 @@ export async function requireAnyStaff(userId: string) {
 export async function getAdminOverview(actorUserId: string) {
   await requireAnyStaff(actorUserId);
 
-  const [pendingProducts, pendingShops, openReports, paidOrders, pendingAidenAssets, recentAudit] =
-    await Promise.all([
-      prisma.product.count({ where: { moderationStatus: "PENDING" } }),
-      prisma.shop.count({ where: { verificationStatus: "PENDING" } }),
-      prisma.contentReport.count({ where: { status: "OPEN" } }),
-      prisma.order.count({ where: { status: { in: ["PAID", "FULFILLED"] } } }),
-      prisma.aidenAsset.count({ where: { moderation: "PENDING_REVIEW" } }),
-      prisma.auditLog.findMany({
-        orderBy: { createdAt: "desc" },
-        take: 12,
-        select: {
-          id: true,
-          action: true,
-          targetType: true,
-          targetId: true,
-          metadata: true,
-          createdAt: true,
-          actorUserId: true,
-        },
-      }),
-    ]);
+  const [
+    pendingProducts,
+    pendingShops,
+    openReports,
+    paidOrders,
+    pendingAidenAssets,
+    pendingDevProducts,
+    recentAudit,
+  ] = await Promise.all([
+    prisma.product.count({ where: { moderationStatus: "PENDING" } }),
+    prisma.shop.count({ where: { verificationStatus: "PENDING" } }),
+    prisma.contentReport.count({ where: { status: "OPEN" } }),
+    prisma.order.count({ where: { status: { in: ["PAID", "FULFILLED"] } } }),
+    prisma.aidenAsset.count({ where: { moderation: "PENDING_REVIEW" } }),
+    prisma.devProduct.count({
+      where: { reviewState: { in: ["SUBMITTED", "IN_REVIEW", "SECURITY_REVIEW"] } },
+    }),
+    prisma.auditLog.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 12,
+      select: {
+        id: true,
+        action: true,
+        targetType: true,
+        targetId: true,
+        metadata: true,
+        createdAt: true,
+        actorUserId: true,
+      },
+    }),
+  ]);
 
   return {
     counts: {
@@ -59,6 +69,7 @@ export async function getAdminOverview(actorUserId: string) {
       openReports,
       refundableOrders: paidOrders,
       pendingAidenAssets,
+      pendingDevProducts,
     },
     recentAudit,
   };

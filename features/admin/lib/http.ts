@@ -4,6 +4,8 @@ import { ShopError } from "@/features/shops/services/shop.service";
 import { SocialError, socialErrorStatus } from "@/features/social/lib/errors";
 import { KobaIdError } from "@/features/koba-id/services/koba-id-error";
 import { PaymentError, paymentErrorStatus } from "@/features/payments/lib/errors";
+import { DeveloperError, developerErrorStatus } from "@/features/developers/lib/errors";
+import { WalletError, walletErrorStatus } from "@/features/wallet/lib/errors";
 
 export function jsonAdminError(error: unknown, fallback = "Could not complete staff action.") {
   if (error instanceof AdminError) {
@@ -44,6 +46,18 @@ export function jsonAdminError(error: unknown, fallback = "Could not complete st
     return NextResponse.json(
       { error: error.message, code: error.code },
       { status: paymentErrorStatus(error.code) },
+    );
+  }
+  if (error instanceof DeveloperError) {
+    return NextResponse.json(
+      { error: error.message, code: error.code },
+      { status: developerErrorStatus(error.code) },
+    );
+  }
+  if (error instanceof WalletError) {
+    return NextResponse.json(
+      { error: error.message, code: error.code },
+      { status: walletErrorStatus(error.code) },
     );
   }
   console.error(error);
