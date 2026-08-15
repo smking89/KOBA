@@ -50,6 +50,7 @@ open questions that need client decisions before (or during) each phase.
 - [Phase 20 — Multi-Subdomain Architecture](#phase-20--multi-subdomain-architecture)
 - [Phase 21 — KOBA PC Plugin](#phase-21--koba-pc-plugin)
 - [Phase 22 — Discord Bot](#phase-22--discord-bot)
+- [Phase 23 — KOBA Shop (cosmetics storefront)](#phase-23--koba-shop-cosmetics-storefront)
 - [Sequencing / milestones](#sequencing--milestones)
 - [Open questions for the client](#open-questions-for-the-client)
 
@@ -141,7 +142,7 @@ transactional and permission-heavy (orders, bids, payouts, RBAC), and
 **Scope, as engineering deliverables**
 
 - `Product` model covering four listing kinds: skins, maps, monuments, and generic "assets" (game-specific tradeable items), plus a separate cosmetics track.
-- Cosmetics constrained explicitly to three sub-types — Avatar Decoration, Profile Effect, Nameplate — sold pre-made (à la Discord Nitro items), never assembled/configured by the buyer. Enforce this at the schema level (cosmetic sub-type enum, no "custom build" fields) so Phase 9's Map Builder doesn't accidentally become a precedent for a "cosmetic builder."
+- Cosmetics constrained explicitly to six sub-types — Avatar Decoration, Profile Effect, Nameplate, Profile Frame, Shop Banner, Emoji (expanded from the original three per client direction, see Phase 16) — sold pre-made, never assembled/configured by the buyer. Enforce this at the schema level (cosmetic sub-type enum, no "custom build" fields) so Phase 9's Map Builder doesn't accidentally become a precedent for a "cosmetic builder."
 - Auction engine: start price, minimum bid increment, end time, auto-extend-on-last-second-bid rule (recommend adding this even though not explicitly requested — flag as a decision, not a silent addition).
 - Bid model with optimistic concurrency (bids must not lose a race under load) and audit trail.
 - Order model covering both fixed-price purchases and won-auction settlements.
@@ -524,8 +525,35 @@ Client has now named the original outline's "Phase 7 — KOBA Ads" as
 
 ## Phase 16 — KOBA Plus (subscriptions)
 
-The "Discord Nitro equivalent" — a recurring paid subscription tier.
-`/plus` already exists as a UI shell (owner-expansion "UI foundations").
+A recurring paid subscription tier — subscription-style profile/shop
+customization and platform perks, not gameplay advantages. `/plus`
+already exists as a UI shell (owner-expansion "UI foundations").
+
+**Perks, per client direction (2026-08-15):**
+
+- Profile badges that evolve with tenure (longer subscription = higher
+  badge tier).
+- Animated avatars and animated profile banners.
+- A per-server bio (a bio that can differ per game-server community,
+  distinct from the account-wide profile bio).
+- Custom app themes, app icons, and notification sounds.
+- Member discounts on KOBA Shop cosmetic purchases (see Phase 23 —
+  distinct from the existing Blue-Badge marketplace commission discount,
+  which is a seller-side rate, not a buyer-side discount).
+- A multiplier/boost-style perk on some existing platform mechanic — the
+  client referenced this only by comparison to a similar mechanic on
+  another platform; the exact KOBA mechanic it multiplies and by how much
+  is **not yet specified** (see open questions below — deliberately not
+  guessing a name or number for this one).
+- Access to the four Cosmetic sub-types beyond what's purchasable
+  standalone: nameplates, avatar decorations, profile effects, and
+  profile frames (`Cosmetic` model, `features/marketplace/lib/
+  game-policy.ts` confirms these are never game-gated — see Phase 3).
+
+Cosmetics themselves are always purchasable with real money (USD) via the
+KOBA Shop independent of a Plus subscription (Phase 23) — Plus's cosmetic
+perk is the animated/tenure-badge/discount layer on top, not a paywall on
+the base cosmetics themselves.
 
 **Scope, as engineering deliverables**
 
@@ -536,30 +564,43 @@ The "Discord Nitro equivalent" — a recurring paid subscription tier.
   different webhook event set (`customer.subscription.created/updated/
 deleted`, `invoice.paid`, `invoice.payment_failed`), and a plan/tier
   concept that doesn't exist anywhere yet.
-- Perk gating — what KOBA Plus actually unlocks is not specified anywhere
-  in the source material (see open question below); this phase can't be
-  scoped tightly until that's answered.
+- Perk enforcement points, once built: profile rendering (badge tier,
+  animated avatar/banner, theme/icon/sound), per-server bio storage and
+  display, KOBA Shop checkout (member discount rate), and whatever the
+  still-unspecified multiplier perk turns out to gate.
 
 **Data models / entities**
 
 - `SubscriptionPlan` (tier name, price, Stripe price ID, perks list).
 - `UserSubscription` (userId, planId, status, stripeSubscriptionId,
   currentPeriodEnd, cancelAtPeriodEnd).
+- `ServerBio` (userId, gameServerId, bio) — new, for the per-server bio
+  perk; today `AccountProfile.bio` is account-wide only.
+- Badge-tier derivation needs a tenure clock — likely
+  `UserSubscription.createdAt` (first-subscribed date) rather than a
+  separate field, pending confirmation there's no "reset on lapse" rule
+  (see open questions).
 
 **Dependencies**
 
 - Stripe integration patterns already established (`features/payments/
 lib/stripe.ts`, webhook signature verification) extend naturally, but
   this is new Stripe API surface, not a copy-paste of checkout.service.ts.
+- Phase 23 (KOBA Shop) for the member-discount perk to have something to
+  discount.
 
 **Open questions for the client**
 
-1. What perks, specifically? (Cosmetic flair, reduced platform commission
-   rate — mirroring the existing Blue-Badge-verified tier discount —
-   priority Aiden generation queue, ad-free feed, something else?)
-2. Price point(s) — single tier or multiple (like Nitro Basic/Nitro)?
-3. Does a lapsed/cancelled subscription revoke perks immediately at
-   period end, or is there a grace period?
+1. The multiplier/boost perk — what platform mechanic does it apply to,
+   and what's the multiplier value (flat, or does it scale with tenure
+   badge like the profile badge perk)?
+2. Price point(s) — single tier, or multiple tiers with different perk
+   subsets (e.g. animated avatar at tier 1, per-server bio at tier 2)?
+3. Member discount rate on KOBA Shop cosmetics — flat percentage, or
+   tiered like the multiplier perk?
+4. Does a lapsed/cancelled subscription revoke perks immediately at
+   period end, or is there a grace period? And does tenure badge progress
+   reset on lapse, or persist/resume?
 
 ---
 
@@ -873,6 +914,90 @@ surfaced once the bot actually exists.
 
 ---
 
+## Phase 23 — KOBA Shop (cosmetics storefront)
+
+A dedicated, high-exposure storefront for the universal `Cosmetic` model
+(nameplates, avatar decorations, profile effects, profile frames, shop
+banners, emoji — see Phase 3's Cosmetic-vs-Product distinction). Per
+client direction (2026-08-15):
+
+- **Homepage hero placement.** The KOBA Shop is featured in the homepage
+  hero section, linking through to the full KOBA Shop catalog. This is
+  materially more exposure than a standard shop's page — a design/product
+  decision, not just a routing one (e.g. does every visitor see it, or is
+  it personalized?).
+- **Application-gated selling.** Only verified shops/accounts may apply
+  to sell in the KOBA Shop specifically — this is a second, narrower gate
+  on top of the existing Blue-Badge shop verification (Phase 9), not a
+  replacement for it. A shop can be Blue-Badge verified and still not be
+  approved to sell in the KOBA Shop.
+- **Cosmetics only.** No `Product` listings (skins, maps, mods, server
+  assets) — enforced the same way the `Cosmetic` model is already kept
+  separate from `Product` (Phase 3 fix: Cosmetic is never game-gated,
+  never tied to a `gameId`).
+- **2.5% transaction fee**, charged to the seller — distinct from and in
+  addition to the existing marketplace commission tiers
+  (`KOBA_COMMISSION_BPS` 8% unverified / 4% verified in `.env.example`).
+  This needs its own commission-resolution path since it doesn't vary by
+  Blue-Badge status the way the marketplace fee does — it's a flat rate
+  tied to the KOBA-Shop-approval gate, not the general verification gate.
+- USD pricing throughout (cosmetics are never KOBA-Coin-priced — Phase 3
+  fix already enforces this at the `Cosmetic` model level).
+
+**Scope, as engineering deliverables**
+
+- `KobaShopApplication` workflow — a shop applies, staff review/approve
+  (likely reusing the admin queue pattern from Blue-Badge review, Phase
+  9's `BlueBadgeReviewQueueEntry`), approved shops get a flag allowing
+  their `Cosmetic` rows to appear in the KOBA Shop surface.
+- KOBA Shop-specific commission resolution at Cosmetic checkout — a flat
+  2.5% seller-side fee, separate code path from
+  `resolveCommissionBps`/`splitPayment` in `features/payments/lib/
+  money.ts` (those are `Product`-order-shaped and Blue-Badge-tiered; this
+  is `Cosmetic`-shaped and approval-gated, not tier-gated).
+- Homepage hero section KOBA Shop entry point + a `/koba-shop` (or
+  similar) full-catalog route, separate from the existing `/shops/[slug]`
+  per-seller page and `/market` per-game marketplace.
+
+**Data models / entities**
+
+- `KobaShopApplication` (shopId, status: PENDING/APPROVED/REJECTED,
+  reviewedByUserId, reviewedAt, note) — new.
+- `Shop.kobaShopApproved: Boolean` (or derive from a live
+  `KobaShopApplication` row with status APPROVED) — flags which shops'
+  Cosmetic listings surface in the KOBA Shop.
+- Cosmetic checkout/order model — needs confirming whether this reuses
+  `Order`/`OrderItem` (currently `Product`-shaped, e.g. `inventoryQty`,
+  `rarity`) or needs its own `CosmeticOrder`, since Cosmetic and Product
+  differ enough (no rarity, no per-game inventory) that force-fitting
+  Cosmetic into the existing Order model may need schema changes anyway.
+
+**Dependencies**
+
+- The Phase 3 Cosmetic-vs-Product fix (done — this phase would have been
+  impossible to scope cleanly before that correction).
+- Blue-Badge shop verification (Phase 9, done) as the base gate the KOBA
+  Shop application sits on top of.
+- Stripe Connect payout splitting (done, `features/payments/lib/
+money.ts`) — extends to a new flat-rate commission path.
+
+**Open questions for the client**
+
+1. Cosmetic checkout — reuse `Order`/`OrderItem`, or a dedicated
+   `CosmeticOrder` model? Affects whether existing order/escrow/refund
+   UI needs branching logic or a parallel implementation.
+2. KOBA Shop application review — same admin queue/SLA pattern as
+   Blue-Badge review (Phase 9), or a different workflow?
+3. Hero section behavior — always shown to every homepage visitor, or
+   conditional (e.g. hidden once a user has already visited the KOBA
+   Shop this session)?
+4. Does KOBA Plus's member-discount perk (Phase 16) apply on top of the
+   seller's listed price before or after the 2.5% seller fee is taken —
+   i.e. does the discount cost the seller revenue or come out of KOBA's
+   cut?
+
+---
+
 ## Sequencing / milestones
 
 ```
@@ -939,7 +1064,7 @@ Phase 9  Developer Portal      Phase 10  Influencer System
 
 Flagging rather than guessing on anything with real product/cost/legal consequence:
 
-1. **TDLS encryption** — the design prototype and this outline both reference "TDLS-encrypted" KOBAIDs, but no spec for what TDLS is (algorithm, key management, whether it's a real named standard or a KOBA-internal term) exists anywhere in the repo yet. Needs a written spec before Phase 1's encryption work can be estimated or implemented.
+1. **TDLS encryption** — partially resolved (2026-08-15): client clarified TDLS as "Transport Discipline Layer System," a trust-boundary enforcement discipline (encryption/signing at real network hops, schema validation, replay protection, tamper-evident logging, superadmin kill switches) rather than a specific named crypto algorithm. Slice 1 is shipped — see [docs/tdls.md](docs/tdls.md): superadmin per-function kill switches (`PlatformFunctionFlag`) and a hash-chained, tamper-evident `AuditLog`. Still open: whether the original prototype's "TDLS-encrypted KOBAIDs" phrase meant something specific about KOBAID minting/storage itself (a literal encrypted-at-rest field, a signed token format?) beyond the general trust-boundary discipline now being built in slices — needs confirmation before that specific claim can be scoped.
 2. **Hosting provider** — stack above is portable (Vercel/Render/Fly vs. a single AWS/GCP account). Decision affects Phase 12's sharding notes, object storage choice (S3 vs. R2), and cost model. Needs a decision before Phase 12/13 infra work, ideally before Phase 3 (Stripe webhooks need a stable public endpoint).
 3. **Mobile: native app or responsive web only?** README and design prototype both show a "Desktop/Mobile toggle" implying responsive web is at minimum in scope. Is a native app (iOS/Android) also planned, and if so on what timeline relative to these 13 phases? This materially affects whether Phase 8+ (feed pagination, infinite scroll perf) needs to design for a native client from day one or can retrofit later.
 4. **Voice/video call provider** (Phase 6 DMs) — hand-rolled WebRTC vs. a managed SFU (LiveKit, Twilio Video, Agora, Daily). This is a real cost and complexity decision, not a style choice; needs to be picked before Phase 6 is scoped in detail.
@@ -952,10 +1077,11 @@ Flagging rather than guessing on anything with real product/cost/legal consequen
 11. **Data residency / age requirements (COPPA-adjacent)** — social marketplace with DMs, payments, and game-server communities likely draws a broad age range. No age-gating or regional compliance requirement is mentioned anywhere in the source material; needs an explicit decision before Phase 1 (registration flow) and Phase 6 (DMs) are built, not after.
 12. **Aiden frontier-model providers** (Phase 14) — Vest recommended (Tripo AI, pay-as-you-go). Graft and Terra vendors still open; blocks wiring the actual API calls (the reconciliation pipeline itself is built and vendor-agnostic).
 13. **KOBAads vs. Boost relationship** (Phase 15) — one product or two.
-14. **KOBA Plus perks and pricing** (Phase 16) — nothing specified yet beyond "Discord Nitro equivalent."
+14. **KOBA Plus perks** — mostly specified (2026-08-15, see Phase 16): tenure badges, animated avatar/banner, per-server bio, themes/icons/sounds, KOBA Shop member discount, and Cosmetic sub-type access. Still open: the exact multiplier/boost perk mechanic, price point(s), member discount rate, and lapse/grace-period behavior.
 15. **Server "rarity" meaning** (Phase 17) — not a concept that exists on `GameServer` today; needs clarification on what it should represent.
 16. **Subdomain deployment strategy** (Phase 20) — single-app rewrite vs. separate deployments, and who owns DNS/TLS for `koba.games`.
+17. **KOBA Shop details** (Phase 23) — cosmetic checkout model (reuse `Order` or a dedicated `CosmeticOrder`), application review workflow/SLA, hero section display logic, and how the Plus member discount interacts with the 2.5% seller fee.
 
 ---
 
-_Phases 0–13 above are the original client outline and are now fully built (see README.md for ground truth). Phases 14–20 are newer client direction, captured here as planning — not yet built except where individually noted (Phase 19)._
+_Phases 0–13 above are the original client outline and are now fully built (see README.md for ground truth). Phases 14–23 are newer client direction, captured here as planning — not yet built except where individually noted (Phase 19, and the Aiden Studio OS pipeline scaffolding in Phase 14)._
