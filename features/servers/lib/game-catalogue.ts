@@ -11,7 +11,7 @@ export type DirectoryGame = {
 };
 
 export const DIRECTORY_GAMES: readonly DirectoryGame[] = [
-  { slug: "rust", name: "Rust", platformFamily: "PC", adapterKey: "manual" },
+  { slug: "rust", name: "Rust", platformFamily: "PC", adapterKey: "rust" },
   {
     slug: "minecraft-java",
     name: "Minecraft Java",

@@ -111,6 +111,35 @@ export type GameServerOwnerView = GameServerView & {
   rconTestState: RconTestState;
 };
 
+export type RustIntegrationHealth = {
+  configured: boolean;
+  credentialsConfigured: boolean;
+  status: string;
+  mode: "RCON_READ" | "PUBLIC_QUERY";
+  readOnly: true;
+  administrativeCommandsEnabled: false;
+  hostname: string | null;
+  queryPort: number | null;
+  rconPort: number | null;
+  capabilities: readonly ServerCapability[];
+  lastTestedAt: string | null;
+  lastSuccessfulAt: string | null;
+  lastFailureCategory: string | null;
+  circuitOpen: boolean;
+  pollFailures: number;
+  freshness: FreshnessMeta;
+  online: boolean | null;
+  livePlayers: number | null;
+  maxPlayers: number | null;
+  queue: number | null;
+  mapName: string | null;
+  mapSize: null;
+  serverName: string | null;
+  serverTags: string[] | null;
+  rustVersion: string | null;
+  notices: Array<{ id: string; type: string; message: string; createdAt: string }>;
+};
+
 export function canConnectGameServer(accountType: string | null | undefined): boolean {
   return accountType === "BUSINESS" || accountType === "INFLUENCER";
 }

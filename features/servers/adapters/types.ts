@@ -9,6 +9,8 @@ export type AdapterTargetConfig = {
   gamePort: number | null;
 };
 
+export type StatusFieldPresence = "AVAILABLE" | "UNSUPPORTED" | "FAILED";
+
 export type NormalizedStatusResult = {
   operationalState: ServerOperationalStatus;
   livePlayers: number | null;
@@ -20,6 +22,20 @@ export type NormalizedStatusResult = {
   successful: boolean;
   errorCategory: string | null;
   source: string;
+  serverName?: string | null;
+  serverTags?: string[] | null;
+  rustVersion?: string | null;
+  fieldPresence?: {
+    livePlayers: StatusFieldPresence;
+    maxPlayers: StatusFieldPresence;
+    queue: StatusFieldPresence;
+    mapName: StatusFieldPresence;
+    mapSize: StatusFieldPresence;
+    pingMs: StatusFieldPresence;
+    serverName: StatusFieldPresence;
+    serverTags: StatusFieldPresence;
+    rustVersion: StatusFieldPresence;
+  };
 };
 
 export type ServerQueryAdapter = {
@@ -30,6 +46,42 @@ export type ServerQueryAdapter = {
   validateTarget(config: AdapterTargetConfig): void;
   queryStatus(target: ResolvedTarget, config: AdapterTargetConfig): Promise<NormalizedStatusResult>;
 };
+
+export type RustConnectionConfig = AdapterTargetConfig & {
+  rconPort: number;
+  password: string;
+};
+
+export type ReadOnlyIntegrationAdapter = ServerQueryAdapter & {
+  validateConfiguration(config: AdapterTargetConfig & { rconPort?: number }): void;
+  testConnection(
+    target: ResolvedTarget,
+    config: RustConnectionConfig,
+  ): Promise<NormalizedStatusResult>;
+  getCapabilities(gameSlug: string, platformFamily: "PC" | "CONSOLE"): readonly ServerCapability[];
+  queryPublicStatus(
+    target: ResolvedTarget,
+    config: AdapterTargetConfig,
+  ): Promise<NormalizedStatusResult>;
+  queryReadOnlyStatus(
+    target: ResolvedTarget,
+    config: RustConnectionConfig,
+  ): Promise<NormalizedStatusResult>;
+  normalizeResponse(
+    input: Partial<NormalizedStatusResult> & { source: string },
+  ): NormalizedStatusResult;
+  classifyError(error: unknown): string;
+  disconnect(): Promise<void>;
+};
+
+export function isReadOnlyIntegrationAdapter(
+  adapter: ServerQueryAdapter,
+): adapter is ReadOnlyIntegrationAdapter {
+  return (
+    typeof (adapter as ReadOnlyIntegrationAdapter).testConnection === "function" &&
+    typeof (adapter as ReadOnlyIntegrationAdapter).queryReadOnlyStatus === "function"
+  );
+}
 
 export function unsupportedResult(
   source: string,

@@ -1,9 +1,10 @@
 import { manualAdapter } from "@/features/servers/adapters/manual";
 import { minecraftJavaAdapter } from "@/features/servers/adapters/minecraft-java";
+import { rustAdapter } from "@/features/servers/adapters/rust";
 import type { ServerQueryAdapter } from "@/features/servers/adapters/types";
 import { findDirectoryGame } from "@/features/servers/lib/game-catalogue";
 
-const ADAPTERS: ServerQueryAdapter[] = [minecraftJavaAdapter, manualAdapter];
+const ADAPTERS: ServerQueryAdapter[] = [rustAdapter, minecraftJavaAdapter, manualAdapter];
 
 export function getAdapter(key: string): ServerQueryAdapter {
   return ADAPTERS.find((a) => a.key === key) ?? manualAdapter;

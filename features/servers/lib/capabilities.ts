@@ -15,10 +15,9 @@ const MATRIX: Record<string, Partial<Record<"PC" | "CONSOLE", readonly ServerCap
       "PLAYER_COUNT",
       "QUEUE_COUNT",
       "MAP_INFO",
-      "MAP_SIZE",
+      "PING",
       "PUBLIC_QUERY",
       "RCON_READ",
-      "RCON_WRITE",
     ],
   },
   "minecraft-java": {
