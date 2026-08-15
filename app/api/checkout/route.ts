@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { clientIp } from "@/lib/http/client-ip";
@@ -5,6 +6,7 @@ import { rateLimit } from "@/lib/security/rate-limit";
 import { checkoutSchema } from "@/features/payments/schemas/checkout.schemas";
 import { PaymentError, paymentErrorStatus } from "@/features/payments/lib/errors";
 import { createCheckoutSession } from "@/features/payments/services/checkout.service";
+import { REFERRAL_COOKIE } from "@/features/influencer/lib/types";
 
 export async function POST(request: Request) {
   const session = await auth();
@@ -30,8 +32,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid checkout payload." }, { status: 400 });
   }
 
+  const cookieStore = await cookies();
+  const fromCookie = cookieStore.get(REFERRAL_COOKIE)?.value;
+  const input = {
+    ...parsed.data,
+    referralCode: parsed.data.referralCode ?? fromCookie,
+  };
+
   try {
-    const result = await createCheckoutSession(session.user.id, parsed.data, ip);
+    const result = await createCheckoutSession(session.user.id, input, ip);
     return NextResponse.json(result);
   } catch (error) {
     if (error instanceof PaymentError) {

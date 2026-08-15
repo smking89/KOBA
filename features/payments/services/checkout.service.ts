@@ -12,6 +12,11 @@ import {
 } from "@/features/payments/lib/money";
 import { getStripe, isStripeConfigured } from "@/features/payments/lib/stripe";
 import type { CheckoutInput } from "@/features/payments/schemas/checkout.schemas";
+import {
+  resolveReferralForCheckout,
+  voidReferralForRefundedOrder,
+} from "@/features/influencer/services/influencer.service";
+import { payInfluencerEarning } from "@/features/influencer/services/payout.service";
 
 async function allocateOrderRef(): Promise<string> {
   for (let attempt = 0; attempt < 32; attempt += 1) {
@@ -127,7 +132,20 @@ export async function createCheckoutSession(
 
   const totalCents = unitPriceCents * quantity;
   const feeBps = resolveCommissionBps(shop.verificationStatus);
-  const split = splitPayment(totalCents, feeBps);
+  const baseSplit = splitPayment(totalCents, feeBps);
+  const referral = existing
+    ? null
+    : await resolveReferralForCheckout({
+        code: input.referralCode,
+        buyerUserId,
+        productId: product.id,
+        shopId: shop.id,
+        shopOwnerUserId: shop.ownerUserId,
+        shopMemberUserIds: shopMemberUserIds,
+        split: baseSplit,
+      });
+  const split = referral?.split ?? baseSplit;
+  const influencerShareCents = referral?.split.influencerShareCents ?? 0;
   const publicRef = existing?.publicRef ?? (await allocateOrderRef());
   const buyer = await prisma.user.findUnique({
     where: { id: buyerUserId },
@@ -149,6 +167,8 @@ export async function createCheckoutSession(
         totalCents: split.totalCents,
         applicationFeeCents: split.applicationFeeCents,
         sellerPayoutCents: split.sellerPayoutCents,
+        influencerShareCents,
+        referralCodeId: referral?.referralCodeId ?? null,
         currency: product.currency,
         idempotencyKey: input.idempotencyKey,
         auctionId: product.auction?.id ?? null,
@@ -294,6 +314,12 @@ export async function markOrderPaid(input: {
     metadata: { publicRef: order.publicRef },
   });
 
+  if (paid.referralCodeId) {
+    await payInfluencerEarning(paid.id).catch((error) => {
+      console.error("[KOBA] influencer payout after order paid failed", error);
+    });
+  }
+
   return paid;
 }
 
@@ -422,6 +448,10 @@ export async function markOrderRefunded(publicRef: string, actorUserId?: string 
     targetType: "Order",
     targetId: order.id,
     metadata: { publicRef },
+  });
+
+  await voidReferralForRefundedOrder(order.id).catch((error) => {
+    console.error("[KOBA] influencer earning void after refund failed", error);
   });
 
   return refunded;
