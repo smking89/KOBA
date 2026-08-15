@@ -65,6 +65,12 @@ enum AuditAction {
   SERVER_SUSPENDED
   SERVER_RESTORED
   SERVER_STATUS_POLL
+  SERVER_INTEGRATION_CONNECTED
+  SERVER_INTEGRATION_TESTED
+  SERVER_CREDENTIAL_ROTATED
+  SERVER_INTEGRATION_DISCONNECTED
+  SERVER_CAPABILITY_CHANGED
+  SERVER_CIRCUIT_OPENED
   PLUS_CHECKOUT_STARTED
   PLUS_CANCELLED
   COIN_LEDGER_POSTED
@@ -125,6 +131,7 @@ model User {
   tradeEvents     TradeEvent[]
   ownedServers    GameServer[]
   serverFavourites ServerFavourite[]
+  serverNotices   ServerOwnerNotice[]
   plusSubscription PlusSubscription?
   coinWallet      CoinWallet?
   ledgerAccounts  LedgerAccount[]
@@ -1100,6 +1107,24 @@ enum RconTestState {
   UNSUPPORTED
 }
 
+enum ServerIntegrationProvider {
+  RUST_PC
+}
+
+enum ServerIntegrationMode {
+  PUBLIC_QUERY
+  RCON_READ
+}
+
+enum ServerIntegrationStatus {
+  PENDING
+  CONNECTED
+  DEGRADED
+  FAILED
+  REVOKED
+  DISCONNECTED
+}
+
 enum PlusPlanInterval {
   MONTHLY
   ANNUAL
@@ -1384,11 +1409,16 @@ model GameServer {
   createdAt          DateTime                 @default(now())
   updatedAt          DateTime                 @updatedAt
 
-  owner      User                   @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
-  shop       Shop?                  @relation(fields: [shopId], references: [id], onDelete: SetNull)
-  credential ServerCredential?
-  favourites ServerFavourite[]
-  snapshots  ServerStatusSnapshot[]
+  owner        User                    @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+  shop         Shop?                   @relation(fields: [shopId], references: [id], onDelete: SetNull)
+  credential   ServerCredential?
+  favourites   ServerFavourite[]
+  snapshots    ServerStatusSnapshot[]
+  integrations ServerIntegration[]
+  attempts     IntegrationAttempt[]
+  jobs         ServerIntegrationJob[]
+  notices      ServerOwnerNotice[]
+  idempotency  IntegrationIdempotency[]
 
   @@index([ownerUserId])
   @@index([game, region])
@@ -1434,16 +1464,125 @@ model ServerFavourite {
 }
 
 model ServerCredential {
-  id         String   @id @default(cuid())
-  serverId   String   @unique
-  ciphertext String   @db.Text
-  iv         String
-  authTag    String
-  rotatedAt  DateTime @default(now())
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id            String    @id @default(cuid())
+  serverId      String    @unique
+  integrationId String?   @unique
+  ciphertext    String    @db.Text
+  iv            String
+  authTag       String
+  keyVersion    Int       @default(1)
+  revokedAt     DateTime?
+  rotatedAt     DateTime  @default(now())
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  server      GameServer         @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  integration ServerIntegration? @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+}
+
+model ServerIntegration {
+  id                  String                    @id @default(cuid())
+  serverId            String
+  provider            ServerIntegrationProvider
+  adapterKey          String
+  mode                ServerIntegrationMode     @default(RCON_READ)
+  status              ServerIntegrationStatus   @default(PENDING)
+  hostname            String?
+  queryPort           Int?
+  rconPort            Int?
+  keyVersion          Int                       @default(1)
+  lastHealthJson      String?                   @db.Text
+  lastTestedAt        DateTime?
+  lastSuccessfulAt    DateTime?
+  lastFailureCategory String?
+  pollFailures        Int                       @default(0)
+  nextPollAt          DateTime?
+  circuitOpenedAt     DateTime?
+  revokedAt           DateTime?
+  disconnectedAt      DateTime?
+  createdAt           DateTime                  @default(now())
+  updatedAt           DateTime                  @updatedAt
+
+  server     GameServer             @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  credential ServerCredential?
+  attempts   IntegrationAttempt[]
+  jobs       ServerIntegrationJob[]
+
+  @@unique([serverId, provider])
+  @@index([status, nextPollAt])
+  @@index([serverId])
+}
+
+model IntegrationAttempt {
+  id             String   @id @default(cuid())
+  serverId       String
+  integrationId  String?
+  attemptType    String
+  success        Boolean
+  errorCategory  String?
+  durationMs     Int
+  correlationId  String
+  idempotencyKey String?
+  createdAt      DateTime @default(now())
+
+  server      GameServer         @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  integration ServerIntegration? @relation(fields: [integrationId], references: [id], onDelete: SetNull)
+
+  @@index([serverId, createdAt])
+  @@index([integrationId, createdAt])
+  @@index([correlationId])
+}
+
+model ServerIntegrationJob {
+  id                String    @id @default(cuid())
+  type              String
+  serverId          String
+  integrationId     String?
+  status            String    @default("PENDING")
+  runAfter          DateTime  @default(now())
+  attempts          Int       @default(0)
+  lastErrorCategory String?
+  correlationId     String
+  cancelledAt       DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  server      GameServer         @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  integration ServerIntegration? @relation(fields: [integrationId], references: [id], onDelete: SetNull)
+
+  @@index([status, runAfter])
+  @@index([serverId, status])
+}
+
+model ServerOwnerNotice {
+  id          String    @id @default(cuid())
+  serverId    String
+  ownerUserId String
+  type        String
+  message     String
+  readAt      DateTime?
+  createdAt   DateTime  @default(now())
 
   server GameServer @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  owner  User       @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+
+  @@index([ownerUserId, createdAt])
+  @@index([serverId, createdAt])
+}
+
+model IntegrationIdempotency {
+  id           String   @id @default(cuid())
+  userId       String
+  serverId     String
+  action       String
+  key          String
+  responseJson String   @db.Text
+  createdAt    DateTime @default(now())
+
+  server GameServer @relation(fields: [serverId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, serverId, action, key])
+  @@index([createdAt])
 }
 
 model PlusSubscription {
