@@ -10,6 +10,8 @@ import {
   type WalletSummary,
 } from "@/features/wallet/lib/types";
 import { getTransactionHistory, getWalletSummary } from "@/features/wallet/services/ledger.service";
+import { listCoinPackages } from "@/features/wallet/lib/coin-packages";
+import { BuyCoinsPanel } from "@/features/wallet/components/buy-coins-panel";
 
 export const metadata = { title: "Wallet" };
 export const dynamic = "force-dynamic";
@@ -60,7 +62,7 @@ export default async function WalletPage() {
         <h1 className="text-3xl font-semibold tracking-tight">KOBA Coins</h1>
         <p className="mt-2 max-w-2xl text-sm text-muted">
           Double-entry ledger balances. Available is spendable now; reserved is held for open
-          reservations. Coin purchase checkout is not enabled yet.
+          reservations.
         </p>
       </div>
 
@@ -100,14 +102,13 @@ export default async function WalletPage() {
 
       <Card>
         <CardTitle>Buy Coins</CardTitle>
-        <CardDescription>Real Coin purchasing ships after payment approval.</CardDescription>
-        <button
-          type="button"
-          disabled
-          className={cn(buttonVariants({ size: "sm" }), "mt-4 opacity-60")}
-        >
-          Coming soon
-        </button>
+        <CardDescription>
+          Stripe Checkout (test mode). Coins credit once payment is confirmed by webhook — never
+          instantly on redirect back.
+        </CardDescription>
+        <div className="mt-4">
+          <BuyCoinsPanel packages={listCoinPackages()} />
+        </div>
       </Card>
 
       <Card>
