@@ -2,11 +2,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { StatusPill } from "@/components/koba/status-pill";
+import { TradeActions } from "@/features/trade/components/trade-actions";
 import { getMockTrade } from "@/features/trade/lib/catalog";
-import { tradeStateLabel } from "@/features/trade/lib/types";
+import { RARITY_VALUE_WARNING, tradeStateLabel } from "@/features/trade/lib/types";
 import { getTradeByRef } from "@/features/trade/services/trade.service";
 import { RARITY_LABEL } from "@/features/marketplace/lib/catalog";
 
@@ -42,8 +42,11 @@ export default async function TradeDetailPage({
           <StatusPill tone={trade.sameRarityRuleOk ? "success" : "danger"}>
             {trade.sameRarityRuleOk ? "Same rarity" : "Rarity mismatch"}
           </StatusPill>
-          <Badge tone="warning">Server validation required</Badge>
+          <Badge tone="warning">{trade.rarityTier}</Badge>
         </div>
+        <p className="mt-3 max-w-2xl text-xs text-muted">
+          {trade.valueWarning || RARITY_VALUE_WARNING}
+        </p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
@@ -54,6 +57,11 @@ export default async function TradeDetailPage({
             {trade.offered.map((item) => (
               <li key={item.id}>
                 {item.title} · {RARITY_LABEL[item.rarity]} · {item.game}
+                {item.inventoryPublicRef ? (
+                  <span className="ml-2 font-mono text-[10px] text-muted">
+                    {item.inventoryPublicRef}
+                  </span>
+                ) : null}
               </li>
             ))}
           </ul>
@@ -65,6 +73,11 @@ export default async function TradeDetailPage({
             {trade.requested.map((item) => (
               <li key={item.id}>
                 {item.title} · {RARITY_LABEL[item.rarity]} · {item.game}
+                {item.inventoryPublicRef ? (
+                  <span className="ml-2 font-mono text-[10px] text-muted">
+                    {item.inventoryPublicRef}
+                  </span>
+                ) : null}
               </li>
             ))}
           </ul>
@@ -73,21 +86,9 @@ export default async function TradeDetailPage({
 
       <Card>
         <CardTitle>Actions</CardTitle>
-        <CardDescription>UI stubs — settlement uses PATCH /api/trade/[ref].</CardDescription>
-        <div className="mt-4 flex flex-wrap gap-2">
-          <Button size="sm">Accept</Button>
-          <Button size="sm" variant="secondary">
-            Counter
-          </Button>
-          <Button size="sm" variant="ghost">
-            Reject
-          </Button>
-          <Button size="sm" variant="ghost">
-            Cancel
-          </Button>
-          <Button size="sm" variant="danger">
-            Report
-          </Button>
+        <CardDescription>Accept, reject, or cancel via the trading API.</CardDescription>
+        <div className="mt-4">
+          <TradeActions trade={trade} />
         </div>
       </Card>
     </div>

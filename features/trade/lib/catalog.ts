@@ -1,9 +1,10 @@
 import type { TradeItemView, TradeOfferView } from "@/features/trade/lib/types";
-import { sameRarityTier } from "@/features/trade/lib/types";
+import { RARITY_VALUE_WARNING, sameRarityTier } from "@/features/trade/lib/types";
 
 export const MOCK_TRADE_INVENTORY: TradeItemView[] = [
   {
     id: "inv-1",
+    inventoryPublicRef: "KOBA-INV-SEED0001",
     title: "Oxide Camo Crest",
     game: "Rust",
     platform: "STEAM",
@@ -16,6 +17,7 @@ export const MOCK_TRADE_INVENTORY: TradeItemView[] = [
   },
   {
     id: "inv-2",
+    inventoryPublicRef: "KOBA-INV-SEED0004",
     title: "Wyvern Profile Effect",
     game: "ARK: SA",
     platform: "STEAM",
@@ -28,6 +30,7 @@ export const MOCK_TRADE_INVENTORY: TradeItemView[] = [
   },
   {
     id: "inv-3",
+    inventoryPublicRef: "KOBA-INV-SEED0006",
     title: "Ember Wake Relic",
     game: "Conan Exiles",
     platform: "STEAM",
@@ -40,6 +43,7 @@ export const MOCK_TRADE_INVENTORY: TradeItemView[] = [
   },
   {
     id: "inv-4",
+    inventoryPublicRef: "KOBA-INV-SEED0003",
     title: "Trader Skin Pack",
     game: "Rust",
     platform: "STEAM",
@@ -59,6 +63,7 @@ export const MOCK_TRADES: TradeOfferView[] = [
   {
     publicRef: "KOBA-TRD-DEMO0001",
     state: "PENDING",
+    rarityTier: "EPIC",
     createdAt: "2026-08-14T18:00:00.000Z",
     expiresAt: "2026-08-16T18:00:00.000Z",
     proposerHandle: "maxbuilds",
@@ -67,10 +72,14 @@ export const MOCK_TRADES: TradeOfferView[] = [
     requested: pendingRequested,
     sameRarityRuleOk: sameRarityTier(pendingOffered, pendingRequested),
     note: "Even swap — both EPIC cosmetics.",
+    parentPublicRef: null,
+    valueWarning: RARITY_VALUE_WARNING,
+    viewerRole: null,
   },
   {
     publicRef: "KOBA-TRD-DEMO0002",
     state: "COMPLETED",
+    rarityTier: "COMMON",
     createdAt: "2026-08-10T12:00:00.000Z",
     expiresAt: null,
     proposerHandle: "raidmaps",
@@ -80,6 +89,7 @@ export const MOCK_TRADES: TradeOfferView[] = [
       {
         ...MOCK_TRADE_INVENTORY[3]!,
         id: "inv-5",
+        inventoryPublicRef: "KOBA-INV-SEED0005",
         title: "Starter Kit Skin",
         ownerHandle: "raidmaps",
         owned: false,
@@ -87,10 +97,14 @@ export const MOCK_TRADES: TradeOfferView[] = [
     ],
     sameRarityRuleOk: true,
     note: null,
+    parentPublicRef: null,
+    valueWarning: RARITY_VALUE_WARNING,
+    viewerRole: null,
   },
   {
     publicRef: "KOBA-TRD-DEMO0003",
     state: "DISPUTED",
+    rarityTier: "EPIC",
     createdAt: "2026-08-12T09:00:00.000Z",
     expiresAt: null,
     proposerHandle: "maxbuilds",
@@ -99,6 +113,9 @@ export const MOCK_TRADES: TradeOfferView[] = [
     requested: [MOCK_TRADE_INVENTORY[2]!],
     sameRarityRuleOk: false,
     note: "Invalid cross-rarity attempt (demo). Server must reject.",
+    parentPublicRef: null,
+    valueWarning: RARITY_VALUE_WARNING,
+    viewerRole: null,
   },
 ];
 

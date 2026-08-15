@@ -1,17 +1,5 @@
 import { z } from "zod";
 import { isValidKobaId } from "@/features/koba-id/lib/format";
-import { GAME_PLATFORMS, PRODUCT_RARITIES } from "@/features/marketplace/lib/catalog";
-
-const tradeItemSchema = z.object({
-  title: z.string().trim().min(1).max(120),
-  game: z.string().trim().min(1).max(64),
-  platform: z.enum(GAME_PLATFORMS),
-  rarity: z.enum(PRODUCT_RARITIES),
-  locked: z.boolean().optional(),
-  eligible: z.boolean().optional(),
-  eligibilityNote: z.string().trim().max(280).optional(),
-  productId: z.string().trim().min(1).max(64).optional(),
-});
 
 const kobaIdField = z
   .string()
@@ -22,15 +10,33 @@ const kobaIdField = z
 export const createTradeSchema = z.object({
   counterpartyKobaId: kobaIdField,
   note: z.string().trim().max(500).optional(),
-  offered: z.array(tradeItemSchema).min(1).max(12),
-  requested: z.array(tradeItemSchema).min(1).max(12),
+  offeredInventoryRefs: z.array(z.string().trim().min(8).max(40)).min(1).max(12),
+  requestedInventoryRefs: z.array(z.string().trim().min(8).max(40)).min(1).max(12),
+  idempotencyKey: z.string().trim().min(8).max(128),
+  expiresInHours: z.number().int().min(1).max(168).optional(),
 });
 
 export type CreateTradeInput = z.infer<typeof createTradeSchema>;
 
-export const transitionTradeSchema = z.object({
-  action: z.enum(["accept", "reject", "cancel", "counter", "dispute", "complete"]),
+export const counterTradeSchema = z.object({
+  offeredInventoryRefs: z.array(z.string().trim().min(8).max(40)).min(1).max(12),
+  requestedInventoryRefs: z.array(z.string().trim().min(8).max(40)).min(1).max(12),
+  note: z.string().trim().max(500).optional(),
+  idempotencyKey: z.string().trim().min(8).max(128),
+  expiresInHours: z.number().int().min(1).max(168).optional(),
+});
+
+export type CounterTradeInput = z.infer<typeof counterTradeSchema>;
+
+export const tradeMutationSchema = z.object({
+  idempotencyKey: z.string().trim().min(8).max(128),
   note: z.string().trim().max(500).optional(),
 });
 
-export type TransitionTradeInput = z.infer<typeof transitionTradeSchema>;
+export type TradeMutationInput = z.infer<typeof tradeMutationSchema>;
+
+export const tradeReportSchema = z.object({
+  reason: z.string().trim().min(8).max(500),
+});
+
+export type TradeReportInput = z.infer<typeof tradeReportSchema>;

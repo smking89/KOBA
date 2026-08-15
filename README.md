@@ -6,8 +6,8 @@ squads; all on one KOBAID.
 
 ## Status
 
-**Phase 14B — KOBA Coins ledger** is in progress on `feat/koba-coins-ledger`
-(double-entry BigInt ledger, reservations, wallet APIs — no live Coin purchases).
+**Phase 14C — Item trading** is in progress on `feat/item-trading`
+(inventory ownership, locks, atomic accept — stacked on the Coins ledger).
 
 The HTML prototype remains the information-architecture reference:
 
@@ -447,8 +447,9 @@ self-registered. Group Admin/Moderator badges are community roles, not staff.
 16. **Fee tiers (8% / 4% verified)** ✅
 17. **Owner product expansion UI** ✅
 18. **Owner expansion backends** ✅
-19. **KOBA Coins double-entry ledger** ← current
-20. Influencer ads network / live Coin purchases (deferred)
+19. **KOBA Coins double-entry ledger** ✅
+20. **Player-to-player item trading** ← current
+21. Influencer ads network / live Coin purchases (deferred)
 
 ## License
 
