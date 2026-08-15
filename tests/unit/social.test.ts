@@ -107,8 +107,8 @@ describe("feed visibility", () => {
       "ironwright",
       "maxbuilds",
     ]);
-    expect(parseFeedQuery({ page: "2", group: "rust-legacy-raiders" })).toMatchObject({
-      page: 2,
+    expect(parseFeedQuery({ cursor: "abc123", group: "rust-legacy-raiders" })).toMatchObject({
+      cursor: "abc123",
       group: "rust-legacy-raiders",
     });
   });

@@ -11,7 +11,7 @@ export async function GET(request: Request) {
   try {
     const feed = await listFeed({
       viewerUserId: session?.user.id,
-      page: query.page,
+      cursor: query.cursor,
       pageSize: query.pageSize,
       groupSlug: query.group,
     });

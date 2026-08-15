@@ -266,22 +266,97 @@ transactional and permission-heavy (orders, bids, payouts, RBAC), and
 
 ## Phase 8 — Feed Engine
 
-**Scope, as engineering deliverables**
+**Status: shipped (2026-08-15).** Real ranked, cursor-paginated feed with
+an optionally Redis-backed cache — not the plain reverse-chron feed this
+section used to describe. See
+[features/social/lib/feed-ranking.ts](../features/social/lib/feed-ranking.ts)
+for the full signal weighting and honest documentation of which signals
+are real vs. deliberately stubbed at weight 0.
 
-- Unified feed combining organic `SocialAction`/content and `KcuUnit` ads (Phase 7) into one ranked, paginated stream.
-- Ranking signal inputs: user interests (Phase 1), social actions (Phase 6), tag relevance (Phase 6), marketplace activity (Phase 3), group activity (Phase 5), ad targeting (Phase 7), cosmetic engagement (Phase 3), influencer promo activity (Phase 10 — soft dependency, can stub this signal until Phase 10 ships).
-- Caching/pagination strategy for infinite scroll: cursor-based pagination, Redis-backed precomputed feed pages/scores rather than recomputing rank on every request.
-- This phase is explicitly a _ranking and delivery_ layer — it does not own the underlying content models, only queries and scores them.
+**What's real:**
+
+- `computePostScore` combines exponential recency decay (30h half-life)
+  with a log-scaled engagement score (reactions/comments/saves — no
+  denormalized counters exist, computed live via `_count`) and three real
+  boost signals: following (Phase 6 `UserFollow`), group membership
+  (Phase 5 `GroupMember`), and shop relevance (a post tagging a `Shop`
+  the viewer follows, via `ShopFollow` + `PostTag`). A post in a
+  currently-**Boosted** group (Phase 15) gets the Boost's literal 3x
+  multiplier — the first real cross-phase use of Boost's "or any
+  supported feature" design.
+- The pre-Phase-8 feed used "following" as a hard **filter** — a
+  signed-in viewer literally could not see a public post from someone
+  they didn't follow. That was a real bug, not a design choice; fixed as
+  part of this phase — the feed is now the whole public corpus (bounded
+  to a 30-day/300-post candidate window, see below), ranked, with
+  followed authors pushed up rather than everyone else being invisible.
+- Cursor-based pagination (`encodeFeedCursor`/`decodeFeedCursor`,
+  base64 `{score, id}`), replacing the old `page`/`pageSize` offset API —
+  a breaking change to `GET /api/social/feed`'s query shape and to
+  `FeedList`'s "Load more".
+- Redis-backed ranking cache (`features/social/lib/feed-cache.ts`):
+  Upstash REST when configured, in-memory fallback otherwise — same
+  fail-soft shape as `lib/security/rate-limit.ts`. Only the ranked
+  `(score, id)` list is cached (30s TTL); actual post content is always
+  fetched fresh by id, so a cache hit can never serve stale/edited/
+  moderated content.
+
+**What's deliberately stubbed at weight 0, not fabricated** (turning one
+on is a config change in `feed-ranking.ts`, not new plumbing, once the
+underlying data exists):
+
+- **User interests** — Phase 1 named this as a Phase 8 input ("minimum 4
+  hashtags/interest tags... feeds Phase 8's ranking signals later") but
+  no interest-capture at registration or `Interest`/`Tag`-on-`User` model
+  was ever built. Still open — see open questions.
+- **Ad targeting** (Phase 7 KOBAads) — no `Ad`/`AdCampaign` model exists
+  yet (Phase 15, still planning-only).
+- **Influencer promo activity** (Phase 10) — already named a soft
+  dependency in this section originally; still stubbable.
+- **Cosmetic engagement** (Phase 3) — no instrumentation tracks this
+  anywhere; would need its own event log before it could be a real
+  signal.
+
+**Known scaling limit, not a bug:** ranking happens over a bounded
+candidate window (last 30 days, 300 most-recent posts) scored in
+application code, not a DB-level computed column or search index. Correct
+and real at KOBA's current data volume; ranking a much larger/older
+corpus would need a materialized score column or a dedicated search
+engine (Meilisearch/Typesense/Algolia — ROADMAP.md open question #9),
+not a bigger constant.
+
+**Also discovered, not fixed here (separate, smaller, pre-existing bug):**
+`listProfilePosts` (a profile's own post history, Phase 6) still uses
+page-number pagination and its "Load more" posts back to
+`/api/social/feed` — the *global* ranked feed endpoint, not an
+author-scoped one. That mismatch predates this phase; fixing it needs a
+dedicated author-scoped feed route, tracked as follow-up, not silently
+left unmentioned.
 
 **Data models / entities**
 
-- `FeedRankingSignal` (weights/config per signal type — likely a config table, not per-row data)
-- `FeedCacheEntry` (Redis: user_id/session → cached ranked page, cursor, TTL)
-- No new primary content entities — this phase is read/aggregation-heavy over everything built in Phases 1-7.
+- No new persisted models — ranking weights are an in-code config
+  (`FEED_RANKING_WEIGHTS`, following the same `readonly [...] as const`
+  convention as `features/wallet/lib/coin-packages.ts`) rather than a DB
+  table. A superadmin-configurable weights table (mirroring
+  `PlatformFunctionFlag`'s pattern) is a natural fast-follow if ranking
+  needs to be tunable without a deploy, not required for this to be real.
+- No `FeedCacheEntry` table — the Redis cache is a plain key/value
+  (`feed:{viewerId|anon}:{groupId|all}` → ranked id list), not a Prisma
+  model, consistent with how `lib/security/rate-limit.ts` uses Upstash.
 
 **Dependencies**
 
-- Phases 1, 3, 5, 6, 7 (all ranking signal sources). Phase 10's signal can be stubbed and back-filled later without a schema change if `FeedRankingSignal` is designed as an extensible weight table up front.
+- Phases 1, 3, 5, 6 (real signal sources, done). Phase 7 (ad targeting)
+  and Phase 10 (influencer promo) signals are stubbed at 0 until those
+  phases exist — no schema change needed to turn them on later. Phase 15
+  (Boost) is now a real, wired dependency, not just planning.
+
+**Open questions for the client**
+
+1. User interests — is Phase 1's registration-time interest capture
+   ("minimum 4 hashtags") still in scope, and if so what's the tag
+   taxonomy? Blocks turning the `interestMatch` signal on above 0.
 
 ---
 
@@ -1115,6 +1190,7 @@ Flagging rather than guessing on anything with real product/cost/legal consequen
 15. **Server "rarity" meaning** (Phase 17) — not a concept that exists on `GameServer` today; needs clarification on what it should represent.
 16. **Subdomain deployment strategy** (Phase 20) — single-app rewrite vs. separate deployments, and who owns DNS/TLS for `koba.games`.
 17. **KOBA Shop details** (Phase 23) — cosmetic checkout model (reuse `Order` or a dedicated `CosmeticOrder`), application review workflow/SLA, hero section display logic, and how the Plus member discount interacts with the 2.5% seller fee.
+18. **User interests / tag taxonomy** (Phase 1 → Phase 8) — Phase 1's outline named a mandatory "minimum 4 hashtags/interest tags" registration step feeding Phase 8's ranking, but neither the capture step nor a tag taxonomy was ever built. Phase 8's feed ranking now ships with an `interestMatch` signal deliberately held at weight 0 pending this.
 
 ---
 
