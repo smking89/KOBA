@@ -192,14 +192,31 @@ export async function runGeneration(
   if (!job || job.userId !== userId) {
     throw new AidenError("Job not found.", "NOT_FOUND");
   }
-  if (job.state !== "QUEUED" && job.state !== "PROCESSING") {
+  if (job.state !== "QUEUED") {
+    // Not a re-entry point: PROCESSING means another call already claimed
+    // it (see the atomic claim below — this function has no exposed
+    // retry/resume route today, but fails closed rather than silently
+    // re-running a possibly-billed generation if one is ever added).
+    // COMPLETED/FAILED/CANCELLED are simply returned as-is.
     return toJobView(job);
   }
 
-  await prisma.aidenJob.update({ where: { id: job.id }, data: { state: "PROCESSING" } });
+  // Atomic claim: only proceeds if this call is the one that flips
+  // QUEUED -> PROCESSING. A concurrent second call sees claimed.count===0
+  // and returns without ever calling the (possibly billed) provider —
+  // prevents two AidenAsset rows / two vendor charges for one job.
+  const claimed = await prisma.aidenJob.updateMany({
+    where: { id: job.id, state: "QUEUED" },
+    data: { state: "PROCESSING" },
+  });
+  if (claimed.count === 0) {
+    const current = await prisma.aidenJob.findUniqueOrThrow({ where: { id: job.id } });
+    return toJobView(current);
+  }
 
   const taskType = `generation.${productForAssetType(job.assetType).toLowerCase()}`;
   let result: AidenGenerationResult;
+  let coinCostActual: number;
   try {
     result = (await masterAgent.agent({
       taskType,
@@ -210,6 +227,13 @@ export async function runGeneration(
         assetType: job.assetType,
       },
     })) as AidenGenerationResult;
+    // Computed inside the try block, before any reservation is captured:
+    // if the provider ever returns a malformed actualCostUsd, this throws
+    // and is handled by the same release-and-FAIL path below, rather than
+    // capturing the reservation first and only then risking an unhandled
+    // throw that would leave the job stuck PROCESSING with coins already
+    // taken.
+    coinCostActual = usdToCoins(result.actualCostUsd);
   } catch (error) {
     const reason =
       error instanceof AidenOsError
@@ -256,8 +280,6 @@ export async function runGeneration(
       ...(ipAddress !== undefined ? { ipAddress } : {}),
     });
   }
-
-  const coinCostActual = usdToCoins(result.actualCostUsd);
 
   const [updatedJob] = await prisma.$transaction([
     prisma.aidenJob.update({
