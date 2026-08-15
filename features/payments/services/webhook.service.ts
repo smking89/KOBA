@@ -5,13 +5,14 @@ import {
   markOrderPaid,
   markOrderRefunded,
 } from "@/features/payments/services/checkout.service";
+import { handlePlusStripeEvent } from "@/features/plus/services/plus-webhook.service";
 
 export { verifyStripeEvent } from "@/features/payments/lib/webhook-verify";
 
 async function claimEvent(event: Stripe.Event): Promise<boolean> {
   try {
     await prisma.processedStripeEvent.create({
-      data: { eventId: event.id, type: event.type },
+      data: { eventId: event.id, type: event.type, eventCreated: event.created },
     });
     return true;
   } catch {
@@ -22,6 +23,11 @@ async function claimEvent(event: Stripe.Event): Promise<boolean> {
 export async function handleStripeEvent(event: Stripe.Event): Promise<void> {
   const claimed = await claimEvent(event);
   if (!claimed) {
+    return;
+  }
+
+  const plusHandled = await handlePlusStripeEvent(event);
+  if (plusHandled) {
     return;
   }
 
