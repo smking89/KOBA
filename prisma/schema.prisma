@@ -73,6 +73,11 @@ enum AuditAction {
   SERVER_CIRCUIT_OPENED
   PLUS_CHECKOUT_STARTED
   PLUS_CANCELLED
+  PLUS_ACTIVATED
+  PLUS_UPDATED
+  PLUS_PAYMENT_FAILED
+  PLUS_RECONCILED
+  PLUS_GRANT_ISSUED
   COIN_LEDGER_POSTED
   AIDEN_JOB_CREATED
   AIDEN_JOB_CANCELLED
@@ -132,7 +137,8 @@ model User {
   ownedServers    GameServer[]
   serverFavourites ServerFavourite[]
   serverNotices   ServerOwnerNotice[]
-  plusSubscription PlusSubscription?
+  plusSubscriptions PlusSubscription[]
+  stripeCustomerId  String?            @unique
   coinWallet      CoinWallet?
   ledgerAccounts  LedgerAccount[]
   aidenJobs       AidenJob[]
@@ -204,6 +210,8 @@ model KobaIdentity {
   createdAt   DateTime        @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plusSubscription PlusSubscription?
+  plusGrants       PlusEntitlementGrant[]
 
   @@unique([userId, accountType])
   @@index([code])
@@ -488,9 +496,10 @@ model Order {
 }
 
 model ProcessedStripeEvent {
-  eventId   String   @id
-  type      String
-  createdAt DateTime @default(now())
+  eventId      String   @id
+  type         String
+  eventCreated Int?
+  createdAt    DateTime @default(now())
 }
 
 model OrderItem {
@@ -1132,8 +1141,12 @@ enum PlusPlanInterval {
 
 enum PlusSubscriptionState {
   NONE
+  INCOMPLETE
+  TRIALING
   ACTIVE
   PAST_DUE
+  UNPAID
+  PAUSED
   CANCELLED
   EXPIRED
 }
@@ -1585,17 +1598,92 @@ model IntegrationIdempotency {
   @@index([createdAt])
 }
 
-model PlusSubscription {
-  id        String                @id @default(cuid())
-  userId    String                @unique
-  state     PlusSubscriptionState @default(NONE)
-  planId    String?
-  interval  PlusPlanInterval?
-  renewsAt  DateTime?
-  createdAt DateTime              @default(now())
-  updatedAt DateTime              @updatedAt
+model SubscriptionPlan {
+  id                 String           @id @default(cuid())
+  code               String           @unique
+  displayName        String
+  interval           PlusPlanInterval
+  stripePriceId      String
+  currency           String           @default("usd")
+  displayAmountCents Int
+  active             Boolean          @default(true)
+  version            Int              @default(1)
+  sortOrder          Int              @default(0)
+  effectiveAt        DateTime         @default(now())
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  entitlements  PlanEntitlement[]
+  subscriptions PlusSubscription[]
+
+  @@index([active, sortOrder])
+}
+
+model PlanEntitlement {
+  id         String   @id @default(cuid())
+  planId     String
+  code       String
+  enabled    Boolean  @default(false)
+  limitValue String?
+  version    Int      @default(1)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  plan SubscriptionPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@unique([planId, code])
+}
+
+model PlusSubscription {
+  id                     String                @id @default(cuid())
+  publicRef              String                @unique
+  userId                 String
+  kobaIdentityId         String                @unique
+  accountType            KobaAccountType
+  planId                 String?
+  interval               PlusPlanInterval?
+  provider               String                @default("stripe")
+  stripeCustomerId       String?
+  stripeSubscriptionId   String?               @unique
+  stripeCheckoutSessionId String?              @unique
+  checkoutIdempotencyKey String?              @unique
+  state                  PlusSubscriptionState @default(NONE)
+  cancelAtPeriodEnd      Boolean               @default(false)
+  currentPeriodStart     DateTime?
+  currentPeriodEnd       DateTime?
+  cancelledAt            DateTime?
+  endedAt                DateTime?
+  trialEndsAt            DateTime?
+  lastStripeEventId      String?
+  lastStripeEventCreated Int?
+  version                Int                   @default(0)
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
+
+  user     User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  identity KobaIdentity      @relation(fields: [kobaIdentityId], references: [id], onDelete: Cascade)
+  plan     SubscriptionPlan? @relation(fields: [planId], references: [id], onDelete: SetNull)
+
+  @@index([userId, accountType])
+  @@index([state])
+  @@index([stripeCustomerId])
+}
+
+model PlusEntitlementGrant {
+  id             String    @id @default(cuid())
+  kobaIdentityId String
+  code           String
+  reason         String
+  actorUserId    String
+  expiresAt      DateTime?
+  revokedAt      DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  identity KobaIdentity @relation(fields: [kobaIdentityId], references: [id], onDelete: Cascade)
+
+  @@index([kobaIdentityId, code])
+  @@index([expiresAt])
 }
 
 model CoinWallet {
