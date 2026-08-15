@@ -55,7 +55,9 @@ ALTER TABLE "PlanEntitlement" ADD CONSTRAINT "PlanEntitlement_planId_fkey" FOREI
 
 DELETE FROM "PlusSubscription";
 
-ALTER TABLE "PlusSubscription" DROP CONSTRAINT "PlusSubscription_userId_key";
+-- Earlier migration created a unique INDEX, not a table CONSTRAINT.
+DROP INDEX IF EXISTS "PlusSubscription_userId_key";
+ALTER TABLE "PlusSubscription" DROP CONSTRAINT IF EXISTS "PlusSubscription_userId_key";
 ALTER TABLE "PlusSubscription" DROP COLUMN "renewsAt";
 ALTER TABLE "PlusSubscription" ADD COLUMN "publicRef" TEXT NOT NULL;
 ALTER TABLE "PlusSubscription" ADD COLUMN "kobaIdentityId" TEXT NOT NULL;
