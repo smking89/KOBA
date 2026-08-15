@@ -19,6 +19,9 @@ describe("isSensitivePath", () => {
     expect(isSensitivePath("/api/groups/rust-legacy-raiders/join")).toBe(true);
     expect(isSensitivePath("/api/lfg/KOBA-LFG-CAFEBABE/join")).toBe(true);
     expect(isSensitivePath("/api/social/posts")).toBe(true);
+    expect(isSensitivePath("/api/servers")).toBe(true);
+    expect(isSensitivePath("/api/servers/abc/favourite")).toBe(true);
+    expect(isSensitivePath("/api/account/servers")).toBe(true);
   });
 
   it("allows public routes", () => {
@@ -28,6 +31,10 @@ describe("isSensitivePath", () => {
 
   it("documents every denylist prefix", () => {
     expect(NEVER_CACHE_PATH_PREFIXES.length).toBeGreaterThan(0);
+    expect(isSensitivePath("/api/servers")).toBe(true);
+    expect(isSensitivePath("/api/servers/foo/status")).toBe(true);
+    expect(isSensitivePath("/api/account/servers")).toBe(true);
+    expect(isSensitivePath("/api/admin/servers")).toBe(true);
   });
 });
 
