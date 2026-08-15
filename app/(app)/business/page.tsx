@@ -8,12 +8,15 @@ import { RequestVerificationButton } from "@/features/shops/components/request-v
 import { TaggingToggle } from "@/features/social/components/tagging-toggle";
 import { requireBusinessDashboard } from "@/features/shops/lib/require-business";
 import { getShopAnalytics } from "@/features/shops/services/shop.service";
+import { ShopPromoForm } from "@/features/influencer/components/shop-promo-form";
+import { getShopPromo } from "@/features/influencer/services/influencer.service";
 
 export const metadata = { title: "Business dashboard" };
 
 export default async function BusinessDashboardPage() {
   const { userId, snapshot } = await requireBusinessDashboard("/business");
   const data = await getShopAnalytics(userId);
+  const promo = data ? await getShopPromo(userId).catch(() => null) : null;
 
   if (!data) {
     return (
@@ -80,6 +83,15 @@ export default async function BusinessDashboardPage() {
           </CardDescription>
         </Card>
       </div>
+
+      <Card>
+        <CardTitle>Influencer promos</CardTitle>
+        <CardDescription className="mb-3">
+          Opt in to let Influencer KOBAIDs create HANDLE-PRODUCT referral codes. Payout terms come
+          from this shop, not the influencer.
+        </CardDescription>
+        {promo ? <ShopPromoForm initial={promo} /> : null}
+      </Card>
 
       <Card>
         <CardTitle>Shop tagging</CardTitle>

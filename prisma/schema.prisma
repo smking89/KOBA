@@ -103,6 +103,14 @@ enum AuditAction {
   DEV_PURCHASE_COMPLETED
   DEV_PURCHASE_REFUNDED
   DEV_PUBLISHER_VERIFIED
+  REFERRAL_CODE_CREATED
+  REFERRAL_CODE_REVOKED
+  REFERRAL_ATTRIBUTED
+  INFLUENCER_EARNING_ACCRUED
+  INFLUENCER_EARNING_PAID
+  INFLUENCER_EARNING_VOIDED
+  SHOP_PROMO_UPDATED
+  INFLUENCER_PAYOUT_ONBOARDED
 }
 
 model User {
@@ -172,6 +180,9 @@ model User {
   devEntitlements DevEntitlement[]
   devReviews      DevProductReview[]
   developerApiKeys DeveloperApiKey[]
+  referralCodes           ReferralCode[]            @relation("ReferralInfluencer")
+  influencerEarnings      InfluencerEarning[]       @relation("InfluencerEarnings")
+  influencerPayoutAccount InfluencerPayoutAccount?
 }
 
 model Account {
@@ -352,8 +363,9 @@ model Product {
   variants  ProductVariant[]
   media     ProductMedia[]
   favorites ProductFavorite[]
-  orderItems OrderItem[]
-  auction    Auction?
+  orderItems    OrderItem[]
+  auction       Auction?
+  referralCodes ReferralCode[]
 
   @@index([moderationStatus, publishedAt])
   @@index([gameId])
@@ -441,13 +453,15 @@ model Shop {
   createdAt            DateTime               @default(now())
   updatedAt            DateTime               @updatedAt
 
-  owner    User         @relation("ShopOwner", fields: [ownerUserId], references: [id], onDelete: Cascade)
-  members  ShopMember[]
-  follows  ShopFollow[]
-  reviews  ShopReview[]
-  products Product[]
-  orders   Order[]
-  servers  GameServer[]
+  owner         User             @relation("ShopOwner", fields: [ownerUserId], references: [id], onDelete: Cascade)
+  members       ShopMember[]
+  follows       ShopFollow[]
+  reviews       ShopReview[]
+  products      Product[]
+  orders        Order[]
+  servers       GameServer[]
+  promoConfig   ShopPromoConfig?
+  referralCodes ReferralCode[]
 }
 
 model ShopMember {
@@ -505,6 +519,7 @@ model Order {
   totalCents              Int
   applicationFeeCents     Int         @default(0)
   sellerPayoutCents       Int
+  influencerShareCents    Int         @default(0)
   currency                String      @default("USD")
   stripeCheckoutSessionId String?     @unique
   stripePaymentIntentId   String?
@@ -515,13 +530,19 @@ model Order {
   createdAt               DateTime    @default(now())
   updatedAt               DateTime    @updatedAt
 
-  shop  Shop        @relation(fields: [shopId], references: [id], onDelete: Restrict)
-  buyer User        @relation("OrderBuyer", fields: [buyerUserId], references: [id], onDelete: Restrict)
-  items OrderItem[]
+  referralCodeId String?
+
+  shop                 Shop                  @relation(fields: [shopId], references: [id], onDelete: Restrict)
+  buyer                User                  @relation("OrderBuyer", fields: [buyerUserId], references: [id], onDelete: Restrict)
+  items                OrderItem[]
+  referralCode         ReferralCode?         @relation(fields: [referralCodeId], references: [id], onDelete: SetNull)
+  referralAttribution  ReferralAttribution?
+  influencerEarning    InfluencerEarning?
 
   @@index([shopId, createdAt])
   @@index([buyerUserId])
   @@index([status])
+  @@index([referralCodeId])
 }
 
 model ProcessedStripeEvent {
@@ -544,6 +565,100 @@ model OrderItem {
 
   @@index([orderId])
   @@index([productId])
+}
+
+enum PromoPayoutType {
+  PERCENT_BPS
+  FIXED_CENTS
+}
+
+enum InfluencerEarningStatus {
+  ACCRUED
+  PAYABLE
+  PAID
+  VOID
+  HELD
+}
+
+model ShopPromoConfig {
+  shopId             String          @id
+  influencerEligible Boolean         @default(false)
+  payoutType         PromoPayoutType @default(PERCENT_BPS)
+  payoutValue        Int             @default(1000)
+  updatedAt          DateTime        @updatedAt
+
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+}
+
+model ReferralCode {
+  id               String    @id @default(cuid())
+  publicRef        String    @unique
+  code             String    @unique
+  influencerUserId String
+  productId        String
+  shopId           String
+  active           Boolean   @default(true)
+  clickCount       Int       @default(0)
+  createdAt        DateTime  @default(now())
+  revokedAt        DateTime?
+
+  influencer   User                   @relation("ReferralInfluencer", fields: [influencerUserId], references: [id], onDelete: Cascade)
+  product      Product                @relation(fields: [productId], references: [id], onDelete: Cascade)
+  shop         Shop                   @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  orders       Order[]
+  attributions ReferralAttribution[]
+  earnings     InfluencerEarning[]
+
+  @@unique([influencerUserId, productId])
+  @@index([shopId, active])
+  @@index([productId, active])
+}
+
+model ReferralAttribution {
+  id               String   @id @default(cuid())
+  orderId          String   @unique
+  referralCodeId   String
+  influencerUserId String
+  createdAt        DateTime @default(now())
+
+  order        Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  referralCode ReferralCode @relation(fields: [referralCodeId], references: [id], onDelete: Restrict)
+
+  @@index([referralCodeId])
+  @@index([influencerUserId])
+}
+
+model InfluencerEarning {
+  id               String                   @id @default(cuid())
+  publicRef        String                   @unique
+  influencerUserId String
+  referralCodeId   String
+  orderId          String                   @unique
+  amountCents      Int
+  currency         String                   @default("USD")
+  status           InfluencerEarningStatus  @default(ACCRUED)
+  stripeTransferId String?                  @unique
+  createdAt        DateTime                 @default(now())
+  paidAt           DateTime?
+  voidedAt         DateTime?
+
+  influencer   User         @relation("InfluencerEarnings", fields: [influencerUserId], references: [id], onDelete: Restrict)
+  referralCode ReferralCode @relation(fields: [referralCodeId], references: [id], onDelete: Restrict)
+  order        Order        @relation(fields: [orderId], references: [id], onDelete: Restrict)
+
+  @@index([influencerUserId, createdAt])
+  @@index([status])
+}
+
+model InfluencerPayoutAccount {
+  userId           String   @id
+  stripeAccountId  String?  @unique
+  payoutsEnabled   Boolean  @default(false)
+  detailsSubmitted Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 enum AuctionStatus {

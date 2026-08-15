@@ -40,8 +40,13 @@ export function canTagUser(input: {
   return true;
 }
 
+/** Shop opt-out applies to every account type, including Influencer. */
 export function canTagShop(taggingAllowed: boolean): boolean {
   return taggingAllowed;
+}
+
+export function influencerMayTagShop(taggingAllowed: boolean): boolean {
+  return canTagShop(taggingAllowed);
 }
 
 export function canTagGroup(input: {
