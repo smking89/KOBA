@@ -587,6 +587,58 @@ for the full architecture. What's real:
    captured (compute was spent even if output was rejected), or does the
    user get one free retry?
 
+### Reactive / Progressive Skins — new scope, split across two phases
+
+Client direction (2026-08-15): "Dynamic outfits that evolve, glow, or
+change stages based on your in-game performance or kills during a
+match." This genuinely splits into two halves with very different
+status — flagging that split now rather than scoping it as one feature,
+because the two halves have nothing in common technically:
+
+- **Generation half (this phase, buildable now)**: a "reactive skin"
+  is really N linked static assets (stage 1 default, stage 2 mid-streak
+  glow, stage 3 max-streak state, etc.), each a normal Aiden generation.
+  Nothing new needed in `replicate-provider.ts`/`tripo-provider.ts`
+  themselves — this is a new grouping concept (`AidenAsset` rows linked
+  as one "stage set") plus a marketplace-side concept for a multi-stage
+  `Product` (or a `Product` with N stage-tagged `ProductMedia` rows) that
+  doesn't exist yet.
+- **Runtime half (fully blocked, not just unwired)**: actually *swapping*
+  the equipped stage live, in a running match, based on real kill/score
+  telemetry, needs two things that are **0% built**:
+  1. A way for a live match's performance to reach KOBA at all. Phase
+     17's RCON integration is aggregate server state (player count, map)
+     polled from `GameServer`, not per-player, per-match event telemetry
+     (a kill happened, a score changed) — this is a different, harder
+     integration problem, likely per-game (does the game's mod/plugin
+     API even expose kill events? Rust and Garry's Mod might; many
+     titles won't).
+  2. Something running **locally on the player's machine during the
+     match** that can hot-swap the equipped skin file/config the instant
+     a stage threshold is crossed — this is exactly Phase 21's KOBA PC
+     Plugin, which today is not just "unwired" but doesn't exist as a
+     codebase at all (no OAuth device-flow infra, no plugin project,
+     Phase 21 status: fully planning-only).
+
+**Not buildable today as a live, reactive feature** — the generation
+half can ship once the multi-stage grouping concept is designed; the
+runtime half is gated on Phase 21 existing as a real project *and* on
+a per-game answer to "can this game's live match state even reach us."
+
+**Open questions for the client (do not guess these):**
+
+1. Trigger signal — kills specifically, or score/objective-based, or
+   something else? Does it vary per game?
+2. Stage count and thresholds — e.g. 3 fixed stages at kill counts
+   0/5/10, or seller-configurable per listing?
+3. Scope for v1 — is a *static* multi-stage skin (buyer manually
+   switches stages, no live automation) an acceptable first cut while
+   Phase 21 doesn't exist yet, or is "reactive" specifically the point
+   and a non-live version isn't worth shipping?
+4. Which games are actually in scope — this needs each target game to
+   expose live kill/score events through some API/mod hook KOBA can
+   reach; that's a per-game feasibility question, not an engineering one.
+
 ---
 
 ## Phase 15 — KOBAads + Boost
@@ -1226,6 +1278,7 @@ Flagging rather than guessing on anything with real product/cost/legal consequen
 16. **Subdomain deployment strategy** (Phase 20) — single-app rewrite vs. separate deployments, and who owns DNS/TLS for `koba.games`.
 17. **KOBA Shop details** (Phase 23) — cosmetic checkout model (reuse `Order` or a dedicated `CosmeticOrder`), application review workflow/SLA, hero section display logic, and how the Plus member discount interacts with the 2.5% seller fee.
 18. **User interests / tag taxonomy** (Phase 1 → Phase 8) — Phase 1's outline named a mandatory "minimum 4 hashtags/interest tags" registration step feeding Phase 8's ranking, but neither the capture step nor a tag taxonomy was ever built. Phase 8's feed ranking now ships with an `interestMatch` signal deliberately held at weight 0 pending this.
+19. **Reactive/Progressive Skins** (Phase 14 + Phase 21) — trigger signal, stage count/thresholds, whether a non-live "static multi-stage" v1 is acceptable while Phase 21 (KOBA PC Plugin) doesn't exist, and which games can even expose live kill/score events for KOBA to react to. See Phase 14's dedicated subsection — this is a genuinely new capability split across a buildable half (multi-stage generation) and a fully-blocked half (live in-match trigger + apply).
 
 ---
 
