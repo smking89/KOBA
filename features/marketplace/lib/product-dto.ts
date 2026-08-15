@@ -29,6 +29,8 @@ export type PublicProductCard = {
   thumbnailAlt: string;
   favorited: boolean;
   auction: PublicAuctionSummary | null;
+  /** True while an active Boost (features/boost) targets this product. */
+  boosted: boolean;
 };
 
 export type PublicProductDetail = PublicProductCard & {

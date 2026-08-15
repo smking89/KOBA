@@ -482,44 +482,78 @@ architecture. What's real:
 ## Phase 15 — KOBAads + Boost
 
 Client has now named the original outline's "Phase 7 — KOBA Ads" as
-**KOBAads**, and named a second, related spend mechanic: **Boost**.
+**KOBAads**, and named a second, related spend mechanic: **Boost**. As of
+2026-08-15 the client fully specified Boost's mechanic (below); KOBAads
+itself (campaign targeting/budget/impression billing) remains open —
+still blocked on Phase 8's ranking infrastructure per the dependency
+note below, so **this phase's engineering work is scoped to Boost only**
+for now. KOBAads stays planning-only until Phase 8 exists.
 
-**Scope, as engineering deliverables**
+**Boost mechanic, per client direction (2026-08-15) — fully specified:**
 
-- **KOBAads** — native ad units (KOBA Content Units / KCUs, per the
-  original outline) interleaved into the feed (Phase 8 — Feed Engine
-  scope, still not built beyond a plain reverse-chron feed per README).
-  Billed in KOBA Coins via the same `CoinReservation` capture pattern
-  already used for marketplace commissions and Aiden generation.
-- **Boost** — a lighter-weight promotion mechanic that raises a listing's
-  or shop's visibility/ranking (e.g. in marketplace search/category
-  sort) without being a full ad unit. Needs a client decision (below) on
-  whether this is a KOBAads sub-product or a fully separate surface.
-- The `sponsored: Boolean` field already on `Post` (per current schema) is
-  the only thing that exists today — a presentation-only hook, no
-  campaign, targeting, billing, or impression tracking behind it yet.
+- A Boost is a purchasable, **held item**, not a live ad campaign — it
+  sits in the buyer's wallet (alongside Coins) until applied, the same
+  "buy now, spend later" shape as Coins themselves.
+- **Giftable**: a player can buy a Boost and give it to a favorite shop
+  or influencer, who then applies it themselves — provenance (who gifted
+  it) is tracked, not just current ownership.
+- **Applicable to multiple target kinds**: a product, a shop, or a group
+  — "or any supported feature," so the target-kind list is deliberately
+  designed to extend (e.g. LFG posts) without a schema rewrite.
+- **Fixed effect**: 10-minute duration, 3x exposure multiplier. Not
+  spend-until-exhausted — this resolves the phase's original open
+  question in favor of the fixed-time-window model.
+- **Surfaces**: shown right before a product's publish step (an upsell
+  prompt) and as a visible indicator on boosted product cards while
+  active.
+- Distinct from KOBAads: no advertiser targeting/budget/impression
+  billing model — a Boost is a flat, pre-priced, self-contained token.
+
+**Scope, as engineering deliverables (this build)**
+
+- `Boost` model: purchase (Coins), gift (ownership transfer with
+  provenance), apply (to a product/shop/group the applier owns/manages),
+  lazy expiry (no cron needed — computed at read time from
+  `appliedAt + 10min`).
+- Enforcement wired at the marketplace product listing surface as the
+  first real target kind (sort priority + card badge) — shop/group
+  listing surfaces follow the same `isBoostActive`/multiplier lookup but
+  aren't wired into their own sort/badge UI in this pass.
+- KOBAads (KCU ad units, campaigns, impression/click billing) is
+  **not** part of this build — still blocked on Phase 8, and its own
+  targeting/budget mechanics haven't been specified the way Boost's now
+  are. Building it under a guessed budget/targeting model would repeat
+  the mistake this ROADMAP explicitly tries to avoid elsewhere (see
+  TDLS, Phase 16's multiplier perk).
 
 **Data models / entities**
 
-- `Ad` / `AdCampaign` (advertiser, target, budget in Coins, status,
-  start/end), `AdImpressionLog`, `AdClickLog` (for billing and Phase 8's
-  ranking signal input) — as originally specified.
-- `Boost` (target type: product | shop, duration or Coin-spend-until-
-  exhausted model, rank-weight applied at query time) — new, shape
-  pending the open question below.
+- `Boost` (ownerUserId, status [UNUSED/APPLIED/EXPIRED], purchaseCoinCost,
+  giftedFromUserId?, targetType?, targetId?, appliedAt?, expiresAt?) —
+  follows the `AuditLog.targetType`/`targetId` string-pair convention
+  already used in this codebase for polymorphic references, rather than
+  three nullable FK columns.
+- `Ad` / `AdCampaign`, `AdImpressionLog`, `AdClickLog` — still planning
+  only, unchanged from before, blocked on Phase 8 + a KOBAads targeting/
+  budget spec.
 
 **Dependencies**
 
-- Coins ledger + reservation/capture (done).
-- Feed Engine (Phase 8, not yet built beyond basic reverse-chron) — full
-  KCU interleaving needs real ranking infrastructure first.
+- Coins ledger + reservation/capture (done) — Boost purchase reuses it
+  directly.
+- Feed Engine (Phase 8) — only blocks KOBAads, not Boost. Boost's
+  product/shop/group targets don't need feed ranking infrastructure.
 
 **Open questions for the client**
 
-1. Is Boost a KOBAads sub-feature (shares the campaign/billing model) or
-   a fully separate product with its own pricing and mechanics?
-2. Boost duration model — fixed time window, or "spend N Coins, ranked
-   boost lasts until the budget is exhausted by impressions/clicks"?
+1. **Boost price** — not yet specified. A placeholder cost is in code
+   (`features/boost/lib/pricing.ts`, clearly marked) so the feature is
+   testable end-to-end; needs a real number before launch.
+2. The "any type of native ad" / "any supported feature" phrasing —
+   confirm the v1 target-kind list (product, shop, group) is right, or
+   whether LFG posts / KCU ad units themselves should be boostable
+   targets from day one.
+3. KOBAads campaign targeting/budget model — still fully open, see above.
 
 ---
 

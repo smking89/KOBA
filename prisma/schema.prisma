@@ -72,6 +72,9 @@ enum AuditAction {
   DEV_PRODUCT_SUBMITTED
   PLATFORM_FUNCTION_ENABLED
   PLATFORM_FUNCTION_DISABLED
+  BOOST_PURCHASED
+  BOOST_GIFTED
+  BOOST_APPLIED
 }
 
 // Major, independently-toggleable platform functions. This is the registry
@@ -108,6 +111,8 @@ model User {
   kobaIdentities KobaIdentity[]
   auditLogs      AuditLog[]     @relation("AuditActor")
   platformFunctionFlagUpdates PlatformFunctionFlag[] @relation("PlatformFunctionFlagUpdatedBy")
+  boostsOwned    Boost[]        @relation("BoostOwner")
+  boostsGifted   Boost[]        @relation("BoostGiftedFrom")
   products       Product[]
   favorites      ProductFavorite[]
   ownedShop      Shop?            @relation("ShopOwner")
@@ -268,6 +273,52 @@ model PlatformFunctionFlag {
   updatedBy User? @relation("PlatformFunctionFlagUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
 
   @@index([key])
+}
+
+// Boost target kind — deliberately extensible ("or any supported
+// feature" per client direction). Adding a new boostable surface (e.g.
+// LFG posts) is a new enum value + a new case in
+// features/boost/services/boost.service.ts's ownership check, not a
+// schema rewrite.
+enum BoostTargetKind {
+  PRODUCT
+  SHOP
+  GROUP
+}
+
+enum BoostStatus {
+  UNUSED
+  APPLIED
+  EXPIRED
+}
+
+// A Boost is a purchasable, held item (like Coins, it sits in the
+// buyer's wallet until spent) rather than a live ad campaign. Fixed
+// effect (see features/boost/lib/pricing.ts: 10 minutes, 3x exposure —
+// both client-specified, not configurable per-purchase). Follows the
+// AuditLog.targetType/targetId string-pair convention for its
+// polymorphic target rather than three nullable FK columns, since this
+// codebase already uses that pattern for exactly this kind of
+// "one row can point at several different entity types" case.
+model Boost {
+  id                String           @id @default(cuid())
+  ownerUserId       String
+  status            BoostStatus      @default(UNUSED)
+  purchaseCoinCost  Int
+  purchasedAt       DateTime         @default(now())
+  giftedFromUserId  String?
+  giftedAt          DateTime?
+  targetType        BoostTargetKind?
+  targetId          String?
+  appliedAt         DateTime?
+  expiresAt         DateTime?
+  idempotencyKey    String           @unique
+
+  owner       User  @relation("BoostOwner", fields: [ownerUserId], references: [id], onDelete: Cascade)
+  giftedFrom  User? @relation("BoostGiftedFrom", fields: [giftedFromUserId], references: [id], onDelete: SetNull)
+
+  @@index([ownerUserId])
+  @@index([targetType, targetId])
 }
 
 enum ProductRarity {
