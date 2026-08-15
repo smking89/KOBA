@@ -839,7 +839,7 @@ export async function upsertRconCredential(
   return { ok: true as const, rconConfigured: true };
 }
 
-/** Phase 14E will perform a real RCON handshake. */
+/** Legacy RCON test — Rust PC uses /integrations/rust. */
 export async function testRconConnection(
   userId: string,
   serverIdOrSlug: string,
@@ -849,7 +849,7 @@ export async function testRconConnection(
   const server = await loadServer(serverIdOrSlug);
   assertOwnerMatch(server, userId, snapshot.activeAccountType);
 
-  const state: RconTestState = "UNSUPPORTED";
+  const state: RconTestState = server.game === "rust" ? "IDLE" : "UNSUPPORTED";
 
   await prisma.gameServer.update({
     where: { id: server.id },
@@ -861,7 +861,7 @@ export async function testRconConnection(
     action: AuditAction.SERVER_RCON_UPDATED,
     targetType: "GameServer",
     targetId: server.id,
-    metadata: { action: "test", state },
+    metadata: { action: "test", state, deferred: server.game !== "rust" },
     ipAddress: ipAddress ?? null,
   });
 

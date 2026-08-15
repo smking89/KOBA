@@ -31,7 +31,7 @@ export default async function ManageServersPage() {
         <h1 className="mt-2 text-3xl font-semibold tracking-tight">Manage servers</h1>
         <p className="mt-2 max-w-2xl text-sm text-muted">
           Active mode: {snapshot.activeAccountType}. Only servers owned by this KOBA account appear
-          here. RCON credentials are deferred to Phase 14E.
+          here. Rust PC owners can attach a read-only RCON integration from Connect.
         </p>
       </div>
 
@@ -45,7 +45,10 @@ export default async function ManageServersPage() {
             <li className="text-sm text-muted">No servers for this account yet.</li>
           ) : (
             servers.map((server) => (
-              <li key={server.publicRef} className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-3 text-sm last:border-0">
+              <li
+                key={server.publicRef}
+                className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-3 text-sm last:border-0"
+              >
                 <div>
                   <Link href={`/servers/${server.slug}`} className="font-medium text-neon-mint">
                     {server.name}

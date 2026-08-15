@@ -1,28 +1,31 @@
-import Link from "next/link";
+import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth";
 import { ServerConnectWizard } from "@/features/servers/components/server-connect-wizard";
+import { canConnectGameServer } from "@/features/servers/lib/types";
+import { getAccountSnapshot } from "@/features/accounts/services/account.service";
+import { listAccountServers } from "@/features/servers/services/server.service";
 
-export const metadata = { title: "Connect server" };
+export const metadata = { title: "Connect Rust server" };
 
-export default function ServerConnectPage() {
+export default async function ServerConnectPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ server?: string }>;
+}) {
+  const session = await auth();
+  if (!session?.user.id) {
+    redirect("/login?callbackUrl=/servers/connect");
+  }
+  const snapshot = await getAccountSnapshot(session.user.id);
+  if (!snapshot || !canConnectGameServer(snapshot.activeAccountType)) {
+    redirect("/servers");
+  }
+  const servers = await listAccountServers(session.user.id).catch(() => []);
+  const params = await searchParams;
   return (
-    <div className="space-y-6">
-      <CardNote />
-      <ServerConnectWizard />
-    </div>
-  );
-}
-
-function CardNote() {
-  return (
-    <div className="rounded-md border border-border bg-surface px-4 py-3 text-sm text-muted">
-      <p>
-        <strong className="text-foreground">Phase 14E:</strong> RCON credential storage and live
-        connection tests land next. Register and verify servers from{" "}
-        <Link href="/servers/manage" className="text-neon-mint hover:underline">
-          /servers/manage
-        </Link>
-        .
-      </p>
-    </div>
+    <ServerConnectWizard
+      initialServers={servers}
+      {...(params.server ? { selectedSlug: params.server } : {})}
+    />
   );
 }

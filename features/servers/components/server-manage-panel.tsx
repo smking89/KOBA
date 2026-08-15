@@ -110,10 +110,10 @@ export function ServerManagePanel({ server }: { server: GameServerOwnerView }) {
           Archive
         </button>
         <Link
-          href="/servers/connect"
+          href={`/servers/connect?server=${server.slug}`}
           className="h-9 inline-flex items-center text-sm text-neon-mint"
         >
-          RCON setup (Phase 14E)
+          Rust RCON (read-only)
         </Link>
       </div>
       {message ? <p className="mt-2 text-sm text-neon-mint">{message}</p> : null}
