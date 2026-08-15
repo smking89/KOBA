@@ -13,6 +13,7 @@ import {
 } from "@/features/payments/lib/money";
 import { computeEscrowReleaseAt, escrowHoldDays } from "@/features/payments/lib/escrow-rules";
 import { getStripe, isStripeConfigured } from "@/features/payments/lib/stripe";
+import { isPlatformFunctionEnabled } from "@/features/platform-control/services/platform-function.service";
 import type { CheckoutInput } from "@/features/payments/schemas/checkout.schemas";
 
 async function allocateOrderRef(): Promise<string> {
@@ -36,6 +37,9 @@ export async function createCheckoutSession(
       "Stripe test mode is not configured. Add sk_test_ keys to continue.",
       "NOT_CONFIGURED",
     );
+  }
+  if (!(await isPlatformFunctionEnabled("STRIPE_PAYMENTS"))) {
+    throw new PaymentError("Payments are temporarily disabled by KOBA staff.", "DISABLED");
   }
 
   const existing = await prisma.order.findUnique({

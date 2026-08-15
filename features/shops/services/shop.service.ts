@@ -23,7 +23,8 @@ export class ShopError extends Error {
       | "SELF_ACTION"
       | "UNVERIFIED_BUSINESS"
       | "INVALID_PAYOUT_VALUE"
-      | "GENERATION_FAILED",
+      | "GENERATION_FAILED"
+      | "DISABLED",
   ) {
     super(message);
     this.name = "ShopError";

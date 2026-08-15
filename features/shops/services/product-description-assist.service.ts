@@ -6,6 +6,7 @@ import {
   generateText,
 } from "@/features/aiden/providers/claude-provider";
 import { coinCostForModel } from "@/features/aiden/lib/model-costs";
+import { isPlatformFunctionEnabled } from "@/features/platform-control/services/platform-function.service";
 import { WalletError } from "@/features/wallet/lib/errors";
 import {
   captureReservation,
@@ -40,6 +41,10 @@ export async function generateProductDescription(
   const shop = await getOwnedShop(userId);
   if (!shop) {
     throw new ShopError("Create a shop before using AI description assist.", "NOT_FOUND");
+  }
+
+  if (!(await isPlatformFunctionEnabled("CLAUDE_DESCRIPTION_ASSIST"))) {
+    throw new ShopError("AI description assist is temporarily disabled by KOBA staff.", "DISABLED");
   }
 
   const coinCost = coinCostForModel("CLAUDE_TEXT");
