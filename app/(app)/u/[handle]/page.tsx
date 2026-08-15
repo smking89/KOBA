@@ -8,6 +8,7 @@ import { MessageButton } from "@/features/messages/components/message-button";
 import { SocialError } from "@/features/social/lib/errors";
 import { listProfilePosts } from "@/features/social/services/post.service";
 import { getProfileByHandle } from "@/features/social/services/profile.service";
+import { PlusBadge } from "@/features/plus/components/plus-badge";
 
 export async function generateMetadata({ params }: { params: Promise<{ handle: string }> }) {
   const { handle } = await params;
@@ -37,6 +38,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-3xl font-semibold tracking-tight">{profile.name}</h1>
               <Badge>@{profile.handle}</Badge>
+              <PlusBadge visible={profile.plusBadge} />
             </div>
             {profile.kobaId ? (
               <p className="mt-2 font-mono text-sm text-muted">{profile.kobaId}</p>

@@ -11,6 +11,7 @@ import {
 } from "@/features/shops/lib/access";
 import type { createShopSchema } from "@/features/shops/schemas/shop.schemas";
 import type { z } from "zod";
+import { plusBadgeByIdentityIds } from "@/features/plus/services/plus.service";
 
 export class ShopError extends Error {
   constructor(
@@ -110,7 +111,7 @@ export async function getPublicShop(slug: string, viewerUserId?: string | null) 
           id: true,
           name: true,
           profile: { select: { displayName: true } },
-          kobaIdentities: { select: { accountType: true, code: true } },
+          kobaIdentities: { select: { id: true, accountType: true, code: true } },
         },
       },
       members: {
@@ -138,10 +139,13 @@ export async function getPublicShop(slug: string, viewerUserId?: string | null) 
     return null;
   }
 
-  const kobaId =
-    shop.owner.kobaIdentities.find((row) => row.accountType === "BUSINESS")?.code ??
-    shop.owner.kobaIdentities[0]?.code ??
+  const businessIdentity =
+    shop.owner.kobaIdentities.find((row) => row.accountType === "BUSINESS") ??
+    shop.owner.kobaIdentities[0] ??
     null;
+  const kobaId = businessIdentity?.code ?? null;
+  const badges = await plusBadgeByIdentityIds(businessIdentity ? [businessIdentity.id] : []);
+  const plusBadge = businessIdentity ? Boolean(badges.get(businessIdentity.id)) : false;
 
   let following = false;
   if (viewerUserId) {
@@ -160,6 +164,7 @@ export async function getPublicShop(slug: string, viewerUserId?: string | null) 
     bio: shop.bio,
     verificationStatus: shop.verificationStatus,
     kobaId,
+    plusBadge,
     followerCount: shop._count.follows,
     reviewCount: shop._count.reviews,
     productCount: shop._count.products,

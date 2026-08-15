@@ -7,6 +7,7 @@ import { getAccountSnapshot } from "@/features/accounts/services/account.service
 import { AccountModeSwitch } from "@/features/accounts/components/account-mode-switch";
 import { ACCOUNT_TYPE_LABEL } from "@/features/koba-id/lib/format";
 import { TagPrivacyForm } from "@/features/social/components/tag-privacy-form";
+import { PlusBadge } from "@/features/plus/components/plus-badge";
 
 export const metadata = { title: "Settings" };
 
@@ -50,7 +51,19 @@ export default async function SettingsPage() {
           <span className="font-mono text-foreground">{snapshot.kobaId ?? "pending"}</span>
           {" · "}
           {ACCOUNT_TYPE_LABEL[snapshot.activeAccountType]}
+          {snapshot.plusBadge ? (
+            <>
+              {" · "}
+              <PlusBadge visible />
+            </>
+          ) : null}
         </CardDescription>
+        <p className="mt-3 text-sm text-muted">
+          <Link href="/plus" className="text-neon-lime hover:underline">
+            Manage KOBA Plus
+          </Link>{" "}
+          for this active account.
+        </p>
       </Card>
 
       <Card>

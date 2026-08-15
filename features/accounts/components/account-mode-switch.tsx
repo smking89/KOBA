@@ -14,6 +14,7 @@ import {
 } from "@/features/koba-id/lib/format";
 import type { AccountSnapshot } from "@/features/accounts/services/account.service";
 import type { KobaAccountType } from "@/features/koba-id/lib/format";
+import { PlusBadge } from "@/features/plus/components/plus-badge";
 
 const MODE_COPY: Record<PublicAccountType, { active: string[]; hidden: string[] }> = {
   PLAYER: {
@@ -128,8 +129,11 @@ export function AccountModeSwitch({ snapshot }: AccountModeSwitchProps) {
           );
         })}
       </div>
-      <p className="font-mono text-sm text-muted">
-        Active: {current.kobaId ?? "—"} · {ACCOUNT_TYPE_LABEL[current.activeAccountType]} mode
+      <p className="flex flex-wrap items-center gap-2 font-mono text-sm text-muted">
+        <span>
+          Active: {current.kobaId ?? "—"} · {ACCOUNT_TYPE_LABEL[current.activeAccountType]} mode
+        </span>
+        <PlusBadge visible={current.plusBadge} />
       </p>
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
@@ -156,8 +160,9 @@ export function AccountModeSwitch({ snapshot }: AccountModeSwitchProps) {
           {current.identities.map((identity) => (
             <li key={identity.code} className="flex items-center justify-between gap-3">
               <span className="font-mono">{identity.code}</span>
-              <span className="text-muted">
+              <span className="flex items-center gap-2 text-muted">
                 {ACCOUNT_TYPE_LABEL[identity.accountType as KobaAccountType]}
+                <PlusBadge visible={identity.plusBadge} />
               </span>
             </li>
           ))}

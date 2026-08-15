@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { SocialError } from "@/features/social/lib/errors";
 import { canFollowUser } from "@/features/social/lib/rules";
 import type { TagPrivacy } from "@/features/social/lib/rules";
+import { plusBadgeByIdentityIds } from "@/features/plus/services/plus.service";
 
 const userPublic = {
   id: true,
@@ -9,7 +10,7 @@ const userPublic = {
   profile: {
     select: { handle: true, displayName: true, bio: true, tagPrivacy: true },
   },
-  kobaIdentities: { select: { code: true, accountType: true }, take: 4 },
+  kobaIdentities: { select: { id: true, code: true, accountType: true } },
 } as const;
 
 function displayName(user: {
@@ -40,6 +41,11 @@ export async function getProfileByHandle(handle: string, viewerUserId?: string |
     throw new SocialError("Profile not found.", "NOT_FOUND");
   }
   const userId = profile.userId;
+  const activeIdentity =
+    profile.user.kobaIdentities.find((row) => row.accountType === profile.activeAccountType) ??
+    profile.user.kobaIdentities[0] ??
+    null;
+  const badges = await plusBadgeByIdentityIds(activeIdentity ? [activeIdentity.id] : []);
   const [followers, following, posts, viewerFollows, blocked] = await Promise.all([
     prisma.userFollow.count({ where: { followingUserId: userId } }),
     prisma.userFollow.count({ where: { followerUserId: userId } }),
@@ -63,7 +69,8 @@ export async function getProfileByHandle(handle: string, viewerUserId?: string |
     handle: profile.handle,
     name: displayName(profile.user),
     bio: profile.bio,
-    kobaId: profile.user.kobaIdentities[0]?.code ?? null,
+    kobaId: activeIdentity?.code ?? null,
+    plusBadge: activeIdentity ? Boolean(badges.get(activeIdentity.id)) : false,
     tagPrivacy: profile.tagPrivacy,
     followers,
     following,
