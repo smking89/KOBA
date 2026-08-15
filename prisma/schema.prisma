@@ -77,6 +77,7 @@ enum AuditAction {
   BOOST_APPLIED
   AIDEN_ASSET_PUBLISHED
   PLUS_ACTIVATED
+  SERVER_ACTIVE_MAP_SET
 }
 
 // Major, independently-toggleable platform functions. This is the registry
@@ -1467,9 +1468,10 @@ model InventoryItem {
   createdAt          DateTime                   @default(now())
   updatedAt          DateTime                   @updatedAt
 
-  owner          User             @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
-  lockTradeOffer TradeOffer?      @relation("TradeItemLocks", fields: [lockTradeOfferId], references: [id], onDelete: SetNull)
-  tradeLines     TradeOfferItem[]
+  owner            User             @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+  lockTradeOffer   TradeOffer?      @relation("TradeItemLocks", fields: [lockTradeOfferId], references: [id], onDelete: SetNull)
+  tradeLines       TradeOfferItem[]
+  activeMapForServer GameServer?
 
   @@index([ownerUserId, listedForTrade, status])
   @@index([rarity, game])
@@ -1570,13 +1572,23 @@ model GameServer {
   host            String?
   port            Int?
   rconTestState   RconTestState         @default(IDLE)
+  /// "Rarity" for a server (client clarification, 2026-08-15): derived
+  /// from a Map they own on this server, purchased on the KOBA
+  /// marketplace — NOT a standalone server-level tier the owner just
+  /// sets. Nullable: a server with no active map has no rarity to show.
+  /// Must reference an InventoryItem the server's owner actually owns
+  /// (features/servers/services/server.service.ts#setActiveMap
+  /// enforces this — schema alone can't express "owned by the same
+  /// user as ownerUserId").
+  activeMapInventoryItemId String? @unique
   createdAt       DateTime              @default(now())
   updatedAt       DateTime              @updatedAt
 
-  owner       User             @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
-  shop        Shop?            @relation(fields: [shopId], references: [id], onDelete: SetNull)
-  credential  ServerCredential?
-  bios        ServerBio[]
+  owner            User             @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+  shop             Shop?            @relation(fields: [shopId], references: [id], onDelete: SetNull)
+  credential       ServerCredential?
+  bios             ServerBio[]
+  activeMapInventoryItem InventoryItem? @relation(fields: [activeMapInventoryItemId], references: [id], onDelete: SetNull)
 
   @@index([ownerUserId])
   @@index([game, region])

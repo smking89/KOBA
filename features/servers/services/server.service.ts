@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { AuditAction } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/db";
-import { sealSecret } from "@/lib/crypto/secret-box";
+import { sealSecret, openSecret } from "@/lib/crypto/secret-box";
 import { writeAuditLog } from "@/features/auth/services/audit-log.service";
 import { ServerError } from "@/features/servers/lib/errors";
 import { generateServerRef, slugifyServer } from "@/features/servers/lib/refs";
@@ -13,6 +13,10 @@ import {
 } from "@/features/servers/lib/types";
 import type { CreateServerInput, RconActionInput } from "@/features/servers/schemas/server.schemas";
 import { isPlusActive } from "@/features/plus/services/plus.service";
+import { protocolForGame } from "@/features/servers/lib/rcon/registry";
+import { runRconCommand, SourceRconError } from "@/features/servers/lib/rcon/source-rcon";
+import { queryServerInfo, SourceQueryError, type SourceServerInfo } from "@/features/servers/lib/rcon/source-query";
+import { getCachedServerStatus, setCachedServerStatus } from "@/features/servers/lib/status-cache";
 
 const ownerSelect = {
   id: true,
@@ -25,6 +29,7 @@ const serverInclude = {
   owner: { select: ownerSelect },
   shop: { select: { slug: true } },
   credential: { select: { id: true, rotatedAt: true } },
+  activeMapInventoryItem: { select: { rarity: true, title: true } },
 } as const;
 
 type ServerRow = Awaited<ReturnType<typeof loadServer>>;
@@ -82,6 +87,8 @@ function toServerView(server: NonNullable<ServerRow>): GameServerView {
     joinInfo: server.joinInfo,
     lastRefreshAt: server.lastRefreshAt?.toISOString() ?? null,
     capabilities,
+    activeMapRarity: server.activeMapInventoryItem?.rarity ?? null,
+    activeMapTitle: server.activeMapInventoryItem?.title ?? null,
   };
 
   if (hasCapability(base, "STATUS")) {
@@ -117,6 +124,63 @@ export async function listDirectory(): Promise<GameServerView[]> {
 export async function getBySlugOrRef(serverIdOrSlug: string): Promise<GameServerView> {
   const server = await loadServer(serverIdOrSlug);
   return toServerView(server);
+}
+
+/** GameServerView deliberately omits ownerUserId (only the display-safe
+ * ownerHandle) — this is the narrow, real ownership check pages need for
+ * "show me owner-only controls," without exposing the raw id elsewhere. */
+export async function isServerOwner(userId: string, serverIdOrSlug: string): Promise<boolean> {
+  const server = await loadServer(serverIdOrSlug).catch(() => null);
+  return server?.ownerUserId === userId;
+}
+
+/**
+ * On-demand, cached live query (client-confirmed polling model,
+ * 2026-08-15) — queried only when a server's page is viewed, cached
+ * ~45s (features/servers/lib/status-cache.ts), no scheduled background
+ * sweep of every registered server. Null for any server without a real
+ * protocol adapter (console, or a game with no adapter) — never a
+ * fabricated/estimated value.
+ */
+export async function getLiveServerStatus(
+  serverIdOrSlug: string,
+): Promise<SourceServerInfo | null> {
+  const server = await loadServer(serverIdOrSlug);
+  const protocol = protocolForGame(server.game, server.platformFamily);
+  if (!protocol || !server.host || server.port == null) {
+    return null;
+  }
+
+  const cached = await getCachedServerStatus(server.id);
+  if (cached) {
+    return cached;
+  }
+
+  let info: SourceServerInfo;
+  try {
+    info = await queryServerInfo({ host: server.host, port: server.port });
+  } catch (error) {
+    if (error instanceof SourceQueryError) {
+      return null;
+    }
+    throw error;
+  }
+
+  await setCachedServerStatus(server.id, info);
+
+  if (hasCapability(server, "STATUS")) {
+    await prisma.gameServer.update({
+      where: { id: server.id },
+      data: {
+        livePlayers: info.players,
+        maxPlayers: info.maxPlayers,
+        mapName: info.mapName,
+        lastRefreshAt: new Date(),
+      },
+    });
+  }
+
+  return info;
 }
 
 export async function createServer(
@@ -220,6 +284,13 @@ export async function upsertRconCredential(
   return { ok: true as const, rconConfigured: true };
 }
 
+/**
+ * Opens a real Source RCON connection and authenticates — replaces the
+ * old host/port-truthiness stub. UNSUPPORTED for any game/platform combo
+ * without a real protocol adapter (features/servers/lib/rcon/registry.ts)
+ * — console servers always fall here today, not a bug, see that file's
+ * doc comment.
+ */
 export async function testRconConnection(
   userId: string,
   serverIdOrSlug: string,
@@ -231,8 +302,29 @@ export async function testRconConnection(
 
   const host = server.host;
   const port = server.port;
-  const state: RconTestState =
-    !host || port == null ? "UNSUPPORTED" : "SUCCESS";
+  const protocol = protocolForGame(server.game, server.platformFamily);
+
+  let state: RconTestState;
+  if (!host || port == null || !protocol) {
+    state = "UNSUPPORTED";
+  } else {
+    const credential = await prisma.serverCredential.findUnique({ where: { serverId: server.id } });
+    if (!credential) {
+      state = "UNSUPPORTED";
+    } else {
+      try {
+        const password = openSecret(credential);
+        await runRconCommand({ host, port, password, timeoutMs: 5000 });
+        state = "SUCCESS";
+      } catch (error) {
+        if (error instanceof SourceRconError) {
+          state = error.kind === "AUTH_FAILED" ? "AUTH_FAILED" : "TIMEOUT";
+        } else {
+          state = "TIMEOUT";
+        }
+      }
+    }
+  }
 
   await prisma.gameServer.update({
     where: { id: server.id },
@@ -348,4 +440,98 @@ export async function setServerBio(
     update: { bio },
   });
   return row.bio;
+}
+
+/**
+ * Server "rarity" (client clarification, 2026-08-15): the owner marks
+ * one of their own owned Maps — an InventoryItem originating from a
+ * MAPS-category marketplace purchase (see fulfillOrder in
+ * checkout.service.ts, which is what actually grants these) — as this
+ * server's active map. Rarity is then read off that item, never a
+ * separate field the owner sets directly.
+ */
+export async function setActiveMap(
+  userId: string,
+  serverIdOrSlug: string,
+  inventoryItemPublicRef: string,
+  ipAddress?: string | null,
+): Promise<GameServerView> {
+  await assertBusinessOrInfluencer(userId);
+  const server = await loadServer(serverIdOrSlug);
+  await assertOwner(server, userId);
+
+  const item = await prisma.inventoryItem.findUnique({
+    where: { publicRef: inventoryItemPublicRef },
+  });
+  if (!item || item.ownerUserId !== userId) {
+    throw new ServerError("You don't own that item.", "FORBIDDEN");
+  }
+  const product = item.productId
+    ? await prisma.product.findUnique({
+        where: { id: item.productId },
+        select: { category: { select: { kind: true } } },
+      })
+    : null;
+  if (!product || product.category.kind !== "MAPS") {
+    throw new ServerError("Only a purchased Map can be set as a server's active map.", "INVALID");
+  }
+
+  const updated = await prisma.gameServer.update({
+    where: { id: server.id },
+    data: { activeMapInventoryItemId: item.id },
+    include: serverInclude,
+  });
+
+  await writeAuditLog({
+    actorUserId: userId,
+    action: AuditAction.SERVER_ACTIVE_MAP_SET,
+    targetType: "GameServer",
+    targetId: server.id,
+    metadata: { inventoryItemId: item.id },
+    ipAddress: ipAddress ?? null,
+  });
+
+  return toServerView(updated);
+}
+
+export async function clearActiveMap(
+  userId: string,
+  serverIdOrSlug: string,
+): Promise<GameServerView> {
+  await assertBusinessOrInfluencer(userId);
+  const server = await loadServer(serverIdOrSlug);
+  await assertOwner(server, userId);
+
+  const updated = await prisma.gameServer.update({
+    where: { id: server.id },
+    data: { activeMapInventoryItemId: null },
+    include: serverInclude,
+  });
+  return toServerView(updated);
+}
+
+/** Owned, MAPS-category items eligible to set as a server's active map —
+ * feeds the owner-facing picker (features/servers/components/
+ * active-map-panel.tsx). */
+export async function listMyOwnedMaps(
+  userId: string,
+): Promise<{ publicRef: string; title: string; rarity: string }[]> {
+  const items = await prisma.inventoryItem.findMany({
+    where: { ownerUserId: userId, productId: { not: null } },
+    select: { publicRef: true, title: true, rarity: true, productId: true },
+    orderBy: { createdAt: "desc" },
+    take: 100,
+  });
+  if (items.length === 0) {
+    return [];
+  }
+  const productIds = [...new Set(items.map((item) => item.productId).filter((id): id is string => id !== null))];
+  const mapProducts = await prisma.product.findMany({
+    where: { id: { in: productIds }, category: { kind: "MAPS" } },
+    select: { id: true },
+  });
+  const mapProductIds = new Set(mapProducts.map((p) => p.id));
+  return items
+    .filter((item) => item.productId && mapProductIds.has(item.productId))
+    .map((item) => ({ publicRef: item.publicRef, title: item.title, rarity: item.rarity }));
 }

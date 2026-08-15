@@ -14,6 +14,7 @@ import {
 import { computeEscrowReleaseAt, escrowHoldDays } from "@/features/payments/lib/escrow-rules";
 import { getStripe, isStripeConfigured } from "@/features/payments/lib/stripe";
 import { isPlatformFunctionEnabled } from "@/features/platform-control/services/platform-function.service";
+import { generateInventoryRef } from "@/features/trade/lib/refs";
 import type { CheckoutInput } from "@/features/payments/schemas/checkout.schemas";
 
 async function allocateOrderRef(): Promise<string> {
@@ -497,7 +498,14 @@ export async function markOrderRefunded(publicRef: string, actorUserId?: string 
 export async function fulfillOrder(actorUserId: string, publicRef: string) {
   const order = await prisma.order.findUnique({
     where: { publicRef },
-    include: { shop: true },
+    include: {
+      shop: true,
+      items: {
+        include: {
+          product: { select: { game: { select: { name: true } }, rarity: true, platforms: true } },
+        },
+      },
+    },
   });
   if (!order) {
     throw new PaymentError("Order not found.", "NOT_FOUND");
@@ -513,6 +521,35 @@ export async function fulfillOrder(actorUserId: string, publicRef: string) {
     where: { id: order.id },
     data: { status: "FULFILLED" },
   });
+
+  // Grants the buyer a real, tradeable InventoryItem per unit purchased —
+  // closes a real gap (createInventoryItem existed with an
+  // InventoryAcquisitionSource.PURCHASE value clearly anticipating this,
+  // but nothing ever called it from order fulfillment). Without this,
+  // Phase 19's rarity-matched trading could only ever operate on
+  // seeded/admin-granted items, never anything a buyer actually bought.
+  // One row per unit (quantity > 1 grants that many discrete, individually
+  // tradeable items, not one row with a quantity field). Platform picks
+  // the product's first listed platform when it supports several — a
+  // known simplification (no way to know which platform the buyer
+  // actually plays on without asking).
+  for (const item of order.items) {
+    for (let unit = 0; unit < item.quantity; unit += 1) {
+      await prisma.inventoryItem.create({
+        data: {
+          publicRef: generateInventoryRef(),
+          ownerUserId: order.buyerUserId,
+          title: item.titleSnapshot,
+          game: item.product.game.name,
+          platform: item.product.platforms[0] ?? "STEAM",
+          rarity: item.product.rarity,
+          transferable: true,
+          acquisitionSource: "PURCHASE",
+          productId: item.productId,
+        },
+      });
+    }
+  }
 
   await writeAuditLog({
     actorUserId,
