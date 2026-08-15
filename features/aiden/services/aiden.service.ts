@@ -3,27 +3,20 @@ import { prisma } from "@/lib/db";
 import { writeAuditLog } from "@/features/auth/services/audit-log.service";
 import { AidenError } from "@/features/aiden/lib/errors";
 import { generateAidenAssetRef, generateAidenJobRef } from "@/features/aiden/lib/refs";
+import { usdToCoins } from "@/features/aiden/lib/cost";
+import { coinCostForAssetType } from "@/features/aiden/lib/cost-preview";
 import type { AidenAssetType, AidenAssetView, AidenJobView } from "@/features/aiden/lib/types";
+import { productForAssetType, type AidenGenerationResult } from "@/features/aiden/providers/types";
+import { masterAgent, AidenOsError } from "@/features/aiden/os";
 import type { CreateAidenJobInput } from "@/features/aiden/schemas/aiden.schemas";
 import { WalletError } from "@/features/wallet/lib/errors";
 import {
+  captureReservation,
   releaseReservation,
   reserveCoins,
 } from "@/features/wallet/services/ledger.service";
 
-const ASSET_COST: Record<AidenAssetType, number> = {
-  CONCEPT_IMAGE: 40,
-  SKIN: 40,
-  TEXTURE: 50,
-  PROP: 60,
-  ANIMATION: 80,
-  TERRAIN: 120,
-  MAP: 120,
-};
-
-export function coinCostForAssetType(assetType: AidenAssetType): number {
-  return ASSET_COST[assetType] ?? 40;
-}
+export { coinCostForAssetType } from "@/features/aiden/lib/cost-preview";
 
 function toJobView(job: {
   publicRef: string;
@@ -33,6 +26,8 @@ function toJobView(job: {
   assetType: AidenAssetType;
   state: AidenJobView["state"];
   coinCostPreview: number;
+  coinCostActual: number | null;
+  failureReason: string | null;
   createdAt: Date;
 }): AidenJobView {
   return {
@@ -43,6 +38,8 @@ function toJobView(job: {
     assetType: job.assetType,
     state: job.state,
     coinCostPreview: job.coinCostPreview,
+    coinCostActual: job.coinCostActual,
+    failureReason: job.failureReason,
     createdAt: job.createdAt.toISOString(),
   };
 }
@@ -55,6 +52,7 @@ function toAssetView(asset: {
   moderation: AidenAssetView["moderation"];
   game: string;
   previewLabel: string;
+  assetUrl: string | null;
 }): AidenAssetView {
   return {
     publicRef: asset.publicRef,
@@ -64,6 +62,7 @@ function toAssetView(asset: {
     moderation: asset.moderation,
     game: asset.game,
     previewLabel: asset.previewLabel,
+    assetUrl: asset.assetUrl,
   };
 }
 
@@ -132,8 +131,7 @@ export async function createJob(
     ipAddress: ipAddress ?? null,
   });
 
-  // Prefer fail stub so coins are not stuck without a provider
-  return processJobStub(userId, publicRef, ipAddress);
+  return runGeneration(userId, publicRef, ipAddress);
 }
 
 export async function cancelJob(
@@ -175,7 +173,17 @@ export async function cancelJob(
   return toJobView(updated);
 }
 
-export async function processJobStub(
+/**
+ * Runs the job through Aiden Studio OS (features/aiden/os) — MasterAgent
+ * routes "generation.<vest|graft|terra>" to the matching provider, wrapped
+ * as an ExternalModelAdapter. Every currently-registered provider fails
+ * closed (features/aiden/providers/{vest,graft,terra}-provider.ts — no
+ * vendor is wired yet, see ROADMAP.md Phase 14), so today this still
+ * always ends in FAILED with a specific "not configured" reason — but
+ * through the real pipeline, not a hardcoded stub, so wiring a real vendor
+ * later needs zero changes here.
+ */
+export async function runGeneration(
   userId: string,
   publicRef: string,
   ipAddress?: string | null,
@@ -184,29 +192,130 @@ export async function processJobStub(
   if (!job || job.userId !== userId) {
     throw new AidenError("Job not found.", "NOT_FOUND");
   }
-  if (job.state !== "QUEUED" && job.state !== "PROCESSING") {
+  if (job.state !== "QUEUED") {
+    // Not a re-entry point: PROCESSING means another call already claimed
+    // it (see the atomic claim below — this function has no exposed
+    // retry/resume route today, but fails closed rather than silently
+    // re-running a possibly-billed generation if one is ever added).
+    // COMPLETED/FAILED/CANCELLED are simply returned as-is.
     return toJobView(job);
   }
 
+  // Atomic claim: only proceeds if this call is the one that flips
+  // QUEUED -> PROCESSING. A concurrent second call sees claimed.count===0
+  // and returns without ever calling the (possibly billed) provider —
+  // prevents two AidenAsset rows / two vendor charges for one job.
+  const claimed = await prisma.aidenJob.updateMany({
+    where: { id: job.id, state: "QUEUED" },
+    data: { state: "PROCESSING" },
+  });
+  if (claimed.count === 0) {
+    const current = await prisma.aidenJob.findUniqueOrThrow({ where: { id: job.id } });
+    return toJobView(current);
+  }
+
+  const taskType = `generation.${productForAssetType(job.assetType).toLowerCase()}`;
+  let result: AidenGenerationResult;
+  let coinCostActual: number;
+  try {
+    result = (await masterAgent.agent({
+      taskType,
+      payload: {
+        prompt: job.prompt,
+        game: job.game,
+        platform: job.platform,
+        assetType: job.assetType,
+      },
+    })) as AidenGenerationResult;
+    // Computed inside the try block, before any reservation is captured:
+    // if the provider ever returns a malformed actualCostUsd, this throws
+    // and is handled by the same release-and-FAIL path below, rather than
+    // capturing the reservation first and only then risking an unhandled
+    // throw that would leave the job stuck PROCESSING with coins already
+    // taken.
+    coinCostActual = usdToCoins(result.actualCostUsd);
+  } catch (error) {
+    const reason =
+      error instanceof AidenOsError
+        ? error.message
+        : error instanceof Error
+          ? error.message
+          : "Generation failed.";
+
+    if (job.reservationTxId) {
+      await releaseReservation({
+        userId,
+        reservationPublicRef: job.reservationTxId,
+        idempotencyKey: `aiden-fail-release:${publicRef}`,
+        ...(ipAddress !== undefined ? { ipAddress } : {}),
+      });
+    }
+
+    const failed = await prisma.aidenJob.update({
+      where: { id: job.id },
+      data: { state: "FAILED", failureReason: reason, reservationTxId: null },
+    });
+
+    await writeAuditLog({
+      actorUserId: userId,
+      action: AuditAction.AIDEN_JOB_FAILED,
+      targetType: "AidenJob",
+      targetId: job.id,
+      metadata: { publicRef, reason },
+      ipAddress: ipAddress ?? null,
+    });
+
+    return toJobView(failed);
+  }
+
+  // Reservation is always captured in full at coinCostPreview, regardless
+  // of actual cost — coinCostActual/frontierModelUsageJson are recorded
+  // for audit only. Releasing the delta when actual cost < preview is a
+  // deferred refinement (see the schema comment on AidenJob.coinCostActual).
   if (job.reservationTxId) {
-    await releaseReservation({
+    await captureReservation({
       userId,
       reservationPublicRef: job.reservationTxId,
-      idempotencyKey: `aiden-fail-release:${publicRef}`,
+      idempotencyKey: `aiden-capture:${publicRef}`,
       ...(ipAddress !== undefined ? { ipAddress } : {}),
     });
   }
 
-  const updated = await prisma.aidenJob.update({
-    where: { id: job.id },
-    data: {
-      state: "FAILED",
-      failureReason: "AI provider not connected in this phase",
-      reservationTxId: null,
-    },
+  const [updatedJob] = await prisma.$transaction([
+    prisma.aidenJob.update({
+      where: { id: job.id },
+      data: {
+        state: "COMPLETED",
+        coinCostActual,
+        frontierModelUsageJson: JSON.stringify(result.usage),
+      },
+    }),
+    prisma.aidenAsset.create({
+      data: {
+        publicRef: generateAidenAssetRef(),
+        userId,
+        jobId: job.id,
+        title: `${job.game} ${job.assetType}`,
+        assetType: job.assetType,
+        technicalStatus: "PREVIEW",
+        moderation: "PRIVATE",
+        game: job.game,
+        previewLabel: result.previewLabel,
+        assetUrl: result.assetUrl,
+      },
+    }),
+  ]);
+
+  await writeAuditLog({
+    actorUserId: userId,
+    action: AuditAction.AIDEN_JOB_COMPLETED,
+    targetType: "AidenJob",
+    targetId: job.id,
+    metadata: { publicRef, coinCostActual },
+    ipAddress: ipAddress ?? null,
   });
 
-  return toJobView(updated);
+  return toJobView(updatedJob);
 }
 
 export async function publishToShopRequest(

@@ -48,6 +48,8 @@ export type AidenJobView = {
   assetType: AidenAssetType;
   state: AidenJobState;
   coinCostPreview: number;
+  coinCostActual: number | null;
+  failureReason: string | null;
   createdAt: string;
 };
 
@@ -59,6 +61,7 @@ export type AidenAssetView = {
   moderation: AidenModerationState;
   game: string;
   previewLabel: string;
+  assetUrl: string | null;
 };
 
 export function aidenAssetTypeLabel(type: AidenAssetType): string {

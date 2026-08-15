@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { clientIp } from "@/lib/http/client-ip";
 import { rateLimit } from "@/lib/security/rate-limit";
 import { jsonAidenError } from "@/features/aiden/lib/http";
+import { assertAidenBusinessAccess } from "@/features/aiden/lib/require-business";
 import { createAidenJobSchema } from "@/features/aiden/schemas/aiden.schemas";
 import { createJob, listJobs } from "@/features/aiden/services/aiden.service";
 
@@ -12,6 +13,7 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
   try {
+    await assertAidenBusinessAccess(session.user.id);
     return NextResponse.json({ items: await listJobs(session.user.id) });
   } catch (error) {
     return jsonAidenError(error, "Could not load Aiden jobs.");
@@ -38,6 +40,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid job details." }, { status: 400 });
   }
   try {
+    await assertAidenBusinessAccess(session.user.id);
     const job = await createJob(session.user.id, parsed.data, clientIp(request));
     return NextResponse.json(job, { status: 201 });
   } catch (error) {

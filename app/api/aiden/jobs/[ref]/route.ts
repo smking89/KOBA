@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { clientIp } from "@/lib/http/client-ip";
 import { rateLimit } from "@/lib/security/rate-limit";
 import { jsonAidenError } from "@/features/aiden/lib/http";
+import { assertAidenBusinessAccess } from "@/features/aiden/lib/require-business";
 import { aidenJobActionSchema } from "@/features/aiden/schemas/aiden.schemas";
 import { cancelJob } from "@/features/aiden/services/aiden.service";
 
@@ -27,6 +28,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ ref: 
   }
   const { ref } = await context.params;
   try {
+    await assertAidenBusinessAccess(session.user.id);
     if (parsed.data.action === "cancel") {
       const job = await cancelJob(session.user.id, ref, clientIp(request));
       return NextResponse.json(job);

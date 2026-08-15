@@ -9,6 +9,8 @@ export const MOCK_AIDEN_JOBS: AidenJobView[] = [
     assetType: "SKIN",
     state: "COMPLETED",
     coinCostPreview: 40,
+    coinCostActual: 38,
+    failureReason: null,
     createdAt: "2026-08-14T10:00:00.000Z",
   },
   {
@@ -19,6 +21,8 @@ export const MOCK_AIDEN_JOBS: AidenJobView[] = [
     assetType: "TERRAIN",
     state: "PROCESSING",
     coinCostPreview: 120,
+    coinCostActual: null,
+    failureReason: null,
     createdAt: "2026-08-14T19:00:00.000Z",
   },
   {
@@ -29,6 +33,9 @@ export const MOCK_AIDEN_JOBS: AidenJobView[] = [
     assetType: "CONCEPT_IMAGE",
     state: "FAILED",
     coinCostPreview: 15,
+    coinCostActual: null,
+    failureReason:
+      "Vest has no configured generation provider (set AIDEN_VEST_PROVIDER_API_KEY to enable).",
     createdAt: "2026-08-13T16:00:00.000Z",
   },
 ];
@@ -42,6 +49,7 @@ export const MOCK_AIDEN_LIBRARY: AidenAssetView[] = [
     moderation: "PRIVATE",
     game: "Rust",
     previewLabel: "Preview still",
+    assetUrl: null,
   },
   {
     publicRef: "KOBA-ADN-AST0002",
@@ -51,6 +59,7 @@ export const MOCK_AIDEN_LIBRARY: AidenAssetView[] = [
     moderation: "PRIVATE",
     game: "ARK: SA",
     previewLabel: "Concept board",
+    assetUrl: null,
   },
   {
     publicRef: "KOBA-ADN-AST0003",
@@ -60,5 +69,6 @@ export const MOCK_AIDEN_LIBRARY: AidenAssetView[] = [
     moderation: "PENDING_REVIEW",
     game: "Rust",
     previewLabel: "FBX preview",
+    assetUrl: null,
   },
 ];

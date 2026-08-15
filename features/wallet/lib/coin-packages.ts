@@ -14,7 +14,10 @@ export type CoinPackage = {
   bonusPercent: number;
 };
 
-const BASE_RATE_COINS_PER_CENT = 1; // $0.01 = 1 Coin at the base (no-bonus) rate.
+// $0.01 = 1 Coin at the base (no-bonus) rate. Exported so other spend
+// surfaces (e.g. Aiden generation cost reconciliation) convert at the same
+// rate real purchases use, rather than defining a second exchange rate.
+export const BASE_RATE_COINS_PER_CENT = 1;
 
 export const COIN_PACKAGES: readonly CoinPackage[] = [
   { id: "starter", label: "Starter", priceCents: 499, coinAmount: 500n, bonusPercent: 0 },
