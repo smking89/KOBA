@@ -70,6 +70,26 @@ enum AuditAction {
   AIDEN_JOB_COMPLETED
   AIDEN_JOB_FAILED
   DEV_PRODUCT_SUBMITTED
+  PLATFORM_FUNCTION_ENABLED
+  PLATFORM_FUNCTION_DISABLED
+}
+
+// Major, independently-toggleable platform functions. This is the registry
+// key set for the superadmin "kill switch" panel — see
+// features/platform-control/lib/functions.ts for the human-readable
+// registry (label/description) that maps onto these keys, and
+// docs/tdls.md for why this exists (TDLS trust-boundary enforcement,
+// slice 1 of 3: superadmin function control).
+enum PlatformFunctionKey {
+  STRIPE_PAYMENTS
+  AIDEN_GENERATION
+  CLAUDE_DESCRIPTION_ASSIST
+  SOCIAL_POSTING
+  MESSAGING
+  TRADE
+  MARKETPLACE_CHECKOUT
+  SERVER_RCON
+  PLUS_SUBSCRIPTIONS
 }
 
 model User {
@@ -87,6 +107,7 @@ model User {
   profile        AccountProfile?
   kobaIdentities KobaIdentity[]
   auditLogs      AuditLog[]     @relation("AuditActor")
+  platformFunctionFlagUpdates PlatformFunctionFlag[] @relation("PlatformFunctionFlagUpdatedBy")
   products       Product[]
   favorites      ProductFavorite[]
   ownedShop      Shop?            @relation("ShopOwner")
@@ -203,6 +224,12 @@ model KobaIdentity {
   @@index([code])
 }
 
+// prevHash/hash form a tamper-evident hash chain: each row's hash commits to
+// its own fields plus the previous row's hash, so editing or deleting a past
+// entry breaks the chain from that point forward (detectable via
+// verifyAuditChain() in audit-log.service.ts). Rows written before this
+// chaining was added have null prevHash/hash — the chain is considered to
+// start fresh at the first non-null row.
 model AuditLog {
   id          String      @id @default(cuid())
   actorUserId String?
@@ -212,12 +239,35 @@ model AuditLog {
   metadata    Json?
   ipAddress   String?     @db.VarChar(45)
   createdAt   DateTime    @default(now())
+  prevHash    String?     @db.VarChar(64)
+  hash        String?     @db.VarChar(64)
 
   actor User? @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
 
   @@index([actorUserId])
   @@index([action])
   @@index([createdAt])
+}
+
+// One row per PlatformFunctionKey. Absence of a row means "enabled" (the
+// default, so shipping a new function doesn't require a migration to turn
+// it on) — only an explicit row with enabled=false blocks the function.
+// Runtime callers use isPlatformFunctionEnabled(), which fails CLOSED
+// (treats the function as disabled) if the DB read itself errors, since
+// this guards real money/API-cost paths and a silent bypass on DB outage
+// would be worse than a false block.
+model PlatformFunctionFlag {
+  id              String              @id @default(cuid())
+  key             PlatformFunctionKey @unique
+  enabled         Boolean             @default(true)
+  note            String?
+  updatedByUserId String?
+  updatedAt       DateTime            @updatedAt
+  createdAt       DateTime            @default(now())
+
+  updatedBy User? @relation("PlatformFunctionFlagUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([key])
 }
 
 enum ProductRarity {

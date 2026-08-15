@@ -13,7 +13,8 @@ export class PaymentError extends Error {
       | "CONFLICT"
       | "INVALID_SIGNATURE"
       | "NOT_PAID"
-      | "AMOUNT_TOO_LARGE",
+      | "AMOUNT_TOO_LARGE"
+      | "DISABLED",
   ) {
     super(message);
     this.name = "PaymentError";
@@ -30,6 +31,7 @@ export function paymentErrorStatus(code: PaymentError["code"]): number {
     case "CONFLICT":
       return 409;
     case "NOT_CONFIGURED":
+    case "DISABLED":
       return 503;
     case "INVALID_SIGNATURE":
       return 400;

@@ -15,6 +15,8 @@ export function shopErrorStatus(code: ShopError["code"]): number {
       return 400;
     case "GENERATION_FAILED":
       return 502;
+    case "DISABLED":
+      return 503;
     default:
       return 400;
   }

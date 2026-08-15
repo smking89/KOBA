@@ -23,6 +23,9 @@ import {
 } from "@/features/admin/services/admin.service";
 import { getAccountSnapshot } from "@/features/accounts/services/account.service";
 import { isStaffAccountType } from "@/features/koba-id/lib/format";
+import { canManagePlatformFunctions } from "@/features/platform-control/lib/functions";
+import { listPlatformFunctions } from "@/features/platform-control/services/platform-function.service";
+import { PlatformFunctionsPanel } from "@/features/platform-control/components/platform-functions-panel";
 import { auth } from "@/lib/auth";
 
 export const metadata = { title: "Staff" };
@@ -60,6 +63,9 @@ export default async function AdminPage() {
     canIssueStaffRole(actorTypes, "MODERATOR") ||
     canIssueStaffRole(actorTypes, "ADMIN") ||
     canIssueStaffRole(actorTypes, "SUPERADMIN");
+
+  const canManageFunctions = canManagePlatformFunctions(actorTypes);
+  const platformFunctions = canManageFunctions ? await listPlatformFunctions() : [];
 
   return (
     <div className="space-y-8">
@@ -169,6 +175,24 @@ export default async function AdminPage() {
           </div>
         </Card>
       </div>
+
+      {canManageFunctions ? (
+        <Card>
+          <CardTitle>Platform functions</CardTitle>
+          <CardDescription>
+            Superadmin-only kill switches for major platform functions. Disabling a function blocks
+            it immediately across the platform (TDLS trust-boundary control, see docs/tdls.md).
+          </CardDescription>
+          <div className="mt-4">
+            <PlatformFunctionsPanel
+              initialFunctions={platformFunctions.map((fn) => ({
+                ...fn,
+                updatedAt: fn.updatedAt ? fn.updatedAt.toISOString() : null,
+              }))}
+            />
+          </div>
+        </Card>
+      ) : null}
 
       <Card>
         <CardTitle>Recent audit</CardTitle>
