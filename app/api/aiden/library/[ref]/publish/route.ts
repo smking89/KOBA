@@ -2,12 +2,10 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { rateLimit } from "@/lib/security/rate-limit";
 import { jsonAidenError } from "@/features/aiden/lib/http";
+import { assertAidenBusinessAccess } from "@/features/aiden/lib/require-business";
 import { publishToShopRequest } from "@/features/aiden/services/aiden.service";
 
-export async function POST(
-  _request: Request,
-  context: { params: Promise<{ ref: string }> },
-) {
+export async function POST(_request: Request, context: { params: Promise<{ ref: string }> }) {
   const session = await auth();
   if (!session?.user.id) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
@@ -18,6 +16,7 @@ export async function POST(
   }
   const { ref } = await context.params;
   try {
+    await assertAidenBusinessAccess(session.user.id);
     const asset = await publishToShopRequest(session.user.id, ref);
     return NextResponse.json(asset);
   } catch (error) {
