@@ -83,6 +83,21 @@ export async function handleStripeEvent(event: Stripe.Event): Promise<void> {
       }
       return;
     }
+    case "charge.dispute.created": {
+      const dispute = event.data.object;
+      const paymentIntent =
+        typeof dispute.payment_intent === "string" ? dispute.payment_intent : null;
+      if (!paymentIntent) {
+        return;
+      }
+      const order = await prisma.order.findFirst({
+        where: { stripePaymentIntentId: paymentIntent },
+      });
+      if (order) {
+        await markOrderRefunded(order.publicRef, null);
+      }
+      return;
+    }
     default:
       return;
   }

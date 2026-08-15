@@ -12,7 +12,8 @@ export class PaymentError extends Error {
       | "AUCTION_LOCKED"
       | "CONFLICT"
       | "INVALID_SIGNATURE"
-      | "NOT_PAID",
+      | "NOT_PAID"
+      | "INVALID",
   ) {
     super(message);
     this.name = "PaymentError";

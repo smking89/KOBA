@@ -9,6 +9,11 @@ import {
   listGames,
   listPublicProducts,
 } from "@/features/marketplace/services/product.service";
+import {
+  pickSponsoredPlacement,
+  resolveSponsoredCreative,
+} from "@/features/promotions/services/ads.service";
+import { SponsoredPlacementCard } from "@/features/promotions/components/sponsored-card";
 
 export const metadata = { title: "Marketplace" };
 
@@ -22,11 +27,22 @@ export default async function MarketPage({
   const session = await auth();
   const signedIn = Boolean(session?.user.id);
 
-  const [games, categories, catalog] = await Promise.all([
+  const [games, categories, catalog, sponsored] = await Promise.all([
     listGames(),
     listCategories(),
     listPublicProducts(query, session?.user.id),
+    pickSponsoredPlacement({
+      placement: "MARKETPLACE",
+      context: {
+        gameId: query.game ?? null,
+        categoryId: query.category ?? null,
+      },
+      viewerUserId: session?.user.id ?? null,
+    }).catch(() => null),
   ]);
+  const sponsoredCreative = sponsored
+    ? await resolveSponsoredCreative(sponsored).catch(() => null)
+    : null;
 
   return (
     <div className="space-y-6">
@@ -40,6 +56,15 @@ export default async function MarketPage({
       </div>
 
       <MarketFilters query={query} games={games} categories={categories} />
+
+      {sponsored && sponsoredCreative ? (
+        <SponsoredPlacementCard
+          campaignId={sponsored.id}
+          href={sponsoredCreative.href}
+          title={sponsoredCreative.title}
+          subtitle={sponsoredCreative.subtitle}
+        />
+      ) : null}
 
       {catalog.items.length === 0 ? (
         <p className="rounded-lg border border-border bg-surface p-6 text-sm text-muted">

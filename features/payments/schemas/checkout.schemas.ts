@@ -5,6 +5,8 @@ export const checkoutSchema = z.object({
   quantity: z.number().int().min(1).max(10).default(1),
   idempotencyKey: z.string().trim().min(8).max(80),
   referralCode: z.string().trim().min(3).max(72).optional(),
+  promoCode: z.string().trim().min(3).max(32).optional(),
+  campaignReferralToken: z.string().trim().min(8).max(80).optional(),
 });
 
 export type CheckoutInput = z.infer<typeof checkoutSchema>;

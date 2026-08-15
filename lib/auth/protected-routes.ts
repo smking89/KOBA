@@ -5,6 +5,7 @@ export const PROTECTED_PATH_PREFIXES = [
   "/dashboard",
   "/business",
   "/influencer",
+  "/seller",
   "/admin",
   "/orders",
   "/messages",

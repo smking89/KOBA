@@ -17,6 +17,15 @@ import {
   voidReferralForRefundedOrder,
 } from "@/features/influencer/services/influencer.service";
 import { payInfluencerEarning } from "@/features/influencer/services/payout.service";
+import { getAccountSnapshot } from "@/features/accounts/services/account.service";
+import { buildPricingSnapshot, assertNonNegativeSnapshot } from "@/features/promotions/lib/pricing";
+import { validatePromoForProduct, redeemPromoInTransaction } from "@/features/promotions/services/promo-code.service";
+import { resolveCheckoutAttribution } from "@/features/promotions/services/attribution.service";
+import {
+  createCommissionForPaidOrder,
+  reverseCommissionForOrder,
+} from "@/features/promotions/services/commission.service";
+import { PromotionError } from "@/features/promotions/lib/errors";
 
 async function allocateOrderRef(): Promise<string> {
   for (let attempt = 0; attempt < 32; attempt += 1) {
@@ -130,10 +139,64 @@ export async function createCheckoutSession(
     throw new PaymentError("Not enough inventory.", "SOLD_OUT");
   }
 
-  const totalCents = unitPriceCents * quantity;
+  const originalSubtotalCents = unitPriceCents * quantity;
   const feeBps = resolveCommissionBps(shop.verificationStatus);
-  const baseSplit = splitPayment(totalCents, feeBps);
-  const referral = existing
+  const checkoutStartedAt = new Date();
+  const buyerSnapshot = await getAccountSnapshot(buyerUserId);
+
+  let promo: Awaited<ReturnType<typeof validatePromoForProduct>> | null = null;
+  if (!existing && input.promoCode) {
+    try {
+      promo = await validatePromoForProduct({
+        code: input.promoCode,
+        productId: product.id,
+        shopId: shop.id,
+        buyerUserId,
+        subtotalCents: originalSubtotalCents,
+        accountType: buyerSnapshot?.activeAccountType ?? "PLAYER",
+      });
+    } catch (error) {
+      if (error instanceof PromotionError) {
+        throw new PaymentError(error.message, "INVALID");
+      }
+      throw error;
+    }
+  }
+
+  const campaignAttr = existing
+    ? null
+    : await resolveCheckoutAttribution({
+        buyerUserId,
+        productId: product.id,
+        shopId: shop.id,
+        shopOwnerUserId: shop.ownerUserId,
+        promoCampaignId: promo?.campaignId ?? null,
+        promoCodeId: promo?.promoCodeId ?? null,
+        cookieToken: input.campaignReferralToken ?? null,
+        checkoutStartedAt,
+      });
+
+  const campaign =
+    campaignAttr
+      ? await prisma.affiliateCampaign.findUnique({ where: { id: campaignAttr.campaignId } })
+      : null;
+
+  const snapshot = buildPricingSnapshot({
+    originalSubtotalCents,
+    discountCents: promo?.discountCents ?? 0,
+    platformFeeBps: feeBps,
+    commissionType: campaign?.commissionType ?? null,
+    commissionValue: campaign?.commissionValue ?? null,
+  });
+  if (!assertNonNegativeSnapshot(snapshot)) {
+    throw new PaymentError("Pricing snapshot is invalid.", "INVALID");
+  }
+  if (snapshot.eligibleCommissionBaseCents < 50 && snapshot.discountCents > 0) {
+    throw new PaymentError("Discounted total is below the minimum charge.", "INVALID");
+  }
+
+  const baseSplit = splitPayment(snapshot.eligibleCommissionBaseCents, feeBps);
+  const referral = existing || campaignAttr
     ? null
     : await resolveReferralForCheckout({
         code: input.referralCode,
@@ -144,8 +207,22 @@ export async function createCheckoutSession(
         shopMemberUserIds: shopMemberUserIds,
         split: baseSplit,
       });
-  const split = referral?.split ?? baseSplit;
-  const influencerShareCents = referral?.split.influencerShareCents ?? 0;
+
+  const influencerShareCents = campaignAttr
+    ? snapshot.influencerCommissionCents
+    : (referral?.split.influencerShareCents ?? 0);
+  const split = campaignAttr
+    ? {
+        totalCents: snapshot.eligibleCommissionBaseCents,
+        applicationFeeCents: snapshot.platformFeeCents + snapshot.influencerCommissionCents,
+        sellerPayoutCents: snapshot.sellerProceedsCents,
+      }
+    : (referral?.split ?? {
+        ...baseSplit,
+        totalCents: snapshot.eligibleCommissionBaseCents,
+        sellerPayoutCents: snapshot.sellerProceedsCents,
+        applicationFeeCents: snapshot.platformFeeCents,
+      });
   const publicRef = existing?.publicRef ?? (await allocateOrderRef());
   const buyer = await prisma.user.findUnique({
     where: { id: buyerUserId },
@@ -168,6 +245,13 @@ export async function createCheckoutSession(
         applicationFeeCents: split.applicationFeeCents,
         sellerPayoutCents: split.sellerPayoutCents,
         influencerShareCents,
+        originalSubtotalCents: snapshot.originalSubtotalCents,
+        discountCents: snapshot.discountCents,
+        eligibleCommissionBaseCents: snapshot.eligibleCommissionBaseCents,
+        promoCodeId: promo?.promoCodeId ?? null,
+        campaignId: campaignAttr?.campaignId ?? null,
+        participationId: campaignAttr?.participationId ?? null,
+        attributionSource: campaignAttr?.source ?? null,
         referralCodeId: referral?.referralCodeId ?? null,
         currency: product.currency,
         idempotencyKey: input.idempotencyKey,
@@ -182,6 +266,14 @@ export async function createCheckoutSession(
         },
       },
     });
+
+    if (promo) {
+      await redeemPromoInTransaction(tx, {
+        promoCodeId: promo.promoCodeId,
+        userId: buyerUserId,
+        orderId: created.id,
+      });
+    }
 
     const updatedProduct = await tx.product.update({
       where: { id: product.id },
@@ -206,14 +298,23 @@ export async function createCheckoutSession(
         success_url: `${appUrl}/orders/${order.publicRef}?checkout=success`,
         cancel_url: `${appUrl}/market/${product.slug}?checkout=cancel`,
         line_items: [
-          {
-            quantity,
-            price_data: {
-              currency: product.currency.toLowerCase(),
-              unit_amount: unitPriceCents,
-              product_data: { name: product.title },
-            },
-          },
+          snapshot.discountCents > 0
+            ? {
+                quantity: 1,
+                price_data: {
+                  currency: product.currency.toLowerCase(),
+                  unit_amount: split.totalCents,
+                  product_data: { name: `${product.title} (promo applied)` },
+                },
+              }
+            : {
+                quantity,
+                price_data: {
+                  currency: product.currency.toLowerCase(),
+                  unit_amount: unitPriceCents,
+                  product_data: { name: product.title },
+                },
+              },
         ],
         payment_intent_data: {
           application_fee_amount: split.applicationFeeCents,
@@ -290,6 +391,11 @@ export async function markOrderPaid(input: {
     throw new PaymentError("Order not found.", "NOT_FOUND");
   }
   if (order.status === "PAID" || order.status === "FULFILLED" || order.status === "REFUNDED") {
+    if (order.status !== "REFUNDED") {
+      await createCommissionForPaidOrder(order.id).catch((error) => {
+        console.error("[KOBA] campaign commission after duplicate paid event failed", error);
+      });
+    }
     return order;
   }
   if (order.status !== "PENDING") {
@@ -319,6 +425,9 @@ export async function markOrderPaid(input: {
       console.error("[KOBA] influencer payout after order paid failed", error);
     });
   }
+  await createCommissionForPaidOrder(paid.id).catch((error) => {
+    console.error("[KOBA] campaign commission after order paid failed", error);
+  });
 
   return paid;
 }
@@ -452,6 +561,9 @@ export async function markOrderRefunded(publicRef: string, actorUserId?: string 
 
   await voidReferralForRefundedOrder(order.id).catch((error) => {
     console.error("[KOBA] influencer earning void after refund failed", error);
+  });
+  await reverseCommissionForOrder(order.id, "refund").catch((error) => {
+    console.error("[KOBA] campaign commission reverse after refund failed", error);
   });
 
   return refunded;

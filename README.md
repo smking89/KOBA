@@ -6,8 +6,10 @@ squads; all on one KOBAID.
 
 ## Status
 
-**Phase 14I — Influencer promo and referrals** is in progress on
-`feat/influencer-promo`. See [docs/influencer.md](docs/influencer.md).
+**Phase 14I — Influencer referrals, promo codes, and sponsored ads** is in
+progress on `feat/influencer-promotions`. See
+[docs/promotions.md](docs/promotions.md) and
+[docs/influencer.md](docs/influencer.md).
 
 **Phase 14H — Developer portal and app marketplace MVP** remains on
 `feat/developer-marketplace`. See [docs/developers.md](docs/developers.md).
@@ -47,7 +49,8 @@ See [docs/wallet-ledger.md](docs/wallet-ledger.md) for the Phase 14B accounting 
 [docs/plus.md](docs/plus.md) for Plus ownership, entitlements, and webhooks,
 [docs/aiden.md](docs/aiden.md) for Aiden generation, pricing, and worker recovery, and
 [docs/developers.md](docs/developers.md) for the developer portal, API keys, and marketplace,
-and [docs/influencer.md](docs/influencer.md) for referral codes and influencer payouts.
+[docs/influencer.md](docs/influencer.md) for legacy referral codes, and
+[docs/promotions.md](docs/promotions.md) for campaigns, promo codes, commissions, and ads.
 Coin purchases, live paid AI providers, and cash withdrawal remain deferred. Promotional
 Plus Coins are not granted until the owner approves amount and refund policy.
 

@@ -22,6 +22,7 @@
     "aiden:worker": "node scripts/run-aiden-worker.mjs",
     "developers:webhooks": "node scripts/run-developer-webhooks.mjs",
     "influencer:payouts": "node scripts/run-influencer-payouts.mjs",
+    "promotions:worker": "node scripts/run-promotions-worker.mjs",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",

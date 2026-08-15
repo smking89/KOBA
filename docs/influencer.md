@@ -5,6 +5,10 @@ order attribution, and test-mode Stripe Connect transfers.
 
 Native ads / KCU placements remain deferred.
 
+Campaign referrals, promo codes, deferred commissions, and contextual sponsored
+ads are documented in [`docs/promotions.md`](promotions.md). This file covers
+the original HANDLE-PRODUCT path, which still works.
+
 ## Roles
 
 - Only the **active Influencer KOBAID** can create, revoke, or view own codes and
@@ -68,7 +72,8 @@ Refunds:
 ## Tagging
 
 Influencers follow the shop `taggingAllowed` flag. They cannot override a shop
-opt-out. Native sponsored placements are not part of this phase.
+opt-out. Contextual sponsored placements are documented in
+[`docs/promotions.md`](promotions.md).
 
 ## Worker
 

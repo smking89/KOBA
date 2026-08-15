@@ -118,6 +118,9 @@ export default async function BusinessDashboardPage() {
         <Link href="/business/payouts" className={cn(buttonVariants({ variant: "secondary" }))}>
           Payouts
         </Link>
+        <Link href="/seller/promotions" className={cn(buttonVariants({ variant: "secondary" }))}>
+          Promotions
+        </Link>
         <RequestVerificationButton status={shop.verificationStatus} />
         <Link href="/settings" className={cn(buttonVariants({ variant: "ghost" }))}>
           Switch account mode

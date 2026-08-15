@@ -111,6 +111,19 @@ enum AuditAction {
   INFLUENCER_EARNING_VOIDED
   SHOP_PROMO_UPDATED
   INFLUENCER_PAYOUT_ONBOARDED
+  INFLUENCER_PROFILE_UPDATED
+  INFLUENCER_VERIFIED
+  INFLUENCER_SUSPENDED
+  AFFILIATE_CAMPAIGN_CREATED
+  AFFILIATE_CAMPAIGN_SUBMITTED
+  AFFILIATE_CAMPAIGN_MODERATED
+  CAMPAIGN_PARTICIPATION_CHANGED
+  PROMO_CODE_CREATED
+  PROMO_CODE_SUSPENDED
+  PROMOTION_COMMISSION_CREATED
+  PROMOTION_COMMISSION_REVERSED
+  SPONSORED_CAMPAIGN_CREATED
+  SPONSORED_CAMPAIGN_MODERATED
 }
 
 model User {
@@ -183,6 +196,15 @@ model User {
   referralCodes           ReferralCode[]            @relation("ReferralInfluencer")
   influencerEarnings      InfluencerEarning[]       @relation("InfluencerEarnings")
   influencerPayoutAccount InfluencerPayoutAccount?
+  influencerProfile       InfluencerProfile?
+  affiliateCampaigns      AffiliateCampaign[]       @relation("CampaignSeller")
+  campaignParticipations  CampaignParticipation[]
+  promoCodesCreated       PromoCode[]               @relation("PromoCodeSeller")
+  promoRedemptions        PromoCodeRedemption[]
+  promotionCommissionsEarned PromotionCommission[]  @relation("CommissionInfluencer")
+  promotionCommissionsSold   PromotionCommission[]  @relation("CommissionSeller")
+  sponsoredCampaigns      SponsoredCampaign[]
+  promotionNotices        PromotionNotice[]
 }
 
 model Account {
@@ -363,9 +385,11 @@ model Product {
   variants  ProductVariant[]
   media     ProductMedia[]
   favorites ProductFavorite[]
-  orderItems    OrderItem[]
-  auction       Auction?
-  referralCodes ReferralCode[]
+  orderItems      OrderItem[]
+  auction         Auction?
+  referralCodes   ReferralCode[]
+  campaignProducts AffiliateCampaignProduct[]
+  promoCodeProducts PromoCodeProduct[]
 
   @@index([moderationStatus, publishedAt])
   @@index([gameId])
@@ -460,8 +484,10 @@ model Shop {
   products      Product[]
   orders        Order[]
   servers       GameServer[]
-  promoConfig   ShopPromoConfig?
-  referralCodes ReferralCode[]
+  promoConfig          ShopPromoConfig?
+  referralCodes        ReferralCode[]
+  affiliateCampaigns   AffiliateCampaign[]
+  promoCodes           PromoCode[]
 }
 
 model ShopMember {
@@ -520,6 +546,13 @@ model Order {
   applicationFeeCents     Int         @default(0)
   sellerPayoutCents       Int
   influencerShareCents    Int         @default(0)
+  originalSubtotalCents   Int         @default(0)
+  discountCents           Int         @default(0)
+  eligibleCommissionBaseCents Int     @default(0)
+  promoCodeId             String?
+  campaignId              String?
+  participationId         String?
+  attributionSource       AttributionSource?
   currency                String      @default("USD")
   stripeCheckoutSessionId String?     @unique
   stripePaymentIntentId   String?
@@ -536,13 +569,20 @@ model Order {
   buyer                User                  @relation("OrderBuyer", fields: [buyerUserId], references: [id], onDelete: Restrict)
   items                OrderItem[]
   referralCode         ReferralCode?         @relation(fields: [referralCodeId], references: [id], onDelete: SetNull)
-  referralAttribution  ReferralAttribution?
-  influencerEarning    InfluencerEarning?
+  referralAttribution     ReferralAttribution?
+  influencerEarning       InfluencerEarning?
+  promoCode               PromoCode?             @relation(fields: [promoCodeId], references: [id], onDelete: SetNull)
+  campaign                AffiliateCampaign?     @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  participation           CampaignParticipation? @relation(fields: [participationId], references: [id], onDelete: SetNull)
+  promotionCommission     PromotionCommission?
+  promoRedemption         PromoCodeRedemption?
 
   @@index([shopId, createdAt])
   @@index([buyerUserId])
   @@index([status])
   @@index([referralCodeId])
+  @@index([promoCodeId])
+  @@index([campaignId])
 }
 
 model ProcessedStripeEvent {
@@ -659,6 +699,382 @@ model InfluencerPayoutAccount {
   updatedAt        DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum InfluencerVerificationStatus {
+  UNVERIFIED
+  PENDING
+  VERIFIED
+  REJECTED
+  SUSPENDED
+}
+
+enum AffiliateCampaignStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  ACTIVE
+  PAUSED
+  COMPLETED
+  REJECTED
+  SUSPENDED
+  CANCELLED
+}
+
+enum CampaignParticipationStatus {
+  INVITED
+  APPLIED
+  ACTIVE
+  REJECTED
+  PAUSED
+  REVOKED
+  COMPLETED
+}
+
+enum PromotionRateType {
+  FIXED
+  PERCENTAGE
+}
+
+enum AttributionSource {
+  CLICK
+  PROMO_CODE
+}
+
+enum PromotionCommissionStatus {
+  PENDING
+  QUALIFIED
+  AVAILABLE
+  REVERSED
+  PAID
+  CANCELLED
+  UNDER_REVIEW
+}
+
+enum SponsoredEntityType {
+  PRODUCT
+  SHOP
+  DEV_PRODUCT
+  GAME_SERVER
+}
+
+enum SponsoredPlacement {
+  MARKETPLACE
+  SHOP
+  APPS
+  SERVERS
+}
+
+enum SponsoredCampaignStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  ACTIVE
+  PAUSED
+  COMPLETED
+  REJECTED
+  SUSPENDED
+  CANCELLED
+}
+
+enum SponsoredEventType {
+  IMPRESSION
+  CLICK
+  SPEND
+  RELEASE
+}
+
+model InfluencerProfile {
+  id                    String                        @id @default(cuid())
+  userId                String                        @unique
+  slug                  String                        @unique
+  displayName           String
+  bio                   String                        @default("") @db.Text
+  avatarUrl             String?
+  bannerUrl             String?
+  socialLinksJson       String                        @default("[]")
+  games                 String[]
+  categories            String[]
+  audienceRegions       String[]
+  contactEmail          String?
+  verificationStatus    InfluencerVerificationStatus  @default(UNVERIFIED)
+  verificationNote      String?
+  suspendedAt           DateTime?
+  payoutEligible        Boolean                       @default(false)
+  disclosureAcceptedAt  DateTime?
+  createdAt             DateTime                      @default(now())
+  updatedAt             DateTime                      @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([verificationStatus])
+}
+
+model AffiliateCampaign {
+  id                      String                   @id @default(cuid())
+  publicRef               String                   @unique
+  shopId                  String
+  sellerUserId            String
+  name                    String
+  status                  AffiliateCampaignStatus  @default(DRAFT)
+  commissionType          PromotionRateType        @default(PERCENTAGE)
+  commissionValue         Int                      @default(1000)
+  discountType            PromotionRateType?
+  discountValue           Int?
+  attributionWindowHours  Int                      @default(168)
+  totalBudgetCents        Int                      @default(0)
+  remainingBudgetCents    Int                      @default(0)
+  perInfluencerLimitCents Int?
+  totalConversionLimit    Int?
+  conversionCount         Int                      @default(0)
+  targetGames             String[]
+  targetCategories        String[]
+  openApplications        Boolean                  @default(true)
+  terms                   String                   @default("") @db.Text
+  startsAt                DateTime?
+  endsAt                  DateTime?
+  moderationNote          String?
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+
+  shop           Shop                      @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  seller         User                      @relation("CampaignSeller", fields: [sellerUserId], references: [id], onDelete: Cascade)
+  products       AffiliateCampaignProduct[]
+  participations CampaignParticipation[]
+  promoCodes     PromoCode[]
+  commissions    PromotionCommission[]
+  orders         Order[]
+  clickEvents    ReferralClickEvent[]
+
+  @@index([shopId, status])
+  @@index([sellerUserId, status])
+}
+
+model AffiliateCampaignProduct {
+  campaignId String
+  productId  String
+
+  campaign AffiliateCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  product  Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@id([campaignId, productId])
+  @@index([productId])
+}
+
+model CampaignParticipation {
+  id               String                       @id @default(cuid())
+  publicRef        String                       @unique
+  campaignId       String
+  influencerUserId String
+  status           CampaignParticipationStatus  @default(APPLIED)
+  referralToken    String                       @unique
+  promoCodeId      String?
+  termsAcceptedAt  DateTime?
+  createdAt        DateTime                     @default(now())
+  updatedAt        DateTime                     @updatedAt
+
+  campaign     AffiliateCampaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  influencer   User                    @relation(fields: [influencerUserId], references: [id], onDelete: Cascade)
+  promoCode    PromoCode?              @relation(fields: [promoCodeId], references: [id], onDelete: SetNull)
+  clickEvents  ReferralClickEvent[]
+  commissions  PromotionCommission[]
+  orders       Order[]
+
+  @@unique([campaignId, influencerUserId])
+  @@index([influencerUserId, status])
+  @@index([referralToken])
+}
+
+model PromoCode {
+  id                   String             @id @default(cuid())
+  code                 String             @unique
+  sellerUserId         String
+  shopId               String
+  campaignId           String?
+  discountType         PromotionRateType
+  discountValue        Int
+  minOrderCents        Int                @default(0)
+  maxDiscountCents     Int?
+  usageLimit           Int?
+  usageCount           Int                @default(0)
+  perAccountLimit      Int                @default(1)
+  startsAt             DateTime?
+  endsAt               DateTime?
+  active               Boolean            @default(true)
+  applicableAccountTypes String[]
+  stackingAllowed      Boolean            @default(false)
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  seller         User                    @relation("PromoCodeSeller", fields: [sellerUserId], references: [id], onDelete: Cascade)
+  shop           Shop                    @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  campaign       AffiliateCampaign?      @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  products       PromoCodeProduct[]
+  redemptions    PromoCodeRedemption[]
+  participations CampaignParticipation[]
+  orders         Order[]
+
+  @@index([shopId, active])
+  @@index([campaignId])
+}
+
+model PromoCodeProduct {
+  promoCodeId String
+  productId   String
+
+  promoCode PromoCode @relation(fields: [promoCodeId], references: [id], onDelete: Cascade)
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@id([promoCodeId, productId])
+  @@index([productId])
+}
+
+model PromoCodeRedemption {
+  id          String   @id @default(cuid())
+  promoCodeId String
+  userId      String
+  orderId     String?  @unique
+  createdAt   DateTime @default(now())
+
+  promoCode PromoCode @relation(fields: [promoCodeId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  order     Order?    @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@index([promoCodeId, userId])
+}
+
+model ReferralClickEvent {
+  id               String   @id @default(cuid())
+  publicRef        String   @unique
+  participationId  String
+  campaignId       String
+  visitorHash      String?
+  destinationPath  String
+  idempotencyKey   String   @unique
+  suspicious       Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  expiresAt        DateTime
+
+  participation CampaignParticipation @relation(fields: [participationId], references: [id], onDelete: Cascade)
+  campaign      AffiliateCampaign     @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([participationId, createdAt])
+  @@index([expiresAt])
+}
+
+model PromotionCommission {
+  id               String                      @id @default(cuid())
+  publicRef        String                      @unique
+  campaignId       String
+  participationId  String
+  influencerUserId String
+  sellerUserId     String
+  orderId          String                      @unique
+  amountCents      Int
+  currency         String                      @default("USD")
+  status           PromotionCommissionStatus   @default(PENDING)
+  attributionSource AttributionSource
+  idempotencyKey   String                      @unique
+  qualifiedAt      DateTime?
+  availableAt      DateTime?
+  reversedAt       DateTime?
+  paidAt           DateTime?
+  reviewNote       String?
+  createdAt        DateTime                    @default(now())
+  updatedAt        DateTime                    @updatedAt
+
+  campaign      AffiliateCampaign     @relation(fields: [campaignId], references: [id], onDelete: Restrict)
+  participation CampaignParticipation @relation(fields: [participationId], references: [id], onDelete: Restrict)
+  influencer    User                  @relation("CommissionInfluencer", fields: [influencerUserId], references: [id], onDelete: Restrict)
+  seller        User                  @relation("CommissionSeller", fields: [sellerUserId], references: [id], onDelete: Restrict)
+  order         Order                 @relation(fields: [orderId], references: [id], onDelete: Restrict)
+
+  @@index([influencerUserId, status])
+  @@index([campaignId, status])
+}
+
+model SponsoredCampaign {
+  id                     String                   @id @default(cuid())
+  publicRef              String                   @unique
+  advertiserUserId       String
+  entityType             SponsoredEntityType
+  entityId               String
+  placement              SponsoredPlacement
+  targetGameId           String?
+  targetCategoryId       String?
+  targetPlatform         String?
+  targetRegion           String?
+  startsAt               DateTime?
+  endsAt                 DateTime?
+  totalBudgetCoins       BigInt
+  remainingBudgetCoins   BigInt
+  dailyBudgetCoins       BigInt
+  dailySpentCoins        BigInt                   @default(0)
+  dailySpentOn           DateTime?
+  cpcCoins               BigInt
+  frequencyCap           Int                      @default(6)
+  status                 SponsoredCampaignStatus  @default(DRAFT)
+  reservationPublicRef   String?
+  impressionCount        Int                      @default(0)
+  clickCount             Int                      @default(0)
+  spendCoins             BigInt                   @default(0)
+  lastShownAt            DateTime?
+  moderationNote         String?
+  createdAt              DateTime                 @default(now())
+  updatedAt              DateTime                 @updatedAt
+
+  advertiser User             @relation(fields: [advertiserUserId], references: [id], onDelete: Cascade)
+  events     SponsoredEvent[]
+
+  @@index([status, placement])
+  @@index([advertiserUserId, status])
+}
+
+model SponsoredEvent {
+  id             String             @id @default(cuid())
+  campaignId     String
+  type           SponsoredEventType
+  viewerUserId   String?
+  viewerHash     String?
+  amountCoins    BigInt             @default(0)
+  idempotencyKey String             @unique
+  suspicious     Boolean            @default(false)
+  createdAt      DateTime           @default(now())
+
+  campaign SponsoredCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId, type, createdAt])
+  @@index([viewerUserId, createdAt])
+}
+
+model PromotionNotice {
+  id        String    @id @default(cuid())
+  userId    String
+  type      String
+  title     String
+  message   String
+  href      String?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+model PromotionEvent {
+  id              String   @id @default(cuid())
+  type            String
+  campaignId      String?
+  participationId String?
+  orderId         String?
+  actorUserId     String?
+  payloadJson     String   @default("{}")
+  idempotencyKey  String   @unique
+  createdAt       DateTime @default(now())
+
+  @@index([type, createdAt])
+  @@index([campaignId, createdAt])
 }
 
 enum AuctionStatus {

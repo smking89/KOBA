@@ -4,6 +4,7 @@ import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { IssueStaffForm } from "@/features/admin/components/issue-staff-form";
 import { PendingAidenPanel } from "@/features/admin/components/pending-aiden-panel";
 import { PendingDeveloperProductsPanel } from "@/features/admin/components/pending-developer-products-panel";
+import { PendingPromotionsPanel } from "@/features/admin/components/pending-promotions-panel";
 import { PendingProductsPanel } from "@/features/admin/components/pending-products-panel";
 import { PendingServersPanel } from "@/features/admin/components/pending-servers-panel";
 import { PendingShopsPanel } from "@/features/admin/components/pending-shops-panel";
@@ -27,6 +28,7 @@ import {
   listPendingShops,
 } from "@/features/admin/services/admin.service";
 import { listPendingDeveloperProducts } from "@/features/developers/services/moderation.service";
+import { listStaffPromotionQueue } from "@/features/promotions/services/moderation.service";
 import { getAccountSnapshot } from "@/features/accounts/services/account.service";
 import { isStaffAccountType } from "@/features/koba-id/lib/format";
 import { auth } from "@/lib/auth";
@@ -55,18 +57,29 @@ export default async function AdminPage() {
   const actorTypes = snapshot.identities.map((identity) => identity.accountType);
   const overview = await getAdminOverview(session.user.id);
 
-  const [products, shops, reports, pendingServers, pendingAiden, pendingDev] = await Promise.all([
-    canStaffApproveListing(actorTypes) ? listPendingProducts(session.user.id) : Promise.resolve([]),
-    canStaffVerifyShop(actorTypes) ? listPendingShops(session.user.id) : Promise.resolve([]),
-    canStaffModerateContent(actorTypes) ? listOpenReports(session.user.id) : Promise.resolve([]),
-    isAnyStaff(actorTypes) ? listPendingServers(session.user.id) : Promise.resolve([]),
-    canStaffModerateContent(actorTypes)
-      ? listPendingAidenAssets(session.user.id)
-      : Promise.resolve([]),
-    canStaffApproveListing(actorTypes) || canStaffModerateContent(actorTypes)
-      ? listPendingDeveloperProducts(session.user.id).catch(() => [])
-      : Promise.resolve([]),
-  ]);
+  const [products, shops, reports, pendingServers, pendingAiden, pendingDev, promotions] =
+    await Promise.all([
+      canStaffApproveListing(actorTypes)
+        ? listPendingProducts(session.user.id)
+        : Promise.resolve([]),
+      canStaffVerifyShop(actorTypes) ? listPendingShops(session.user.id) : Promise.resolve([]),
+      canStaffModerateContent(actorTypes) ? listOpenReports(session.user.id) : Promise.resolve([]),
+      isAnyStaff(actorTypes) ? listPendingServers(session.user.id) : Promise.resolve([]),
+      canStaffModerateContent(actorTypes)
+        ? listPendingAidenAssets(session.user.id)
+        : Promise.resolve([]),
+      canStaffApproveListing(actorTypes) || canStaffModerateContent(actorTypes)
+        ? listPendingDeveloperProducts(session.user.id).catch(() => [])
+        : Promise.resolve([]),
+      isAnyStaff(actorTypes)
+        ? listStaffPromotionQueue().catch(() => ({
+            campaigns: [],
+            ads: [],
+            influencers: [],
+            commissions: [],
+          }))
+        : Promise.resolve({ campaigns: [], ads: [], influencers: [], commissions: [] }),
+    ]);
 
   const canIssue =
     canIssueStaffRole(actorTypes, "MODERATOR") ||
@@ -210,6 +223,21 @@ export default async function AdminPage() {
             />
           ) : (
             <p className="text-sm text-muted">Your staff role cannot review developer products.</p>
+          )}
+        </div>
+      </Card>
+
+      <Card>
+        <CardTitle>Influencer promotions</CardTitle>
+        <CardDescription>
+          Verify creators, moderate affiliate campaigns and sponsored ads. Influencers cannot
+          self-verify. Ad targeting is contextual only.
+        </CardDescription>
+        <div className="mt-4">
+          {isAnyStaff(actorTypes) ? (
+            <PendingPromotionsPanel queue={promotions} />
+          ) : (
+            <p className="text-sm text-muted">Staff access required.</p>
           )}
         </div>
       </Card>

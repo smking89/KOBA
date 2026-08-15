@@ -31,6 +31,9 @@ export const NEVER_CACHE_PATH_PREFIXES = [
   "/api/apps",
   "/api/v1",
   "/api/influencer",
+  "/api/seller",
+  "/api/promo",
+  "/api/ads",
 ] as const;
 
 export function isSensitivePath(pathname: string): boolean {
@@ -61,6 +64,7 @@ export const NETWORK_FIRST_PATH_PREFIXES = [
   "/apps",
   "/library/apps",
   "/influencer",
+  "/seller",
   "/promo",
   "/api/",
 ] as const;
