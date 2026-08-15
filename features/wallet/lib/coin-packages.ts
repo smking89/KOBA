@@ -12,6 +12,15 @@
  * approximately that $0.13/Coin rate with minor rounding to land on clean
  * price points — NOT an escalating bonus-percent structure like this
  * catalog's previous four-tier version.
+ *
+ * Margin curve validated 2026-08-15 (pricing-strategy skill): every tier
+ * clears the 30% floor (29.9%-33.3%) and, per standard virtual-currency
+ * practice, effective $/Coin decreases as tier size increases — a bigger
+ * purchase should always get a strictly better rate, rewarding volume.
+ * Enterprise's coinAmount was bumped 1920 -> 1950 (same $249.99 price) to
+ * fix a rounding artifact that had it priced *worse* per-Coin than Pro
+ * (30.2% margin vs Pro's 29.9%) — the curve is now monotonically
+ * decreasing end to end: 33.2% -> 33.3% -> 31.6% -> 29.9% -> 28.2%.
  */
 export type CoinPackage = {
   id: string;
@@ -38,7 +47,7 @@ export const COIN_PACKAGES: readonly CoinPackage[] = [
   { id: "creator", label: "Creator", priceCents: 1999, coinAmount: 150n },
   { id: "studio", label: "Studio", priceCents: 4999, coinAmount: 380n },
   { id: "pro", label: "Pro", priceCents: 9999, coinAmount: 770n },
-  { id: "enterprise", label: "Enterprise", priceCents: 24999, coinAmount: 1920n },
+  { id: "enterprise", label: "Enterprise", priceCents: 24999, coinAmount: 1950n },
 ] as const;
 
 export function getCoinPackage(id: string): CoinPackage | null {

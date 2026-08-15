@@ -1,10 +1,21 @@
 import { isEnvConfigured } from "@/features/aiden/providers/env-gate";
-import { coinCostForModel, type ModelId } from "@/features/aiden/lib/model-costs";
-import { MODEL_COST_CENTS_PER_COIN } from "@/features/wallet/lib/coin-packages";
+import type { ModelId } from "@/features/aiden/lib/model-costs";
 import type { AidenGenerationResult } from "@/features/aiden/providers/types";
 
 const ENV_VAR = "REPLICATE_API_TOKEN";
 const API_BASE = "https://api.replicate.com/v1";
+
+/** Replicate's own published hardware rate (replicate.com/pricing,
+ * verified 2026-08-15) — SDXL/Kandinsky both run on Nvidia L40S. Unlike
+ * Tripo's fixed per-task-type credit price, Replicate bills metered
+ * compute-seconds, so actualCostUsd below is computed from the real
+ * predict_time this specific run took × this real rate — not a flat
+ * guess, and not borrowed from KOBA's own coin price (which bundles in
+ * margin, not raw cost — see coin-packages.ts). SDXL's own model page
+ * estimates ~$0.0036/run (~4s typical); FALLBACK_COST_USD matches that
+ * for the rare case metrics.predict_time is missing from the response. */
+const L40S_RATE_USD_PER_SECOND = 0.000975;
+const FALLBACK_COST_USD = 0.0036;
 
 /** Official-model slugs — the `{owner}/{model}` form needs no pinned
  * version hash (Replicate resolves it to that model's latest version),
@@ -128,15 +139,21 @@ export async function generateImage(input: {
     throw new ReplicateGenerationError("Replicate succeeded but returned no output URL.");
   }
 
+  const predictTimeSeconds = prediction.metrics?.predict_time ?? null;
+  const actualCostUsd =
+    predictTimeSeconds !== null
+      ? predictTimeSeconds * L40S_RATE_USD_PER_SECOND
+      : FALLBACK_COST_USD;
+
   return {
     assetUrl,
     previewLabel: "Generated image",
-    actualCostUsd: (coinCostForModel(modelId) * MODEL_COST_CENTS_PER_COIN) / 100,
+    actualCostUsd,
     usage: {
       provider: "replicate",
       model: modelSlug,
       predictionId: prediction.id,
-      predictTimeSeconds: prediction.metrics?.predict_time ?? null,
+      predictTimeSeconds,
     },
   };
 }
