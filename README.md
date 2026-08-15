@@ -6,7 +6,10 @@ squads; all on one KOBAID.
 
 ## Status
 
-**Phase 14G — Aiden AI generation MVP** is in progress on `feat/aiden-generation`
+**Phase 14H — Developer portal and app marketplace MVP** is in progress on
+`feat/developer-marketplace`. See [docs/developers.md](docs/developers.md).
+
+**Phase 14G — Aiden AI generation MVP** remains on `feat/aiden-generation`
 (async concept-image jobs, KOBA Coin reservation, mock provider). See
 [docs/aiden.md](docs/aiden.md).
 
@@ -32,11 +35,14 @@ live in `app/globals.css` and `lib/design-tokens.ts`.
 | `/plus`                                               | KOBA Plus membership and test checkout     |
 | `/aiden`, `/aiden/create`, `/aiden/library`           | Aiden concept generation + private library |
 | `/aiden/jobs/[jobId]`                                 | Generation job status                      |
+| `/developers`, `/developers/dashboard`, `/apps`       | Developer portal + app/plugin marketplace  |
+| `/library/apps`, `/orders/apps`                       | Owned developer products and purchases     |
 | `/wallet`                                             | KOBA Coins wallet (ledger-backed)          |
 
 See [docs/wallet-ledger.md](docs/wallet-ledger.md) for the Phase 14B accounting model,
-[docs/plus.md](docs/plus.md) for Plus ownership, entitlements, and webhooks, and
-[docs/aiden.md](docs/aiden.md) for Aiden generation, pricing, and worker recovery.
+[docs/plus.md](docs/plus.md) for Plus ownership, entitlements, and webhooks,
+[docs/aiden.md](docs/aiden.md) for Aiden generation, pricing, and worker recovery, and
+[docs/developers.md](docs/developers.md) for the developer portal, API keys, and marketplace.
 Coin purchases, live paid AI providers, and cash withdrawal remain deferred. Promotional
 Plus Coins are not granted until the owner approves amount and refund policy.
 
@@ -231,6 +237,10 @@ Plus — only a verified webhook does. Plan Price IDs come from
 Aiden concept generation uses the mock provider until a real adapter is reviewed.
 Queue a job at `/aiden/create`, then run `pnpm aiden:worker`. The HTTP request
 never calls the model. See [docs/aiden.md](docs/aiden.md).
+
+Developer marketplace purchases use KOBA Coins only. Issue sandbox API keys from
+`/developers/api-keys` and deliver webhooks with `pnpm developers:webhooks`.
+KOBA never executes uploaded third-party code. See [docs/developers.md](docs/developers.md).
 
 Placeholder Stripe keys (`sk_test_replace_me`) fail closed — checkout returns 503
 instead of faking paid. Forward webhooks locally with:
