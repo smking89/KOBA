@@ -32,6 +32,11 @@ export function ProductCard({
         <span className="font-mono text-xs tracking-widest text-muted uppercase">
           {product.game.name}
         </span>
+        {product.boosted ? (
+          <span className="absolute top-2 left-2 rounded-full bg-neon-lime/15 px-2 py-0.5 text-[0.65rem] font-medium tracking-wide text-neon-lime uppercase">
+            Boosted
+          </span>
+        ) : null}
         <div className="absolute top-2 right-2">
           <FavoriteButton
             slug={product.slug}

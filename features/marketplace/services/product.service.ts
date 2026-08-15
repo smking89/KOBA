@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { activeBoostedTargetIds } from "@/features/boost/services/boost.service";
 import {
   buildProductOrderBy,
   buildPublicProductWhere,
@@ -55,7 +56,11 @@ function stockQty(product: NonNullable<ProductRecord>): number {
   return product.inventoryQty;
 }
 
-function toCard(product: NonNullable<ProductRecord>, favorited: boolean): PublicProductCard {
+function toCard(
+  product: NonNullable<ProductRecord>,
+  favorited: boolean,
+  boosted: boolean,
+): PublicProductCard {
   return {
     slug: product.slug,
     title: product.title,
@@ -70,6 +75,7 @@ function toCard(product: NonNullable<ProductRecord>, favorited: boolean): Public
     seller: sellerFrom(product),
     thumbnailAlt: product.media[0]?.alt ?? product.title,
     favorited,
+    boosted,
     auction: product.auction
       ? {
           status: product.auction.status,
@@ -117,8 +123,18 @@ export async function listPublicProducts(
     }
   }
 
+  // Boosted-first within this page only — a true global (cross-page)
+  // boosted-first sort needs a DB-level CASE/computed-column ordering,
+  // deferred (see ROADMAP.md Phase 15). This still gives an active Boost
+  // real, visible priority on whichever page the product already sorts
+  // into, not just a badge.
+  const boostedIds = await activeBoostedTargetIds("PRODUCT");
+  const cards = rows
+    .map((row) => toCard(row, favoriteSlugs.has(row.slug), boostedIds.has(row.id)))
+    .sort((a, b) => Number(b.boosted) - Number(a.boosted));
+
   return {
-    items: rows.map((row) => toCard(row, favoriteSlugs.has(row.slug))),
+    items: cards,
     total,
     page: query.page,
     pageSize: query.pageSize,
@@ -152,9 +168,10 @@ export async function getPublicProduct(
   }
 
   const qty = stockQty(product);
+  const boostedIds = await activeBoostedTargetIds("PRODUCT");
 
   return {
-    ...toCard(product, favorited),
+    ...toCard(product, favorited, boostedIds.has(product.id)),
     description: product.description,
     inventoryQty: qty,
     variants: product.variants.map((variant) => ({
