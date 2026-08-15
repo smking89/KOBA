@@ -7,6 +7,7 @@ import { PendingServersPanel } from "@/features/admin/components/pending-servers
 import { PendingShopsPanel } from "@/features/admin/components/pending-shops-panel";
 import { ReportsPanel } from "@/features/admin/components/reports-panel";
 import { StaffRefundForm } from "@/features/admin/components/staff-refund-form";
+import { PlusSubscriptionsPanel } from "@/features/admin/components/plus-subscriptions-panel";
 import {
   canIssueStaffRole,
   canStaffApproveListing,
@@ -173,6 +174,19 @@ export default async function AdminPage() {
           </div>
         </Card>
       </div>
+
+      {isAnyStaff(actorTypes) ? (
+        <Card>
+          <CardTitle>KOBA Plus subscriptions</CardTitle>
+          <CardDescription>
+            Search and reconcile from Stripe. Promotional access is a separate audited grant — never
+            mark Active here.
+          </CardDescription>
+          <div className="mt-4">
+            <PlusSubscriptionsPanel />
+          </div>
+        </Card>
+      ) : null}
 
       <Card>
         <CardTitle>Recent audit</CardTitle>
