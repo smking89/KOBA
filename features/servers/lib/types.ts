@@ -36,6 +36,11 @@ export type GameServerView = {
   joinInfo: string | null;
   lastRefreshAt: string | null;
   capabilities: readonly ServerCapability[];
+  /** "Rarity" for a server, per client clarification: derived from a Map
+   * the owner purchased on KOBA and marked active on this server — null
+   * when no active map is set, never a guessed/default tier. */
+  activeMapRarity: string | null;
+  activeMapTitle: string | null;
   /** Only populate fields the server capabilities allow. */
   status?: "ONLINE" | "OFFLINE" | "UNKNOWN";
   livePlayers?: number;

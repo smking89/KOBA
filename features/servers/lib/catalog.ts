@@ -21,6 +21,8 @@ export const MOCK_SERVERS: GameServerView[] = [
     mapName: "Procedural",
     mapSize: "4250",
     pingMs: 38,
+    activeMapRarity: null,
+    activeMapTitle: null,
   },
   {
     publicRef: "KOBA-SRV-MC0001",
@@ -38,6 +40,8 @@ export const MOCK_SERVERS: GameServerView[] = [
     status: "ONLINE",
     livePlayers: 48,
     maxPlayers: 100,
+    activeMapRarity: null,
+    activeMapTitle: null,
   },
   {
     publicRef: "KOBA-SRV-CON0001",
@@ -53,6 +57,8 @@ export const MOCK_SERVERS: GameServerView[] = [
     lastRefreshAt: null,
     capabilities: ["CONSOLE", "STATUS"],
     status: "UNKNOWN",
+    activeMapRarity: null,
+    activeMapTitle: null,
   },
 ];
 

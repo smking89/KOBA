@@ -929,52 +929,82 @@ lib/stripe.ts`, webhook signature verification) extended for real —
 
 ## Phase 17 — Game Server Directory + Live RCON
 
-`/servers`, `/servers/[serverId]`, `/servers/connect` already exist with
-real scaffolding — this phase is about making the "live" part actually
-live, not building from scratch.
+**Status: shipped (2026-08-15)** for PC Source-engine servers (Rust,
+Garry's Mod). `testRconConnection` was a stub — it only checked whether
+`host`/`port` were truthy, never opened a real connection — now real.
+Console servers (Xbox/PlayStation) are explicitly **not** covered — see
+"What's still blocked" below, this is a real gap, not an oversight.
 
-**Already built, confirmed against current code:**
+**What's real:**
 
-- `GameServer` model: `game`, `platformFamily` (PC | CONSOLE), `region`,
-  `tags[]`, `livePlayers`, `maxPlayers`, `queue`, `mapName`, `mapSize`,
-  `host`/`port`, `rconTestState` — covers nearly every field the client
-  asked for (live player count, player queue, map size, tags, console-or-
-  PC) except **rarity**, which has no server-level concept today (rarity
-  is currently a `Product`/`Cosmetic` field — see open question below).
-- `ServerCredential`: RCON credentials stored encrypted at rest
-  (ciphertext/iv/authTag — AES-GCM-shaped), never plaintext.
-- Full connect wizard UI (`features/servers/components/server-connect-
-wizard.tsx`) and directory UI (`server-directory.tsx`), gated to
-  Business/Influencer accounts (`assertBusinessOrInfluencer`).
-- `testRconConnection` exists but **is a stub** — it only checks whether
-  `host`/`port` are set and reports `SUCCESS`/`UNSUPPORTED` accordingly;
-  it does not open a real RCON connection to any game server today.
+- **Real Source RCON protocol client**
+  (`features/servers/lib/rcon/source-rcon.ts`): TCP,
+  SERVERDATA_AUTH/EXECCOMMAND/RESPONSE_VALUE per Valve's public protocol
+  spec. `testRconConnection` now actually authenticates against the
+  server instead of checking `host`/`port` truthiness.
+- **Real A2S_INFO query client**
+  (`features/servers/lib/rcon/source-query.ts`): UDP, the *correct*
+  protocol for public live-stats reads (player count/map/name) — RCON
+  itself is for authenticated admin commands, a different concern, so
+  this isn't the same client reused for two jobs. Implements the
+  challenge/response round trip modern Source servers require.
+  Protocol adapter is genuinely per-game-per-platform
+  (`features/servers/lib/rcon/registry.ts`): only Rust + Garry's Mod on
+  **PC** get real support; everything else fails closed as
+  UNSUPPORTED — never faked.
+- **Polling model (client-confirmed 2026-08-15)**: on-demand, cached
+  ~45s (`features/servers/lib/status-cache.ts`, same fail-soft Upstash/
+  in-memory shape as `feed-cache.ts`/`rate-limit.ts`) — queried when a
+  server's page is viewed, not a scheduled sweep of every registered
+  server, no persistent connections.
+- **Server "rarity" (client-clarified 2026-08-15)**: derived from a Map
+  the owner purchased on the KOBA marketplace and marked active on that
+  server (`GameServer.activeMapInventoryItemId`) — not a standalone
+  field the owner sets directly. Owner-facing picker on
+  `/servers/[serverId]`.
+- **Real gap found and fixed while wiring rarity**: `fulfillOrder`
+  (`features/payments/services/checkout.service.ts`) never actually
+  created an `InventoryItem` for the buyer — `InventoryAcquisitionSource
+  .PURCHASE` existed in the schema clearly anticipating this, but
+  nothing called it. Without this fix, Phase 19's "done" rarity-matched
+  trading could only ever operate on seeded/admin-granted items, never
+  anything a buyer actually bought — and server rarity would have had
+  nothing real to derive from. Now every unit purchased grants a real,
+  tradeable `InventoryItem`.
 
-**Scope, as engineering deliverables**
+**What's still blocked — genuinely, not just unwired:**
 
-- Real per-game RCON protocol adapters. Different games use different
-  RCON implementations (e.g. Source RCON for Rust and other Source-
-  engine titles is one well-known protocol, but it is not universal) —
-  this needs a protocol-adapter architecture keyed by `game`, not one
-  integration. Launch game list is an open question below.
-- Live polling to keep `livePlayers`/`queue`/`mapName`/`mapSize` current
-  — needs an architecture decision (poll on a schedule vs. a persistent
-  connection per server) with real infra-cost implications at scale.
-- Resolve the "rarity" requirement — either add a server-level rarity/
-  tier field (distinct from product rarity) or confirm the client meant
-  something else (e.g. rarity of items _available_ on that server).
+- **Console servers (Xbox/PlayStation) have no protocol support at
+  all.** Client clarification (2026-08-15): console Rust needs "a
+  bridge, handlers and listeners" — and research during this build
+  confirmed why: **Rust Console Edition is a separate codebase**, built
+  by Double Eleven, not Facepunch's PC Rust — it cannot be assumed to
+  speak Source RCON. Real console support needs a specific
+  console-hosting provider's management API (GPORTAL, Nitrado, etc. —
+  each proprietary) to build a bridge against; no such integration
+  exists in this codebase, and picking one is a real vendor decision,
+  not guessable. `protocolForGame()` returns null for every CONSOLE
+  server unconditionally, by design.
+- Games without a known adapter (Minecraft, DayZ, everything else in
+  the catalog besides Rust/Garry's Mod) — same "fails closed, not
+  faked" treatment. Extending this is adding one registry entry once a
+  real protocol is confirmed for that game, not new architecture.
 
 **Dependencies**
 
 - Shop (done) — servers already link to an owning shop.
 - `ServerCapability`/`ServerOnlineStatus`/`RconTestState` enums (done).
+- `InventoryItem` + real purchase-to-inventory linkage (done, this
+  phase's fix) — server rarity depends on it.
 
 **Open questions for the client**
 
-1. Launch game list — which games' RCON protocols need day-one support?
-2. What does "rarity" mean for a server? A new server-level field, or a
-   summary of the rarest item(s) available/tradeable there?
-3. Polling cadence vs. persistent-connection budget for live stats.
+1. Console server support — which console-hosting provider's API should
+   the "bridge" integrate with? A real vendor decision, same shape as
+   Phase 14's Replicate/Tripo choice.
+2. Beyond Rust/Garry's Mod, which other PC games need RCON support, and
+   what protocol do they actually use (confirm before assuming Source
+   RCON applies — it doesn't universally).
 
 ---
 
@@ -1030,7 +1060,16 @@ alongside the rest of this document, not because it's outstanding work.
 Client rule: only items of the **same rarity tier** may be traded against
 each other (fairness constraint). Confirmed live in
 `features/trade/lib/rarity-policy.ts#assertSameRarityTrade`, enforced by
-the trade offer/accept flow shipped with item trading. No gap here.
+the trade offer/accept flow shipped with item trading.
+
+**Correction (2026-08-15, found while building Phase 17):** the trading
+*rule* was always real, but until Phase 17's `fulfillOrder` fix, nothing
+ever populated `InventoryItem` from an actual marketplace purchase —
+`InventoryAcquisitionSource.PURCHASE` existed in the schema but no code
+path used it. This phase's trading logic only ever had seeded/admin-
+granted items to operate on in practice. Now fixed — "no gap" is
+accurate again, but wasn't quite true between when this phase first
+shipped and Phase 17's fix.
 
 ---
 
@@ -1456,7 +1495,7 @@ Flagging rather than guessing on anything with real product/cost/legal consequen
 12. **Aiden frontier-model providers** (Phase 14) — Vest recommended (Tripo AI, pay-as-you-go). Graft and Terra vendors still open; blocks wiring the actual API calls (the reconciliation pipeline itself is built and vendor-agnostic).
 13. **KOBAads vs. Boost relationship** (Phase 15) — one product or two.
 14. **KOBA Plus perks** — shipped 2026-08-15 (see Phase 16): real Stripe Subscriptions, $4.99/mo single tier, tenure badges, per-server bio. Animated avatar/banner and themes/icons/sounds are blocked on prerequisite features that don't exist at all (no avatar/banner upload, no theming system) — not just unwired. KOBA Shop discount + Cosmetic access still blocked on Phase 23. Multiplier perk deliberately deferred. Still open: tenure badge threshold values (placeholder), lapse-reset behavior (shipped assuming persist).
-15. **Server "rarity" meaning** (Phase 17) — not a concept that exists on `GameServer` today; needs clarification on what it should represent.
+15. **Server "rarity" meaning** (Phase 17) — resolved 2026-08-15: derived from an owned, KOBA-marketplace-purchased Map set active on the server, shipped. Still open: console server (Xbox/PlayStation) RCON support needs a specific console-hosting provider API decision.
 16. **Subdomain deployment strategy** (Phase 20) — single-app rewrite vs. separate deployments, and who owns DNS/TLS for `koba.games`.
 17. **KOBA Shop details** (Phase 23) — cosmetic checkout model (reuse `Order` or a dedicated `CosmeticOrder`), application review workflow/SLA, hero section display logic, and how the Plus member discount interacts with the 2.5% seller fee.
 18. **User interests / tag taxonomy** (Phase 1 → Phase 8) — Phase 1's outline named a mandatory "minimum 4 hashtags/interest tags" registration step feeding Phase 8's ranking, but neither the capture step nor a tag taxonomy was ever built. Phase 8's feed ranking now ships with an `interestMatch` signal deliberately held at weight 0 pending this.
