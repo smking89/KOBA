@@ -1277,23 +1277,18 @@ surfaced once the bot actually exists.
   the buyer's linked server account); for client-side skins this
   coordinates with the Phase 21 plugin instead — the bot itself doesn't
   reach into a player's PC.
-- **Delivery must also work when the server owner runs a *different*
-  Discord delivery bot instead of (or alongside) KOBAbot** — e.g. a
-  console Rust server already running **KAOSBOT** (bot.ka0s.uk),
-  **Ch33kys RCE Bot** (ch33kysrcebot.com), or **Veretech**
-  (docs.tip4serv.com), all of which already deliver purchased items via
-  RCON when notified by a webshop. Real, verified via web search
-  2026-08-16 — not guessed. All three integrate with **Tip4Serv**
-  (a console-Rust webshop platform, the console-market analog of
-  Tebex/PC Rust), so the likely-correct shape is: KOBA's fulfillment
-  path fires an **outbound webhook per order** (product/kit ref, buyer's
-  linked console identity, quantity) that a server owner can point at
-  whichever delivery bot they already run, rather than KOBA trying to
-  integrate with each bot's private API individually. **Not yet
-  designed or built** — this needs the actual Tip4Serv/KAOSBOT/Ch33kys/
-  Veretech incoming-webhook contract (payload shape, auth) confirmed
-  from their own docs before writing an adapter; do not guess the
-  payload format.
+- **Third-party delivery bot interop (deferred, client decision
+  2026-08-16): for now, console kit/in-game-item delivery goes through
+  KOBAbot only.** A server owner already running a different console
+  delivery bot — e.g. **KAOSBOT** (bot.ka0s.uk), **Ch33kys RCE Bot**
+  (ch33kysrcebot.com), or **Veretech** (docs.tip4serv.com), all real,
+  verified via web search 2026-08-16, all already deliver purchased
+  items via RCON when notified by a webshop like Tip4Serv — is **not**
+  in scope right now. If the client revisits this, the likely-correct
+  shape is an outbound per-order webhook a server owner can point at
+  whichever bot they run, but building that still needs the actual
+  Tip4Serv/KAOSBOT/Ch33kys/Veretech incoming-webhook contract (payload
+  shape, auth) confirmed from their own docs first — not guessed.
 - **This is a separate always-on service**, not a Next.js route — a
   Discord gateway connection needs its own long-running process and
   hosting decision, run alongside but not inside this web app.
