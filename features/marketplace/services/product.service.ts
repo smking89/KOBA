@@ -22,12 +22,19 @@ const productInclude = {
   category: { select: { slug: true, name: true } },
   media: { orderBy: { sortOrder: "asc" as const } },
   variants: { orderBy: { createdAt: "asc" as const } },
-  shop: { select: { slug: true, verificationStatus: true } },
+  shop: {
+    select: {
+      slug: true,
+      verificationStatus: true,
+      reviews: { select: { rating: true } },
+      _count: { select: { reviews: true } },
+    },
+  },
   auction: true,
   seller: {
     select: {
       name: true,
-      profile: { select: { displayName: true } },
+      profile: { select: { displayName: true, handle: true } },
       kobaIdentities: { select: { accountType: true, code: true } },
       ownedShop: { select: { slug: true, verificationStatus: true } },
     },
@@ -48,10 +55,26 @@ function sellerFrom(product: NonNullable<ProductRecord>): PublicSeller {
 
   return {
     displayName: product.seller.profile?.displayName ?? product.seller.name ?? "KOBA seller",
+    handle: product.seller.profile?.handle ?? null,
     kobaId,
     shopSlug: product.seller.ownedShop?.slug ?? product.shop?.slug ?? null,
     verified: product.seller.ownedShop?.verificationStatus === "VERIFIED",
   };
+}
+
+function shopRating(product: NonNullable<ProductRecord>): {
+  shopRatingAvg: number | null;
+  shopReviewCount: number;
+} {
+  if (!product.shop) {
+    return { shopRatingAvg: null, shopReviewCount: 0 };
+  }
+  const count = product.shop._count.reviews;
+  if (count === 0) {
+    return { shopRatingAvg: null, shopReviewCount: 0 };
+  }
+  const sum = product.shop.reviews.reduce((total, review) => total + review.rating, 0);
+  return { shopRatingAvg: sum / count, shopReviewCount: count };
 }
 
 function descriptionSnippet(description: string, maxLength = 90): string {
@@ -91,6 +114,7 @@ function toCard(
     boosted,
     freebiePolicy: product.freebiePolicy as FreebiePolicy,
     descriptionSnippet: descriptionSnippet(product.description),
+    ...shopRating(product),
     auction: product.auction
       ? {
           status: product.auction.status,

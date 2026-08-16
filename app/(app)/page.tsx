@@ -26,12 +26,11 @@ export default function HomePage() {
     <div className="space-y-10">
       <section className="space-y-5">
         <h1 className="max-w-2xl text-4xl font-semibold tracking-tight text-balance md:text-5xl">
-          The marketplace and social layer <span className="text-brand-gradient">for your server.</span>
+          Level up your server. <span className="text-brand-gradient">Play with your people.</span>
         </h1>
         <p className="max-w-xl text-base leading-relaxed text-muted md:text-lg">
-          Trade skins, maps, and kits by rarity, find teammates on the LFG board, and track live
-          server stats over RCON — all under one KOBAID. Generate original cosmetics with Aiden,
-          or Boost a listing, shop, or server to push it up the feed.
+          The ultimate marketplace for console and PC game servers. Grab custom skins,
+          monuments, and kits, then find your crew.
         </p>
         <div className="flex flex-wrap gap-3">
           <Link href="/market" className={cn(buttonVariants({ variant: "primary" }))}>

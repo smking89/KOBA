@@ -7,6 +7,7 @@ import type {
 
 export type PublicSeller = {
   displayName: string;
+  handle: string | null;
   kobaId: string | null;
   shopSlug: string | null;
   verified: boolean;
@@ -39,6 +40,9 @@ export type PublicProductCard = {
   freebiePolicy: FreebiePolicy;
   /** Short excerpt of the full description — card "flavor text". */
   descriptionSnippet: string;
+  /** From the selling Shop's real reviews (ShopReview) — null with no reviews yet, never fabricated. */
+  shopRatingAvg: number | null;
+  shopReviewCount: number;
 };
 
 export type PublicProductDetail = PublicProductCard & {
