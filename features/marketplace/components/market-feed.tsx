@@ -1,26 +1,49 @@
+import Link from "next/link";
+import { LockBodyScroll } from "@/features/marketplace/components/lock-body-scroll";
 import { MarketFeedSlide } from "@/features/marketplace/components/market-feed-slide";
 import type { PublicProductCard } from "@/features/marketplace/lib/product-dto";
 
 /**
  * Full-screen, swipe/scroll-snap product feed (TikTok/Stories-style,
  * client spec 2026-08-16) — an alternative to the grid view for the same
- * filtered result set. Sits below the app's sticky header and above its
- * fixed mobile bottom nav (both stay put; only the active slide changes).
+ * filtered result set.
+ *
+ * Positioned `fixed` to the viewport (not the page's own padded/scrolled
+ * flow) between the app's sticky header (h-14, see components/koba/
+ * app-shell.tsx) and its fixed mobile bottom nav, with LockBodyScroll
+ * disabling the underlying page scroll entirely — otherwise the page's
+ * own scroll can clip this view's top edge, which is exactly the bug
+ * the client caught (title cut off at the top on first ship).
  */
-export function MarketFeed({ items, signedIn }: { items: PublicProductCard[]; signedIn: boolean }) {
-  if (items.length === 0) {
-    return (
-      <div className="flex h-[calc(100dvh-11.5rem)] items-center justify-center rounded-lg border border-border bg-surface text-sm text-muted md:h-[calc(100dvh-3.5rem)]">
-        No approved listings match these filters.
-      </div>
-    );
-  }
-
+export function MarketFeed({
+  items,
+  signedIn,
+  gridHref,
+}: {
+  items: PublicProductCard[];
+  signedIn: boolean;
+  gridHref: string;
+}) {
   return (
-    <div className="-mx-4 h-[calc(100dvh-11.5rem)] snap-y snap-mandatory overflow-y-scroll md:mx-0 md:h-[calc(100dvh-3.5rem)] md:rounded-lg">
-      {items.map((product) => (
-        <MarketFeedSlide key={product.slug} product={product} signedIn={signedIn} />
-      ))}
+    <div className="fixed inset-x-0 top-14 bottom-16 z-20 bg-background md:bottom-0">
+      <LockBodyScroll />
+      <Link
+        href={gridHref}
+        className="absolute top-3 right-3 z-30 rounded-full border border-border bg-surface/90 px-3 py-1.5 text-xs font-semibold text-foreground backdrop-blur-sm"
+      >
+        Grid view
+      </Link>
+      {items.length === 0 ? (
+        <div className="flex h-full items-center justify-center text-sm text-muted">
+          No approved listings match these filters.
+        </div>
+      ) : (
+        <div className="h-full snap-y snap-mandatory overflow-y-scroll">
+          {items.map((product) => (
+            <MarketFeedSlide key={product.slug} product={product} signedIn={signedIn} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

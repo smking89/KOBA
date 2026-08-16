@@ -31,6 +31,10 @@ export default async function MarketPage({
     listPublicProducts(query, session?.user.id),
   ]);
 
+  if (feedView) {
+    return <MarketFeed items={catalog.items} signedIn={signedIn} gridHref={viewHref(params, "grid")} />;
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -43,26 +47,16 @@ export default async function MarketPage({
           </p>
         </div>
         <div className="flex overflow-hidden rounded-md border border-border text-sm">
-          <Link
-            href={viewHref(params, "grid")}
-            className={cn("px-3 py-1.5", !feedView ? "bg-neon-lime text-background" : "text-muted")}
-          >
-            Grid
-          </Link>
-          <Link
-            href={viewHref(params, "feed")}
-            className={cn("px-3 py-1.5", feedView ? "bg-neon-lime text-background" : "text-muted")}
-          >
+          <span className={cn("px-3 py-1.5", "bg-neon-lime text-background")}>Grid</span>
+          <Link href={viewHref(params, "feed")} className="px-3 py-1.5 text-muted">
             Feed
           </Link>
         </div>
       </div>
 
-      {feedView ? null : <MarketFilters query={query} games={games} categories={categories} />}
+      <MarketFilters query={query} games={games} categories={categories} />
 
-      {feedView ? (
-        <MarketFeed items={catalog.items} signedIn={signedIn} />
-      ) : catalog.items.length === 0 ? (
+      {catalog.items.length === 0 ? (
         <p className="rounded-lg border border-border bg-surface p-6 text-sm text-muted">
           No approved listings match these filters. After migrating, seed a catalog with{" "}
           <code className="font-mono text-xs">pnpm db:seed</code>.
@@ -75,7 +69,7 @@ export default async function MarketPage({
         </div>
       )}
 
-      {!feedView && catalog.pageCount > 1 ? (
+      {catalog.pageCount > 1 ? (
         <nav className="flex items-center justify-between text-sm" aria-label="Pagination">
           {query.page > 1 ? (
             <Link

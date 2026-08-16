@@ -7,17 +7,29 @@ import { PlatformIcon } from "@/features/marketplace/components/platform-icon";
 import { StarRating } from "@/features/marketplace/components/star-rating";
 import { RarityChip } from "@/features/marketplace/components/rarity-chip";
 import { AuctionCountdown } from "@/features/auctions/components/auction-countdown";
-import { formatPrice } from "@/features/marketplace/lib/catalog";
+import { formatPrice, type ProductRarity } from "@/features/marketplace/lib/catalog";
 import type { PublicProductCard } from "@/features/marketplace/lib/product-dto";
 import { cn } from "@/lib/utils";
 
+// Rarity-tinted radial backdrop — stands in for a real product photo
+// (none exist yet) without ever reading as a broken/empty box. Reuses
+// the same rarity color tokens as RarityChip/product-card.
+const backdropClass: Record<ProductRarity, string> = {
+  COMMON: "from-rarity-common/35",
+  UNCOMMON: "from-rarity-uncommon/35",
+  RARE: "from-rarity-rare/35",
+  EPIC: "from-rarity-epic/35",
+  LEGENDARY: "from-rarity-legendary/35",
+  RELIC: "from-rarity-relic/40",
+};
+
 /**
- * One full-viewport "slide" in the swipeable feed (features/marketplace's
- * MarketFeed). CSS scroll-snap does the swiping — this slide fills the
- * whole snap area, so its overlaid chrome (action rail, platform row,
- * rating, price/action + copyright footer) reads as fixed in place while
- * that product is on screen: nothing inside a slide scrolls on its own,
- * only snapping to the next slide moves anything (client spec, 2026-08-16).
+ * One full-viewport slide in the swipeable feed (features/marketplace's
+ * MarketFeed). Layout follows the standard short-form-feed safe zones
+ * (TikTok/Reels convention: ~120px right-edge action column, bottom
+ * ~30% reserved for a single caption sheet) rather than scattering
+ * separate floating pills, so it reads as one coherent screen instead
+ * of loose UI fragments over empty space (client feedback, 2026-08-16).
  */
 export function MarketFeedSlide({
   product,
@@ -40,96 +52,107 @@ export function MarketFeedSlide({
       : product.priceCents;
 
   return (
-    <section className="relative h-full w-full flex-shrink-0 snap-start bg-white">
-      {/* Name banner */}
-      <div className="absolute inset-x-4 top-4 z-10 rounded-lg bg-background/90 px-4 py-2 text-center backdrop-blur-sm">
-        <Link
-          href={`/market/${product.slug}`}
-          className="line-clamp-1 text-xl font-extrabold tracking-tight text-foreground hover:text-neon-lime"
-        >
-          {product.title}
-        </Link>
-      </div>
-
-      {/* Art fill */}
+    <section className="relative h-full w-full flex-shrink-0 snap-start overflow-hidden bg-background">
+      {/* Backdrop fill — rarity-tinted radial gradient, not a blank box */}
+      <div
+        className={cn(
+          "absolute inset-0 bg-gradient-to-br to-background",
+          backdropClass[product.rarity],
+        )}
+      />
       <div className="absolute inset-0 flex items-center justify-center">
-        <span className="font-mono text-sm font-semibold tracking-widest text-black/25 uppercase">
+        <span className="font-mono text-sm font-semibold tracking-[0.3em] text-foreground/15 uppercase">
           {product.game.name}
         </span>
       </div>
 
-      <div className="absolute top-16 left-4 z-10 flex flex-col gap-1">
-        {product.boosted ? (
-          <span className="rounded-full bg-neon-lime px-2 py-0.5 text-[0.65rem] font-bold tracking-wide text-background uppercase">
-            Boosted
-          </span>
-        ) : null}
-        {product.freebiePolicy !== "NONE" ? (
-          <span className="rounded-full bg-neon-mint px-2 py-0.5 text-[0.65rem] font-bold tracking-wide text-background uppercase">
-            Free
-          </span>
-        ) : null}
-      </div>
+      {product.boosted || product.freebiePolicy !== "NONE" ? (
+        <div className="absolute top-4 left-4 z-10 flex flex-col gap-1.5">
+          {product.boosted ? (
+            <span className="rounded-full bg-neon-lime px-2.5 py-1 text-[0.65rem] font-bold tracking-wide text-background uppercase shadow-soft">
+              Boosted
+            </span>
+          ) : null}
+          {product.freebiePolicy !== "NONE" ? (
+            <span className="rounded-full bg-neon-mint px-2.5 py-1 text-[0.65rem] font-bold tracking-wide text-background uppercase shadow-soft">
+              Free
+            </span>
+          ) : null}
+        </div>
+      ) : null}
 
-      {/* Action rail — fixed to this slide's right edge */}
-      <div className="absolute top-1/2 right-4 z-10 flex -translate-y-1/2 flex-col items-center gap-3 rounded-full bg-white/85 p-1.5 backdrop-blur-sm">
+      {/* Right action column — safe-zone convention, one tight group */}
+      <div className="absolute top-1/2 right-3 z-10 flex -translate-y-1/2 flex-col items-center gap-4">
         <FavoriteButton slug={product.slug} initialFavorited={product.favorited} signedIn={signedIn} />
-        <ShareButton slug={product.slug} title={product.title} />
+        <ShareButton
+          slug={product.slug}
+          title={product.title}
+          className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-surface/90 text-foreground shadow-soft hover:text-neon-lime"
+        />
         <Link
           href="/wallet"
           aria-label="Boost this listing"
           title="Boost"
-          className="inline-flex h-9 w-9 items-center justify-center rounded-full text-neon-lime transition-transform hover:scale-110"
+          className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-surface/90 text-neon-lime shadow-soft transition-transform hover:scale-105"
         >
           <Zap className="h-5 w-5" aria-hidden />
         </Link>
       </div>
 
-      {/* Seller banner */}
-      <div className="absolute top-28 left-4 z-10 flex items-center gap-1.5 rounded-full bg-background/90 px-3 py-1 text-sm font-semibold text-foreground backdrop-blur-sm">
-        {product.seller.shopSlug ? (
-          <Link href={`/shops/${product.seller.shopSlug}`} className="hover:text-neon-lime">
-            @{product.seller.handle ?? product.seller.displayName}
-          </Link>
-        ) : (
-          <span>@{product.seller.handle ?? product.seller.displayName}</span>
-        )}
-        {product.seller.verified ? (
-          <span
-            className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full bg-neon-lime text-[0.6rem] text-background"
-            title="Verified seller"
-            aria-label="Verified seller"
-          >
-            ✓
-          </span>
-        ) : null}
-      </div>
-
-      {/* Platform row — fixed bottom-left */}
-      <div className="absolute bottom-28 left-4 z-10 flex items-center gap-1.5 rounded-full bg-white/85 px-2.5 py-1.5 backdrop-blur-sm">
-        {product.platforms.map((platform) => (
-          <PlatformIcon key={platform} platform={platform} className="h-4 w-4 text-black/70" />
-        ))}
-      </div>
-
-      {/* Star rating — fixed bottom-right */}
-      <div className="absolute right-4 bottom-28 z-10 rounded-full bg-white/85 px-2.5 py-1.5 backdrop-blur-sm">
-        <StarRating ratingAvg={product.shopRatingAvg} reviewCount={product.shopReviewCount} />
-      </div>
-
-      {/* Footer: flavor text + rarity, price/action, copyright — fixed to the bottom of this slide */}
-      <div className="absolute inset-x-0 bottom-0 z-10 space-y-2 bg-background/95 px-4 pt-3 pb-4 backdrop-blur-sm">
+      {/* Single caption sheet — everything else lives here, one block */}
+      <div className="absolute inset-x-0 bottom-0 z-10 space-y-3 rounded-t-2xl border-t border-border bg-background/95 px-4 pt-4 pb-5 backdrop-blur-md">
         <div className="flex items-center gap-2">
-          <RarityChip rarity={product.rarity} />
-          {product.descriptionSnippet ? (
-            <p className="line-clamp-1 text-xs text-muted italic">
-              &ldquo;{product.descriptionSnippet}&rdquo;
-            </p>
+          {product.seller.shopSlug ? (
+            <Link
+              href={`/shops/${product.seller.shopSlug}`}
+              className="font-semibold hover:text-neon-lime"
+            >
+              @{product.seller.handle ?? product.seller.displayName}
+            </Link>
+          ) : (
+            <span className="font-semibold">@{product.seller.handle ?? product.seller.displayName}</span>
+          )}
+          {product.seller.verified ? (
+            <span
+              className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-neon-lime text-[0.6rem] text-background"
+              title="Verified seller"
+              aria-label="Verified seller"
+            >
+              ✓
+            </span>
           ) : null}
+          <StarRating
+            ratingAvg={product.shopRatingAvg}
+            reviewCount={product.shopReviewCount}
+            className="ml-auto"
+          />
         </div>
-        <div className="flex items-center justify-between gap-3">
+
+        <Link href={`/market/${product.slug}`} className="block text-lg font-bold hover:text-neon-lime">
+          {product.title}
+        </Link>
+
+        {product.descriptionSnippet ? (
+          <p className="line-clamp-2 text-sm text-muted italic">
+            &ldquo;{product.descriptionSnippet}&rdquo;
+          </p>
+        ) : null}
+
+        <div className="flex flex-wrap items-center gap-1.5">
+          <RarityChip rarity={product.rarity} />
+          {product.platforms.map((platform) => (
+            <span
+              key={platform}
+              className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-border"
+            >
+              <PlatformIcon platform={platform} className="h-3.5 w-3.5 text-foreground/80" />
+            </span>
+          ))}
+        </div>
+
+        <div className="flex items-center justify-between gap-3 border-t border-border pt-3">
           <div>
-            <span className={cn("font-mono text-lg text-foreground", sold && "text-muted line-through")}>
+            <span className={cn("font-mono text-xl font-semibold", sold && "text-muted line-through")}>
               {formatPrice(displayCents, product.currency)}
             </span>
             {product.auction && product.listingType === "AUCTION" ? (
@@ -148,9 +171,9 @@ export function MarketFeedSlide({
             </Link>
           )}
         </div>
-        <p className="flex items-center justify-between font-mono text-[0.6rem] text-muted">
-          <span>© {new Date().getFullYear()} koba.games. All rights reserved.</span>
-          <span>{product.seller.kobaId ?? product.slug}</span>
+
+        <p className="text-center font-mono text-[0.6rem] text-muted/70">
+          © {new Date().getFullYear()} koba.games · {product.seller.kobaId ?? product.slug}
         </p>
       </div>
     </section>
