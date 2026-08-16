@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
+import { HexAvatar } from "@/components/koba/hex-avatar";
 import { cn } from "@/lib/utils";
 import { listGroups } from "@/features/groups/services/group.service";
 
@@ -34,15 +35,20 @@ export default async function GroupsPage() {
         <div className="grid gap-4 md:grid-cols-2">
           {groups.map((group) => (
             <Link key={group.slug} href={`/groups/${group.slug}`}>
-              <Card>
-                <div className="flex items-start justify-between gap-2">
-                  <CardTitle>{group.name}</CardTitle>
-                  <Badge>{group.visibility}</Badge>
+              <Card className="border-t-2 border-t-neon-lime">
+                <div className="flex items-start gap-3">
+                  <HexAvatar name={group.name} size="sm" />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <CardTitle className="truncate">{group.name}</CardTitle>
+                      <Badge>{group.visibility}</Badge>
+                    </div>
+                    <CardDescription className="mt-1 line-clamp-2">{group.bio}</CardDescription>
+                    <p className="mt-3 text-xs text-muted">
+                      {group.memberCount} members{group.joined ? " · Joined" : ""}
+                    </p>
+                  </div>
                 </div>
-                <CardDescription className="mt-2 line-clamp-2">{group.bio}</CardDescription>
-                <p className="mt-3 text-xs text-muted">
-                  {group.memberCount} members{group.joined ? " · Joined" : ""}
-                </p>
               </Card>
             </Link>
           ))}

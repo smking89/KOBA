@@ -26,7 +26,7 @@ export default async function BuyerOrdersPage() {
       {orders.length === 0 ? (
         <p className="text-sm text-muted">No orders yet.</p>
       ) : (
-        <ul className="divide-y divide-border rounded-lg border border-border">
+        <ul className="divide-y divide-border rounded-lg border border-t-2 border-t-neon-lime border-border">
           {orders.map((order) => (
             <li
               key={order.publicRef}

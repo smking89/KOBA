@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
+import { HexAvatar } from "@/components/koba/hex-avatar";
 import { cn } from "@/lib/utils";
 import { CreateShopForm } from "@/features/shops/components/create-shop-form";
 import { RequestVerificationButton } from "@/features/shops/components/request-verification-button";
@@ -38,19 +39,24 @@ export default async function BusinessDashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-3xl font-semibold tracking-tight">{shop.name}</h1>
-            {verified ? (
-              <Badge tone="live">Verified</Badge>
-            ) : (
-              <Badge>{shop.verificationStatus}</Badge>
-            )}
+      <div className="h-20 rounded-2xl bg-brand-gradient md:h-28" />
+
+      <div className="-mt-10 flex flex-wrap items-end justify-between gap-3 px-2 md:-mt-12">
+        <div className="flex items-end gap-4">
+          <HexAvatar name={shop.name} size="lg" />
+          <div className="pb-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-2xl font-semibold tracking-tight">{shop.name}</h1>
+              {verified ? (
+                <Badge tone="live">Verified</Badge>
+              ) : (
+                <Badge>{shop.verificationStatus}</Badge>
+              )}
+            </div>
+            <p className="font-mono text-xs text-muted">{snapshot.kobaId}</p>
           </div>
-          <p className="mt-2 font-mono text-sm text-muted">{snapshot.kobaId}</p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 pb-1">
           <Link
             href={`/shops/${shop.slug}`}
             className={cn(buttonVariants({ variant: "secondary" }))}
@@ -64,19 +70,19 @@ export default async function BusinessDashboardPage() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
-        <Card>
+        <Card className="border-t-2 border-t-neon-lime">
           <CardTitle>Live listings</CardTitle>
           <p className="mt-2 font-mono text-2xl">{data.listings.approved}</p>
           <CardDescription>
             {data.listings.pending} pending · {data.listings.draft} drafts
           </CardDescription>
         </Card>
-        <Card>
+        <Card className="border-t-2 border-t-neon-lime">
           <CardTitle>Followers</CardTitle>
           <p className="mt-2 font-mono text-2xl">{data.followers}</p>
           <CardDescription>{data.reviews} shop reviews</CardDescription>
         </Card>
-        <Card>
+        <Card className="border-t-2 border-t-neon-lime">
           <CardTitle>Orders</CardTitle>
           <p className="mt-2 font-mono text-2xl">{shop._count.orders}</p>
           <CardDescription>
@@ -85,7 +91,7 @@ export default async function BusinessDashboardPage() {
         </Card>
       </div>
 
-      <Card>
+      <Card className="border-t-2 border-t-neon-lime">
         <CardTitle>Shop tagging</CardTitle>
         <CardDescription className="mb-3">
           When off, posts cannot tag this shop. Sponsored placements remain a later ads phase.
@@ -97,7 +103,7 @@ export default async function BusinessDashboardPage() {
         />
       </Card>
 
-      <Card>
+      <Card className="border-t-2 border-t-neon-lime">
         <CardTitle>Inventory</CardTitle>
         <p className="mt-2 font-mono text-2xl">{data.inventoryQty}</p>
         <CardDescription>Units across all shop listings, including drafts.</CardDescription>

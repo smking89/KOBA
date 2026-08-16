@@ -1,3 +1,5 @@
+import { Circle, Triangle, Diamond, Star, Sparkles, Crown } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { RARITY_LABEL, type ProductRarity } from "@/features/marketplace/lib/catalog";
 
@@ -20,16 +22,46 @@ const accentClass: Record<ProductRarity, string> = {
   RELIC: "border-t-rarity-relic",
 };
 
-export function RarityChip({ rarity, className }: { rarity: ProductRarity; className?: string }) {
+/**
+ * Escalating shape per tier (client request, 2026-08-16: rarity should
+ * read as an icon, not a word) — a plain circle through an increasingly
+ * ornate shape as rarity climbs, same convention as "shape = power" in
+ * most loot-tier UIs. The legend explaining this lives at /settings so
+ * the mapping isn't just implied.
+ */
+export const RARITY_ICON: Record<ProductRarity, LucideIcon> = {
+  COMMON: Circle,
+  UNCOMMON: Triangle,
+  RARE: Diamond,
+  EPIC: Star,
+  LEGENDARY: Sparkles,
+  RELIC: Crown,
+};
+
+export function RarityChip({
+  rarity,
+  showLabel = false,
+  className,
+}: {
+  rarity: ProductRarity;
+  /** Show the text label alongside the icon — off by default per the
+   * client's "icon, not word" direction; used on the /settings legend
+   * where the word is the point. */
+  showLabel?: boolean;
+  className?: string;
+}) {
+  const Icon = RARITY_ICON[rarity];
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full border px-2 py-0.5 text-[0.65rem] font-bold tracking-wide uppercase",
+        "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[0.65rem] font-bold tracking-wide uppercase",
         rarityClass[rarity],
         className,
       )}
+      title={RARITY_LABEL[rarity]}
     >
-      {RARITY_LABEL[rarity]}
+      <Icon className="h-3 w-3" aria-hidden />
+      {showLabel ? RARITY_LABEL[rarity] : <span className="sr-only">{RARITY_LABEL[rarity]}</span>}
     </span>
   );
 }
