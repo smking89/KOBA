@@ -4,6 +4,7 @@ import Link from "next/link";
 import { signOut, useSession } from "next-auth/react";
 import { usePathname } from "next/navigation";
 import { useId, useState } from "react";
+import { Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BrandMark } from "@/components/koba/brand-mark";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,9 @@ export function AppHeader() {
   const showStaff = isLoggedIn && isStaffSessionType(session?.user.accountType);
   const [moreOpen, setMoreOpen] = useState(false);
   const moreId = useId();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuId = useId();
+  const tabletLinks = [...DESKTOP_PRIMARY_LINKS, ...DESKTOP_MORE_LINKS];
 
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-background/90 backdrop-blur">
@@ -88,6 +92,46 @@ export function AppHeader() {
             ) : null}
           </div>
         </nav>
+        <div className="relative flex lg:hidden">
+          <button
+            type="button"
+            className={cn(
+              "inline-flex h-8 w-8 items-center justify-center rounded-md text-muted transition-colors hover:text-foreground",
+              menuOpen ? "text-neon-lime" : null,
+            )}
+            aria-label={menuOpen ? "Close menu" : "Open menu"}
+            aria-expanded={menuOpen}
+            aria-controls={menuId}
+            onClick={() => setMenuOpen((open) => !open)}
+          >
+            {menuOpen ? <X className="h-5 w-5" aria-hidden /> : <Menu className="h-5 w-5" aria-hidden />}
+          </button>
+          {menuOpen ? (
+            <div
+              id={menuId}
+              role="menu"
+              aria-label="Navigation"
+              className="absolute top-full right-0 z-50 mt-2 min-w-44 rounded-md border border-border bg-surface p-1 shadow-soft"
+            >
+              {tabletLinks.map((link) => (
+                <Link
+                  key={link.href}
+                  role="menuitem"
+                  href={link.href}
+                  className={cn(
+                    "block rounded-md px-3 py-2 text-sm",
+                    isNavActive(pathname, link.href)
+                      ? "bg-surface-2 text-neon-lime"
+                      : "text-muted hover:bg-surface-2 hover:text-foreground",
+                  )}
+                  onClick={() => setMenuOpen(false)}
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </div>
+          ) : null}
+        </div>
         <div className="hidden items-center gap-3 md:flex">
           {isLoggedIn ? (
             <>
