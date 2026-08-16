@@ -3,6 +3,7 @@ packages:
 
 allowBuilds:
   '@prisma/engines': false
+  '@sentry/cli': false
   esbuild: false
   prisma: false
   sharp: false

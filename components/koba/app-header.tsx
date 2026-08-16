@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { usePathname } from "next/navigation";
 import { Hash, Menu } from "lucide-react";
+import { BetaBadge } from "@/components/koba/beta-badge";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { isNavActive, navLabelForPath } from "@/features/navigation/lib/nav";
@@ -29,6 +30,7 @@ export function AppHeader({ onOpenMenu }: { onOpenMenu?: () => void }) {
       <div className="flex min-w-0 flex-1 items-center gap-2">
         <Hash className="hidden h-5 w-5 text-muted sm:block" aria-hidden />
         <p className="truncate text-base font-semibold">{title}</p>
+        <BetaBadge className="shrink-0" />
       </div>
       <div className="flex shrink-0 items-center gap-1">
         {isLoggedIn ? (
