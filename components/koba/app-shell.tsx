@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import { AppHeader } from "@/components/koba/app-header";
 import { MobileNav } from "@/components/koba/mobile-nav";
-import { OnboardingTour } from "@/components/koba/onboarding-tour";
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (
@@ -9,7 +8,6 @@ export function AppShell({ children }: { children: ReactNode }) {
       <AppHeader />
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 pb-24 md:pb-8">{children}</main>
       <MobileNav />
-      <OnboardingTour />
     </div>
   );
 }

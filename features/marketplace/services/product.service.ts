@@ -39,6 +39,12 @@ const productInclude = {
       ownedShop: { select: { slug: true, verificationStatus: true } },
     },
   },
+  _count: {
+    select: {
+      favorites: true,
+      comments: { where: { moderationStatus: "LIVE" as const } },
+    },
+  },
 } satisfies Record<string, unknown>;
 
 type ProductRecord = Awaited<
@@ -115,6 +121,8 @@ function toCard(
     freebiePolicy: product.freebiePolicy as FreebiePolicy,
     descriptionSnippet: descriptionSnippet(product.description),
     ...shopRating(product),
+    favoriteCount: product._count.favorites,
+    commentCount: product._count.comments,
     auction: product.auction
       ? {
           status: product.auction.status,

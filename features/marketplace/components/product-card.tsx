@@ -1,8 +1,6 @@
 import Link from "next/link";
-import { Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { FavoriteButton } from "@/features/marketplace/components/favorite-button";
-import { ShareButton } from "@/features/marketplace/components/share-button";
+import { ProductActionRail } from "@/features/marketplace/components/product-action-rail";
 import { PlatformIcon } from "@/features/marketplace/components/platform-icon";
 import { StarRating } from "@/features/marketplace/components/star-rating";
 import { RarityChip } from "@/features/marketplace/components/rarity-chip";
@@ -18,9 +16,9 @@ const HEX_CLIP = "polygon(3% 0%, 97% 0%, 100% 50%, 97% 100%, 3% 100%, 0% 50%)";
 /**
  * TCG-card-styled product listing (client reference layout, 2026-08-16):
  * a fire-gradient frame, a hex name banner, a large art box with a
- * right-edge action rail (save / share / boost — the three real,
- * data-backed actions this app has; no fake like/comment/repost counts),
- * a platform-icon row and a real star rating (from the seller's Shop
+ * TikTok-style right-edge action rail (like / comment / repost / share
+ * — see ProductActionRail for what's real vs. uncounted), a
+ * platform-icon row and a real star rating (from the seller's Shop
  * reviews) inside the art box, a hex seller banner, and a footer with
  * the price/action bar.
  */
@@ -79,21 +77,8 @@ export function ProductCard({
           </div>
 
           {/* Action rail */}
-          <div className="absolute top-2 right-2 flex flex-col items-center gap-2 rounded-full bg-white/80 p-1 backdrop-blur-sm">
-            <FavoriteButton
-              slug={product.slug}
-              initialFavorited={product.favorited}
-              signedIn={signedIn}
-            />
-            <ShareButton slug={product.slug} title={product.title} />
-            <Link
-              href="/wallet"
-              aria-label="Boost this listing"
-              title="Boost"
-              className="inline-flex h-7 w-7 items-center justify-center rounded-full text-neon-lime transition-transform hover:scale-110"
-            >
-              <Zap className="h-4 w-4" aria-hidden />
-            </Link>
+          <div className="absolute top-2 right-2">
+            <ProductActionRail product={product} signedIn={signedIn} />
           </div>
 
           {/* Platform row */}
@@ -134,7 +119,7 @@ export function ProductCard({
 
         {/* Content */}
         <div className="flex flex-1 flex-col gap-2 px-4 py-3">
-          <RarityChip rarity={product.rarity} />
+          <RarityChip rarity={product.rarity} size="lg" />
           {product.descriptionSnippet ? (
             <p className="text-xs leading-snug text-muted italic">
               &ldquo;{product.descriptionSnippet}&rdquo;

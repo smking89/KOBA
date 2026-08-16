@@ -38,9 +38,16 @@ export const RARITY_ICON_SRC: Record<ProductRarity, string> = {
   RELIC: "/brand/rarity/relic.png",
 };
 
+const badgeSize: Record<"sm" | "md" | "lg", { pill: string; icon: number; iconClass: string }> = {
+  sm: { pill: "gap-1 px-2 py-0.5 text-[0.65rem]", icon: 16, iconClass: "h-4 w-4" },
+  md: { pill: "gap-1.5 px-2.5 py-1 text-xs", icon: 22, iconClass: "h-[22px] w-[22px]" },
+  lg: { pill: "gap-2 px-3 py-1.5 text-sm", icon: 32, iconClass: "h-8 w-8" },
+};
+
 export function RarityChip({
   rarity,
   showLabel = false,
+  size = "md",
   className,
 }: {
   rarity: ProductRarity;
@@ -48,12 +55,18 @@ export function RarityChip({
    * client's "icon, not word" direction; used on the /settings legend
    * where the word is the point. */
   showLabel?: boolean;
+  size?: "sm" | "md" | "lg";
   className?: string;
 }) {
+  const { pill, icon, iconClass } = badgeSize[size];
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[0.65rem] font-bold tracking-wide uppercase",
+        // self-start: this renders inside flex-col cards elsewhere in the
+        // app, whose default align-items:stretch would otherwise stretch
+        // this pill to the full card width instead of hugging its content.
+        "inline-flex w-fit shrink-0 items-center self-start rounded-full border font-bold tracking-wide uppercase",
+        pill,
         rarityClass[rarity],
         className,
       )}
@@ -62,9 +75,9 @@ export function RarityChip({
       <Image
         src={RARITY_ICON_SRC[rarity]}
         alt=""
-        width={12}
-        height={12}
-        className="h-3 w-3"
+        width={icon}
+        height={icon}
+        className={iconClass}
         aria-hidden
       />
       {showLabel ? RARITY_LABEL[rarity] : <span className="sr-only">{RARITY_LABEL[rarity]}</span>}
