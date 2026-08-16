@@ -12,8 +12,8 @@ export function PlusBadge({ visible, className, size = "sm" }: PlusBadgeProps) {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full border border-neon-lime/40 bg-neon-lime/10 font-bold uppercase tracking-wide text-neon-lime",
-        size === "sm" ? "px-2 py-0.5 text-[0.65rem]" : "px-2.5 py-1 text-xs",
+        "inline-flex items-center gap-1 rounded bg-neon-lime/12 font-semibold tracking-wide text-neon-lime uppercase",
+        size === "sm" ? "h-5 px-1.5 text-[11px]" : "h-6 px-2 text-xs",
         className,
       )}
     >

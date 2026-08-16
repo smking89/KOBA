@@ -28,7 +28,7 @@ export function MobileNav() {
     <>
       {moreOpen ? (
         <div
-          className="fixed inset-0 z-40 bg-background/70 lg:hidden"
+          className="fixed inset-0 z-40 bg-background/70 md:hidden"
           aria-hidden
           onClick={() => setMoreOpen(false)}
         />
@@ -38,7 +38,7 @@ export function MobileNav() {
           id={panelId}
           role="dialog"
           aria-label="More destinations"
-          className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-50 mx-auto max-w-lg rounded-t-xl border border-border bg-surface p-3 shadow-soft lg:hidden"
+          className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-50 mx-auto max-w-lg rounded-t-xl border border-border bg-surface p-3 shadow-soft md:hidden"
         >
           <ul className="grid grid-cols-2 gap-1">
             {MOBILE_MORE_LINKS.map((link) => (
@@ -62,7 +62,7 @@ export function MobileNav() {
       ) : null}
       <nav
         aria-label="Primary"
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface/95 backdrop-blur lg:hidden"
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface/95 backdrop-blur md:hidden"
       >
         <ul className="mx-auto flex max-w-lg items-stretch px-1 pt-1 pb-[max(0.35rem,env(safe-area-inset-bottom))]">
           {primary.map(({ href, label, icon: Icon }) => {

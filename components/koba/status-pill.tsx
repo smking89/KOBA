@@ -1,11 +1,20 @@
+import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 const tones = {
-  neutral: "border-border text-muted",
-  success: "border-electric-green/40 text-electric-green",
-  warning: "border-warning/40 text-warning",
-  danger: "border-destructive/40 text-destructive",
-  accent: "border-neon-lime/40 text-neon-lime",
+  neutral: "bg-white/8 text-muted",
+  success: "bg-success/15 text-success",
+  warning: "bg-warning/15 text-warning",
+  danger: "bg-destructive/15 text-destructive",
+  accent: "bg-neon-lime/12 text-neon-lime",
+} as const;
+
+const dots = {
+  neutral: "bg-muted",
+  success: "bg-success",
+  warning: "bg-warning",
+  danger: "bg-destructive",
+  accent: "bg-neon-lime",
 } as const;
 
 export function StatusPill({
@@ -13,18 +22,19 @@ export function StatusPill({
   tone = "neutral",
   className,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
   tone?: keyof typeof tones;
   className?: string;
 }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-md border px-2 py-0.5 text-[0.65rem] font-semibold tracking-wide uppercase",
+        "inline-flex h-5 items-center gap-1.5 rounded px-1.5 text-[11px] font-semibold tracking-wide uppercase",
         tones[tone],
         className,
       )}
     >
+      <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", dots[tone])} aria-hidden />
       {children}
     </span>
   );

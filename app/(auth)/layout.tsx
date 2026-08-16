@@ -3,7 +3,7 @@ import { BrandMark } from "@/components/koba/brand-mark";
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center px-4 py-12">
+    <div className="flex min-h-dvh flex-col items-center justify-center bg-background px-4 py-12">
       <div className="mb-8">
         <BrandMark href="/" />
       </div>
