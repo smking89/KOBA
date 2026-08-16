@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardDescription, CardTitle } from "@/components/ui/card";
+import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export function SponsoredPlacementCard({
   campaignId,
@@ -16,9 +16,13 @@ export function SponsoredPlacementCard({
   subtitle: string;
 }) {
   return (
-    <Card className="border-neon-lime/40">
-      <Badge tone="live">Sponsored</Badge>
-      <CardTitle className="mt-2">
+    <Card className="border-neon-lime/20">
+      <CardHeader>
+        <Badge tone="live" dot>
+          Sponsored
+        </Badge>
+      </CardHeader>
+      <CardTitle className="mt-3">
         <Link
           href={href}
           className="hover:text-neon-lime"

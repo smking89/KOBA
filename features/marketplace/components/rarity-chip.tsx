@@ -2,13 +2,12 @@ import { cn } from "@/lib/utils";
 import { RARITY_LABEL, type ProductRarity } from "@/features/marketplace/lib/catalog";
 
 const rarityClass: Record<ProductRarity, string> = {
-  COMMON: "text-rarity-common border-rarity-common/50 bg-rarity-common/10",
-  UNCOMMON: "text-rarity-uncommon border-rarity-uncommon/50 bg-rarity-uncommon/10",
-  RARE: "text-rarity-rare border-rarity-rare/50 bg-rarity-rare/10",
-  EPIC: "text-rarity-epic border-rarity-epic/50 bg-rarity-epic/10",
-  LEGENDARY: "text-rarity-legendary border-rarity-legendary/50 bg-rarity-legendary/10",
-  RELIC:
-    "text-rarity-relic border-rarity-relic/60 bg-rarity-relic/15 shadow-[0_0_14px_-4px_var(--color-rarity-relic)]",
+  COMMON: "border-rarity-common/30 bg-rarity-common/10 text-rarity-common",
+  UNCOMMON: "border-rarity-uncommon/30 bg-rarity-uncommon/10 text-rarity-uncommon",
+  RARE: "border-rarity-rare/30 bg-rarity-rare/10 text-rarity-rare",
+  EPIC: "border-rarity-epic/30 bg-rarity-epic/10 text-rarity-epic",
+  LEGENDARY: "border-rarity-legendary/30 bg-rarity-legendary/10 text-rarity-legendary",
+  RELIC: "border-rarity-relic/40 bg-rarity-relic/12 text-rarity-relic",
 };
 
 const accentClass: Record<ProductRarity, string> = {
@@ -24,7 +23,7 @@ export function RarityChip({ rarity, className }: { rarity: ProductRarity; class
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full border px-2 py-0.5 text-[0.65rem] font-bold tracking-wide uppercase",
+        "inline-flex h-6 items-center rounded-full border px-2 text-[10px] font-semibold tracking-[0.08em] uppercase",
         rarityClass[rarity],
         className,
       )}

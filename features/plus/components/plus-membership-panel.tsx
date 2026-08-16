@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Card, CardDescription, CardTitle } from "@/components/ui/card";
+import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusPill } from "@/components/koba/status-pill";
 import { PlusBadge } from "@/features/plus/components/plus-badge";
 import {
@@ -149,7 +149,7 @@ export function PlusMembershipPanel({
       ) : null}
 
       <Card>
-        <div className="flex flex-wrap items-start justify-between gap-4">
+        <CardHeader>
           <div className="min-w-0">
             <CardTitle>Current membership</CardTitle>
             <CardDescription>
@@ -158,7 +158,7 @@ export function PlusMembershipPanel({
             </CardDescription>
           </div>
           <PlusBadge visible={subscription.badgeVisible} />
-        </div>
+        </CardHeader>
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <StatusPill tone={tone}>{statusLabel}</StatusPill>
           {subscription.planCode ? (

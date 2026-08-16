@@ -53,7 +53,7 @@ export default function HomePage() {
 
       <section className="grid gap-3 md:grid-cols-3">
         {pillars.map((pillar) => (
-          <Card key={pillar.title} className="flex h-full flex-col p-4">
+          <Card key={pillar.title} className="flex h-full flex-col">
             <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-2xl bg-brand-gradient text-sm font-bold text-background">
               {pillar.mark}
             </div>

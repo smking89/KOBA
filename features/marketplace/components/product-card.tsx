@@ -24,11 +24,11 @@ export function ProductCard({
   return (
     <article
       className={cn(
-        "flex h-full flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-soft border-t-4 transition-colors hover:border-neon-lime/35",
+        "flex h-full flex-col overflow-hidden rounded-xl border border-white/[0.06] bg-surface-3 shadow-soft border-t-[3px] transition-[border-color,box-shadow] duration-150 hover:border-white/12",
         rarityAccentClass(product.rarity),
       )}
     >
-      <div className="relative flex h-36 items-center justify-center bg-surface-2">
+      <div className="relative flex h-36 items-center justify-center bg-black/25">
         <span className="font-mono text-xs tracking-widest text-muted uppercase">
           {product.game.name}
         </span>
