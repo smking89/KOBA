@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { FormField } from "@/features/auth/components/form-field";
 import {
+  FREEBIE_POLICIES,
   GAME_PLATFORMS,
   LISTING_TYPES,
   PLATFORM_LABEL,
@@ -17,10 +18,16 @@ import {
 } from "@/features/marketplace/lib/catalog";
 import {
   upsertProductSchema,
-  type UpsertProductInput,
+  type UpsertProductFormValues,
 } from "@/features/shops/schemas/shop.schemas";
 
 type CatalogOption = { slug: string; name: string };
+
+const FREEBIE_POLICY_LABEL: Record<(typeof FREEBIE_POLICIES)[number], string> = {
+  NONE: "Not a freebie",
+  PERMANENT: "Always free",
+  LIMITED_QUANTITY: "Free while supplies last",
+};
 
 export function ProductForm({
   games,
@@ -33,16 +40,20 @@ export function ProductForm({
   categories: CatalogOption[];
   mode: "create" | "edit";
   slug?: string;
-  defaultValues?: Partial<UpsertProductInput>;
+  defaultValues?: Partial<UpsertProductFormValues>;
 }) {
   const router = useRouter();
   const [formError, setFormError] = useState<string | null>(null);
+  const [describing, setDescribing] = useState(false);
+  const [describeError, setDescribeError] = useState<string | null>(null);
   const {
     register,
     handleSubmit,
     watch,
+    setValue,
+    getValues,
     formState: { errors, isSubmitting },
-  } = useForm<UpsertProductInput>({
+  } = useForm<UpsertProductFormValues>({
     resolver: zodResolver(upsertProductSchema),
     defaultValues: {
       listingType: "FIXED",
@@ -54,11 +65,42 @@ export function ProductForm({
       categorySlug: categories[0]?.slug ?? "",
       durationHours: 48,
       minIncrementCents: 1000,
+      freebiePolicy: "NONE",
       ...defaultValues,
     },
   });
 
   const listingType = watch("listingType");
+  const freebiePolicy = watch("freebiePolicy");
+
+  async function generateDescription() {
+    const { title, gameSlug, categorySlug } = getValues();
+    if (!title.trim()) {
+      setDescribeError("Enter a title first.");
+      return;
+    }
+    setDescribing(true);
+    setDescribeError(null);
+    const response = await fetch("/api/business/products/describe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title,
+        game: games.find((g) => g.slug === gameSlug)?.name ?? gameSlug,
+        category: categories.find((c) => c.slug === categorySlug)?.name ?? categorySlug,
+        idempotencyKey: crypto.randomUUID(),
+      }),
+    });
+    const payload = (await response.json()) as { description?: string; error?: string };
+    setDescribing(false);
+    if (!response.ok) {
+      setDescribeError(payload.error ?? "Could not generate a description.");
+      return;
+    }
+    if (payload.description) {
+      setValue("description", payload.description, { shouldValidate: true });
+    }
+  }
 
   const onSubmit = handleSubmit(async (values) => {
     setFormError(null);
@@ -85,6 +127,18 @@ export function ProductForm({
       </FormField>
       <FormField id="description" label="Description" error={errors.description?.message}>
         <Textarea id="description" rows={5} maxLength={4000} {...register("description")} />
+        <div className="mt-2 flex items-center gap-2">
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            disabled={describing}
+            onClick={() => void generateDescription()}
+          >
+            {describing ? "Generating…" : "Generate with AI (1 Coin)"}
+          </Button>
+          {describeError ? <p className="text-xs text-destructive">{describeError}</p> : null}
+        </div>
       </FormField>
       <div className="grid gap-4 md:grid-cols-2">
         <FormField id="gameSlug" label="Game" error={errors.gameSlug?.message}>
@@ -199,6 +253,35 @@ export function ProductForm({
           ))}
         </div>
       </fieldset>
+      <div className="grid gap-4 md:grid-cols-2">
+        <FormField id="freebiePolicy" label="Freebie" error={errors.freebiePolicy?.message}>
+          <select
+            id="freebiePolicy"
+            className="flex h-10 w-full rounded-md border border-border bg-surface-2 px-3 text-sm"
+            {...register("freebiePolicy")}
+          >
+            {FREEBIE_POLICIES.map((policy) => (
+              <option key={policy} value={policy}>
+                {FREEBIE_POLICY_LABEL[policy]}
+              </option>
+            ))}
+          </select>
+        </FormField>
+        {freebiePolicy === "LIMITED_QUANTITY" ? (
+          <FormField
+            id="freebieQuantity"
+            label="Free quantity"
+            error={errors.freebieQuantity?.message}
+          >
+            <Input
+              id="freebieQuantity"
+              type="number"
+              min={1}
+              {...register("freebieQuantity", { valueAsNumber: true })}
+            />
+          </FormField>
+        ) : null}
+      </div>
       <Button type="submit" disabled={isSubmitting}>
         {isSubmitting ? "Saving…" : mode === "create" ? "Save draft" : "Save changes"}
       </Button>

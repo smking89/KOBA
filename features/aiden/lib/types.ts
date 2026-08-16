@@ -58,6 +58,7 @@ export type AidenJobView = {
   coinCostPreview: number;
   estimatedCostCoins: string;
   actualCostCoins: string | null;
+  coinCostActual: number | null;
   provider: string;
   model: string;
   modelVersion: string;
@@ -78,6 +79,10 @@ export type AidenAssetView = {
   provider: string | null;
   model: string | null;
   createdAt?: string;
+  assetUrl: string | null;
+  /** Slug of the Product this asset was published as, once published.
+   * Null means never published — see publishAssetToMarketplace. */
+  publishedProductSlug: string | null;
 };
 
 export function aidenAssetTypeLabel(type: AidenAssetType): string {

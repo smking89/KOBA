@@ -28,7 +28,9 @@ import { generateAidenAssetRef, generateAidenJobRef } from "@/features/aiden/lib
 import { fetchProviderBytes } from "@/features/aiden/lib/safe-fetch";
 import { assertAidenTransition, canTransitionAidenJob } from "@/features/aiden/lib/state-machine";
 import { signAidenObjectUrl, storeAidenObject } from "@/features/aiden/lib/storage";
+import { expectedCategoryKindForAssetType } from "@/features/aiden/lib/marketplace-mapping";
 import {
+  aidenAssetTypeLabel,
   isSuccessfulAidenState,
   isTerminalAidenState,
   type AidenAssetType,
@@ -37,7 +39,12 @@ import {
   type AidenJobView,
   type AidenTechnicalStatus,
 } from "@/features/aiden/lib/types";
-import type { CreateAidenJobInput } from "@/features/aiden/schemas/aiden.schemas";
+import type {
+  CreateAidenJobInput,
+  PublishAidenAssetInput,
+} from "@/features/aiden/schemas/aiden.schemas";
+import { createSellerProduct } from "@/features/shops/services/product-admin.service";
+import { ShopError } from "@/features/shops/services/shop.service";
 import { WalletError } from "@/features/wallet/lib/errors";
 import {
   getWalletSummary,
@@ -62,6 +69,7 @@ function toJobView(job: {
   coinCostPreview: number;
   estimatedCostCoins: bigint;
   actualCostCoins: bigint | null;
+  coinCostActual?: number | null;
   provider: string;
   model: string;
   modelVersion: string;
@@ -79,6 +87,8 @@ function toJobView(job: {
     coinCostPreview: job.coinCostPreview,
     estimatedCostCoins: job.estimatedCostCoins.toString(),
     actualCostCoins: job.actualCostCoins?.toString() ?? null,
+    coinCostActual:
+      job.coinCostActual ?? (job.actualCostCoins != null ? Number(job.actualCostCoins) : null),
     provider: job.provider,
     model: job.model,
     modelVersion: job.modelVersion,
@@ -100,6 +110,8 @@ function toAssetView(asset: {
   provider: string | null;
   model: string | null;
   createdAt: Date;
+  assetUrl?: string | null;
+  publishedProduct?: { slug: string } | null;
 }): AidenAssetView {
   return {
     publicRef: asset.publicRef,
@@ -112,6 +124,8 @@ function toAssetView(asset: {
     provider: asset.provider,
     model: asset.model,
     createdAt: asset.createdAt.toISOString(),
+    assetUrl: asset.assetUrl ?? null,
+    publishedProductSlug: asset.publishedProduct?.slug ?? null,
   };
 }
 
@@ -156,6 +170,7 @@ export async function listLibrary(userId: string): Promise<AidenAssetView[]> {
     where: { userId },
     orderBy: { createdAt: "desc" },
     take: 64,
+    include: { publishedProduct: { select: { slug: true } } },
   });
   return assets.map(toAssetView);
 }
@@ -405,6 +420,120 @@ export async function publishToShopRequest(
   return toAssetView(updated);
 }
 
+/**
+ * Creates a DRAFT marketplace Product from a generated Aiden asset (same
+ * path as a seller's "New listing" form). Does not bypass staff review.
+ */
+export async function publishAssetToMarketplace(
+  userId: string,
+  publicRef: string,
+  input: PublishAidenAssetInput,
+  ipAddress?: string | null,
+): Promise<AidenAssetView> {
+  const asset = await prisma.aidenAsset.findUnique({
+    where: { publicRef },
+    include: { publishedProduct: { select: { slug: true } } },
+  });
+  if (!asset || asset.userId !== userId) {
+    throw new AidenError("Asset not found.", "NOT_FOUND");
+  }
+  if (asset.technicalStatus === "VALIDATION_FAILED") {
+    throw new AidenError("This asset failed validation and cannot be submitted.", "INVALID");
+  }
+  if (!asset.assetUrl) {
+    throw new AidenError("This asset has no generated file to publish yet.", "INVALID");
+  }
+  if (asset.publishedProductId) {
+    throw new AidenError("This asset has already been published.", "CONFLICT");
+  }
+
+  const expectedKind = expectedCategoryKindForAssetType(asset.assetType);
+  if (!expectedKind) {
+    throw new AidenError(
+      `${aidenAssetTypeLabel(asset.assetType)} assets are concepts, not publishable listings.`,
+      "INVALID",
+    );
+  }
+
+  const category = await prisma.category.findUnique({ where: { slug: input.categorySlug } });
+  if (!category) {
+    throw new AidenError("Unknown category.", "NOT_FOUND");
+  }
+  if (category.kind !== expectedKind) {
+    throw new AidenError(
+      `${aidenAssetTypeLabel(asset.assetType)} assets must publish under a ${expectedKind} category.`,
+      "INVALID",
+    );
+  }
+
+  let product: Awaited<ReturnType<typeof createSellerProduct>>;
+  try {
+    product = await createSellerProduct(userId, {
+      title: asset.title,
+      description: `Generated with KOBA Aiden (${aidenAssetTypeLabel(asset.assetType)}) for ${asset.game}. ${asset.previewLabel}`,
+      rarity: input.rarity,
+      listingType: input.listingType,
+      priceCents: input.priceCents,
+      inventoryQty: input.inventoryQty,
+      gameSlug: input.gameSlug,
+      categorySlug: input.categorySlug,
+      platforms: input.platforms,
+      durationHours: input.durationHours,
+      minIncrementCents: input.minIncrementCents,
+      freebiePolicy: "NONE",
+    });
+  } catch (error) {
+    if (error instanceof ShopError) {
+      throw new AidenError(error.message, error.code === "FORBIDDEN" ? "FORBIDDEN" : "NOT_FOUND");
+    }
+    throw error;
+  }
+
+  await prisma.productMedia.create({
+    data: {
+      productId: product.id,
+      url: asset.assetUrl,
+      alt: asset.title,
+      kind: "IMAGE",
+      sortOrder: 0,
+    },
+  });
+
+  const updated = await prisma.aidenAsset.update({
+    where: { id: asset.id },
+    data: { moderation: "PENDING_REVIEW", publishedProductId: product.id },
+    include: { publishedProduct: { select: { slug: true } } },
+  });
+
+  await writeAuditLog({
+    actorUserId: userId,
+    action: "AIDEN_ASSET_PUBLISHED" as typeof AuditAction.AIDEN_ASSET_REVIEW_SUBMITTED,
+    targetType: "Product",
+    targetId: product.id,
+    metadata: { aidenAssetPublicRef: publicRef, productSlug: product.slug },
+    ipAddress: ipAddress ?? null,
+  });
+
+  await writeAuditLog({
+    actorUserId: userId,
+    action: AuditAction.AIDEN_ASSET_REVIEW_SUBMITTED,
+    targetType: "AidenAsset",
+    targetId: asset.id,
+    metadata: {
+      publicRef,
+      generatedByAiden: true,
+      provider: asset.provider,
+      model: asset.model,
+      modelVersion: asset.modelVersion,
+      assetType: asset.assetType,
+      readiness: asset.technicalStatus,
+    },
+    ipAddress: ipAddress ?? null,
+  });
+
+  return toAssetView(updated);
+}
+
 export async function getAssetMedia(userId: string, publicRef: string) {
   const asset = await prisma.aidenAsset.findUnique({
     where: { publicRef },
@@ -648,10 +777,14 @@ export async function completeFromProvider(publicRef: string, result: AidenProvi
     });
   }
 
+  const captured = actual <= estimated ? actual : estimated;
+  const capturedPreview =
+    captured <= BigInt(Number.MAX_SAFE_INTEGER) ? Number(captured) : Number.MAX_SAFE_INTEGER;
+  const assetPublicRef = generateAidenAssetRef();
   const asset = await prisma.aidenAsset.upsert({
     where: { jobId: job.id },
     create: {
-      publicRef: generateAidenAssetRef(),
+      publicRef: assetPublicRef,
       userId: job.userId,
       jobId: job.id,
       title: `${job.game} concept`,
@@ -668,6 +801,7 @@ export async function completeFromProvider(publicRef: string, result: AidenProvi
       provider: job.provider,
       model: result.model,
       modelVersion: result.modelVersion,
+      assetUrl: `/api/aiden/library/${assetPublicRef}/media`,
       provenanceJson: JSON.stringify({
         generatedByAiden: true,
         provider: job.provider,
@@ -685,7 +819,14 @@ export async function completeFromProvider(publicRef: string, result: AidenProvi
     where: { id: job.id },
     data: {
       state: "SUCCEEDED",
-      actualCostCoins: actual <= estimated ? actual : estimated,
+      actualCostCoins: captured,
+      coinCostActual: capturedPreview,
+      frontierModelUsageJson: JSON.stringify({
+        units: result.usage.units.toString(),
+        costCoins: result.usage.costCoins.toString(),
+        model: result.model,
+        modelVersion: result.modelVersion,
+      }),
       outputStorageKey: stored.key,
       outputMime: sniffed,
       outputBytes: stored.stored === "inline" ? new Uint8Array(bytes) : null,

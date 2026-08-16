@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { FavoriteButton } from "@/features/marketplace/components/favorite-button";
+import { ShareButton } from "@/features/marketplace/components/share-button";
 import { RarityChip, rarityAccentClass } from "@/features/marketplace/components/rarity-chip";
 import { AuctionCountdown } from "@/features/auctions/components/auction-countdown";
 import { formatPrice, PLATFORM_LABEL } from "@/features/marketplace/lib/catalog";
@@ -15,7 +16,13 @@ export function ProductCard({
   signedIn: boolean;
 }) {
   const sold = !product.inStock;
-  const actionLabel = sold ? "Sold" : product.listingType === "AUCTION" ? "Bid" : "Buy";
+  const actionLabel = sold
+    ? "Sold"
+    : product.freebiePolicy !== "NONE"
+      ? "Claim"
+      : product.listingType === "AUCTION"
+        ? "Bid"
+        : "Buy";
   const displayCents =
     product.listingType === "AUCTION"
       ? (product.auction?.highBidCents ?? product.priceCents)
@@ -32,7 +39,20 @@ export function ProductCard({
         <span className="font-mono text-xs tracking-widest text-muted uppercase">
           {product.game.name}
         </span>
-        <div className="absolute top-2 right-2">
+        <div className="absolute top-2 left-2 flex flex-col gap-1">
+          {product.boosted ? (
+            <span className="rounded-full bg-neon-lime px-2 py-0.5 text-[0.6rem] font-bold tracking-wide text-background uppercase">
+              Boosted
+            </span>
+          ) : null}
+          {product.freebiePolicy !== "NONE" ? (
+            <span className="rounded-full bg-neon-mint px-2 py-0.5 text-[0.6rem] font-bold tracking-wide text-background uppercase">
+              Free
+            </span>
+          ) : null}
+        </div>
+        <div className="absolute top-2 right-2 flex items-center gap-1">
+          <ShareButton slug={product.slug} title={product.title} />
           <FavoriteButton
             slug={product.slug}
             initialFavorited={product.favorited}

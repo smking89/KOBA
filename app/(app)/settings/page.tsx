@@ -2,6 +2,9 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/koba/page-header";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
+import { RestartTourButton } from "@/components/koba/restart-tour-button";
+import { RarityChip } from "@/features/marketplace/components/rarity-chip";
+import { PRODUCT_RARITIES, RARITY_LABEL } from "@/features/marketplace/lib/catalog";
 import { auth } from "@/lib/auth";
 import { getAccountSnapshot } from "@/features/accounts/services/account.service";
 import { AccountModeSwitch } from "@/features/accounts/components/account-mode-switch";
@@ -37,7 +40,7 @@ export default async function SettingsPage() {
         <AccountModeSwitch snapshot={snapshot} />
       </section>
 
-      <Card>
+      <Card className="border-t-2 border-t-neon-lime">
         <CardTitle>Identity</CardTitle>
         <CardDescription>
           Handle{" "}
@@ -68,7 +71,7 @@ export default async function SettingsPage() {
         </p>
       </Card>
 
-      <Card>
+      <Card className="border-t-2 border-t-neon-lime">
         <CardTitle>Tagging and profile</CardTitle>
         <CardDescription className="mb-4">
           Mentions respect this setting. Blocked accounts can never tag you.
@@ -76,11 +79,35 @@ export default async function SettingsPage() {
         <TagPrivacyForm initial={snapshot.tagPrivacy} bio={snapshot.bio ?? ""} />
       </Card>
 
-      <Card>
+      <Card className="border-t-2 border-t-neon-lime">
+        <CardTitle>Rarity legend</CardTitle>
+        <CardDescription className="mb-4">
+          Marketplace listings show a rarity icon instead of the word — here&apos;s what each one
+          means, low to high.
+        </CardDescription>
+        <ul className="grid gap-3 sm:grid-cols-2">
+          {PRODUCT_RARITIES.map((rarity) => (
+            <li key={rarity} className="flex items-center gap-3">
+              <RarityChip rarity={rarity} />
+              <span className="text-sm text-muted">{RARITY_LABEL[rarity]}</span>
+            </li>
+          ))}
+        </ul>
+      </Card>
+
+      <Card className="border-t-2 border-t-neon-lime">
         <CardTitle>Appearance</CardTitle>
         <CardDescription>
           Technical light tokens may exist later for tooling, but KOBA ships dark-first.
         </CardDescription>
+      </Card>
+
+      <Card className="border-t-2 border-t-neon-lime">
+        <CardTitle>Getting started</CardTitle>
+        <CardDescription className="mb-4">
+          Replay the welcome walkthrough — Market, Groups &amp; LFG, Servers, Aiden &amp; Coins.
+        </CardDescription>
+        <RestartTourButton />
       </Card>
     </div>
   );

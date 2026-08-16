@@ -4,6 +4,7 @@ import { EmptyState } from "@/components/koba/empty-state";
 import { PageHeader } from "@/components/koba/page-header";
 import { MarketFilters } from "@/features/marketplace/components/market-filters";
 import { ProductCard } from "@/features/marketplace/components/product-card";
+import { MarketFeed } from "@/features/marketplace/components/market-feed";
 import { parseMarketQuery } from "@/features/marketplace/schemas/market.schemas";
 import {
   listCategories,
@@ -15,6 +16,7 @@ import {
   resolveSponsoredCreative,
 } from "@/features/promotions/services/ads.service";
 import { SponsoredPlacementCard } from "@/features/promotions/components/sponsored-card";
+import { cn } from "@/lib/utils";
 
 export const metadata = { title: "Marketplace" };
 
@@ -27,6 +29,7 @@ export default async function MarketPage({
   const query = parseMarketQuery(params);
   const session = await auth();
   const signedIn = Boolean(session?.user.id);
+  const feedView = (Array.isArray(params.view) ? params.view[0] : params.view) === "feed";
 
   const [games, categories, catalog, sponsored] = await Promise.all([
     listGames(),
@@ -45,12 +48,26 @@ export default async function MarketPage({
     ? await resolveSponsoredCreative(sponsored).catch(() => null)
     : null;
 
+  if (feedView) {
+    return (
+      <MarketFeed items={catalog.items} signedIn={signedIn} gridHref={viewHref(params, "grid")} />
+    );
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
         eyebrow="Marketplace"
         title="Trade what you build"
         description="Skins, maps, monuments, kits, and cosmetics. Only approved listings appear here. Place bids on live auctions, then pay reserved wins through Stripe Checkout."
+        actions={
+          <div className="flex overflow-hidden rounded-md border border-border text-sm">
+            <span className={cn("px-3 py-1.5", "bg-neon-lime text-background")}>Grid</span>
+            <Link href={viewHref(params, "feed")} className="px-3 py-1.5 text-muted">
+              Feed
+            </Link>
+          </div>
+        }
       />
 
       <MarketFilters query={query} games={games} categories={categories} />
@@ -106,6 +123,25 @@ export default async function MarketPage({
       ) : null}
     </div>
   );
+}
+
+function viewHref(
+  params: Record<string, string | string[] | undefined>,
+  view: "grid" | "feed",
+): string {
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (key === "view") continue;
+    const scalar = Array.isArray(value) ? value[0] : value;
+    if (scalar) {
+      search.set(key, scalar);
+    }
+  }
+  if (view === "feed") {
+    search.set("view", "feed");
+  }
+  const qs = search.toString();
+  return qs ? `/market?${qs}` : "/market";
 }
 
 function pageHref(params: Record<string, string | string[] | undefined>, page: number): string {

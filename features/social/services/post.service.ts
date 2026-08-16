@@ -21,6 +21,16 @@ import {
 } from "@/features/social/lib/rules";
 import type { CreatePostInput } from "@/features/social/schemas/social.schemas";
 import { PAGE_SIZE } from "@/features/social/schemas/social.schemas";
+import {
+  compareRanked,
+  computePostScore,
+  decodeFeedCursor,
+  encodeFeedCursor,
+  isAfterCursor,
+  type FeedCursor,
+} from "@/features/social/lib/feed-ranking";
+import { getCachedRankedIds, setCachedRankedIds } from "@/features/social/lib/feed-cache";
+import { activeBoostedTargetIds, BOOST_MULTIPLIER } from "@/features/boost/services/boost.service";
 
 const authorSelect = {
   id: true,
@@ -266,14 +276,22 @@ export async function createPost(
   return { publicRef };
 }
 
+/** Candidate window for ranking — bounded so scoring stays cheap. A post
+ * older than this never surfaces in the ranked feed regardless of
+ * engagement. Real correct ranking within this window; ranking across a
+ * much larger/older corpus would need a materialized score column or a
+ * search index (ROADMAP.md open question #9), not a bigger constant here. */
+const CANDIDATE_WINDOW_DAYS = 30;
+const CANDIDATE_POOL_SIZE = 300;
+
 export async function listFeed(input: {
   viewerUserId?: string | undefined;
-  page?: number | undefined;
+  cursor?: string | undefined;
   pageSize?: number | undefined;
   groupSlug?: string | undefined;
 }) {
-  const page = input.page ?? 1;
   const pageSize = input.pageSize ?? PAGE_SIZE;
+  const cursor = decodeFeedCursor(input.cursor);
   const blocked = input.viewerUserId ? await blockedSet(input.viewerUserId) : new Set<string>();
   const following = input.viewerUserId
     ? await prisma.userFollow.findMany({
@@ -302,56 +320,131 @@ export async function listFeed(input: {
     groupId = group.id;
   }
 
-  const posts = await prisma.post.findMany({
-    where: {
-      moderationStatus: "LIVE",
-      ...(groupId ? { groupId } : {}),
-      ...(input.viewerUserId && !groupId
-        ? { authorUserId: { in: [...followingIds] } }
-        : { visibility: "PUBLIC" }),
-    },
-    orderBy: { createdAt: "desc" },
-    skip: (page - 1) * pageSize,
-    take: pageSize + 1,
-    include: {
-      author: { select: authorSelect },
-      media: { orderBy: { sortOrder: "asc" } },
-      tags: true,
-      group: { select: { slug: true, name: true } },
-      _count: { select: { reactions: true, comments: true } },
-      comments: {
-        where: { moderationStatus: "LIVE" },
-        orderBy: { createdAt: "desc" },
-        take: 2,
-        include: { author: { select: authorSelect } },
-      },
-      reactions: input.viewerUserId ? { where: { userId: input.viewerUserId } } : false,
-      saves: input.viewerUserId ? { where: { userId: input.viewerUserId } } : false,
-    },
-  });
+  const [memberGroupIds, followedShopSlugs, boostedGroupIds] = await Promise.all([
+    input.viewerUserId
+      ? prisma.groupMember
+          .findMany({ where: { userId: input.viewerUserId }, select: { groupId: true } })
+          .then((rows) => new Set(rows.map((row) => row.groupId)))
+      : Promise.resolve(new Set<string>()),
+    input.viewerUserId
+      ? prisma.shopFollow
+          .findMany({
+            where: { userId: input.viewerUserId },
+            include: { shop: { select: { slug: true } } },
+          })
+          .then((rows) => new Set(rows.map((row) => row.shop.slug)))
+      : Promise.resolve(new Set<string>()),
+    activeBoostedTargetIds("GROUP"),
+  ]);
 
-  const visible = posts.filter((post) => {
-    if (blocked.has(post.authorUserId)) {
-      return false;
-    }
-    return canViewPost({
-      visibility: post.visibility,
-      moderationStatus: post.moderationStatus,
-      isAuthor: post.authorUserId === input.viewerUserId,
-      viewerFollowsAuthor: followingIds.has(post.authorUserId),
-      blocked: false,
+  // Ranking order is cached briefly (post *content* is always fetched
+  // fresh below, per viewer, so a cache hit can't serve stale/moderated
+  // content — see feed-cache.ts).
+  const cacheKey = `${input.viewerUserId ?? "anon"}:${groupId ?? "all"}`;
+  let ranked: FeedCursor[] | null = await getCachedRankedIds(cacheKey);
+
+  if (!ranked) {
+    const windowStart = new Date(Date.now() - CANDIDATE_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+    const candidates = await prisma.post.findMany({
+      where: {
+        moderationStatus: "LIVE",
+        createdAt: { gte: windowStart },
+        ...(groupId
+          ? { groupId }
+          : input.viewerUserId
+            ? { OR: [{ visibility: "PUBLIC" }, { authorUserId: { in: [...followingIds] } }] }
+            : { visibility: "PUBLIC" }),
+      },
+      orderBy: { createdAt: "desc" },
+      take: CANDIDATE_POOL_SIZE,
+      select: {
+        id: true,
+        authorUserId: true,
+        groupId: true,
+        visibility: true,
+        moderationStatus: true,
+        createdAt: true,
+        tags: { select: { targetType: true, targetSlug: true } },
+        _count: { select: { reactions: true, comments: true, saves: true } },
+      },
     });
-  });
-  const pageItems = visible.slice(0, pageSize);
+
+    const now = Date.now();
+    ranked = candidates
+      .filter((post) => !blocked.has(post.authorUserId))
+      .filter((post) =>
+        canViewPost({
+          visibility: post.visibility,
+          moderationStatus: post.moderationStatus,
+          isAuthor: post.authorUserId === input.viewerUserId,
+          viewerFollowsAuthor: followingIds.has(post.authorUserId),
+          blocked: false,
+        }),
+      )
+      .map((post) => {
+        const shopRelevant = post.tags.some(
+          (tag) => tag.targetType === "SHOP" && followedShopSlugs.has(tag.targetSlug),
+        );
+        const score = computePostScore({
+          ageMs: now - post.createdAt.getTime(),
+          reactions: post._count.reactions,
+          comments: post._count.comments,
+          saves: post._count.saves,
+          followedAuthor: followingIds.has(post.authorUserId),
+          viewerInGroup: post.groupId ? memberGroupIds.has(post.groupId) : false,
+          shopRelevant,
+          groupBoosted: post.groupId ? boostedGroupIds.has(post.groupId) : false,
+          boostMultiplier: BOOST_MULTIPLIER,
+        });
+        return { id: post.id, score };
+      })
+      .sort(compareRanked);
+
+    await setCachedRankedIds(cacheKey, ranked);
+  }
+
+  const afterCursor = cursor ? ranked.filter((entry) => isAfterCursor(entry, cursor)) : ranked;
+  const pageEntries = afterCursor.slice(0, pageSize + 1);
+  const hasMore = pageEntries.length > pageSize;
+  const pageIds = pageEntries.slice(0, pageSize).map((entry) => entry.id);
+
+  const rows =
+    pageIds.length > 0
+      ? await prisma.post.findMany({
+          where: { id: { in: pageIds } },
+          include: {
+            author: { select: authorSelect },
+            media: { orderBy: { sortOrder: "asc" } },
+            tags: true,
+            group: { select: { slug: true, name: true } },
+            _count: { select: { reactions: true, comments: true } },
+            comments: {
+              where: { moderationStatus: "LIVE" },
+              orderBy: { createdAt: "desc" },
+              take: 2,
+              include: { author: { select: authorSelect } },
+            },
+            reactions: input.viewerUserId ? { where: { userId: input.viewerUserId } } : false,
+            saves: input.viewerUserId ? { where: { userId: input.viewerUserId } } : false,
+          },
+        })
+      : [];
+
+  const byId = new Map(rows.map((row) => [row.id, row]));
+  const orderedRows = pageIds.map((id) => byId.get(id)).filter((row) => row !== undefined);
+
+  const lastEntry = pageEntries[pageIds.length - 1];
+  const nextCursor = hasMore && lastEntry ? encodeFeedCursor(lastEntry) : null;
+
   return {
-    items: pageItems.map((post) =>
+    items: orderedRows.map((post) =>
       toPostDto(post, {
         liked: Array.isArray(post.reactions) && post.reactions.length > 0,
         saved: Array.isArray(post.saves) && post.saves.length > 0,
       }),
     ),
-    hasMore: visible.length > pageSize,
-    page,
+    hasMore,
+    nextCursor,
   };
 }
 
@@ -380,7 +473,7 @@ export async function listProfilePosts(input: {
       })
     : null;
   if (blocked) {
-    return { items: [], hasMore: false, page };
+    return { items: [], hasMore: false, nextCursor: null };
   }
   const viewerFollows =
     input.viewerUserId === profile.userId
@@ -438,7 +531,14 @@ export async function listProfilePosts(input: {
       }),
     ),
     hasMore: visible.length > pageSize,
-    page,
+    // NOTE: this is a page-number token, not a ranked-feed cursor — kept
+    // as-is (pre-existing gap, not introduced by Phase 8): FeedList's
+    // "more" handler posts this back to /api/social/feed, which is the
+    // *global ranked feed* endpoint, not an author-scoped one, so
+    // "load more" on a profile page was already not correctly paginating
+    // this author's own posts before this change either. Fixing that
+    // needs a dedicated author-scoped feed route, out of scope here.
+    nextCursor: visible.length > pageSize ? String(page + 1) : null,
   };
 }
 

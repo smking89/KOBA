@@ -20,14 +20,14 @@ The immutable ledger is the source of truth. `CoinWallet.*Balance` columns are
 
 ## Account types
 
-| Kind                                                                    | Role                                               |
-| ----------------------------------------------------------------------- | -------------------------------------------------- |
-| `USER_PURCHASED` / `USER_PROMOTIONAL` / `USER_EARNED` / `USER_RESERVED` | Per-user asset buckets                             |
-| `PLATFORM_TREASURY`                                                     | Platform float                                     |
-| `PLATFORM_PROMO_ISSUANCE`                                               | Contra for promotional grants                      |
-| `PLATFORM_REVENUE`                                                      | Captured spend / commissions                       |
-| `REFUND_CLEARING`                                                       | Reserved for refund settlement                     |
-| `EXTERNAL`                                                              | Off-platform settlement (future Stripe Coin packs) |
+| Kind                                                                    | Role                                                                     |
+| ----------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `USER_PURCHASED` / `USER_PROMOTIONAL` / `USER_EARNED` / `USER_RESERVED` | Per-user asset buckets                                                   |
+| `PLATFORM_TREASURY`                                                     | Platform float                                                           |
+| `PLATFORM_PROMO_ISSUANCE`                                               | Contra for promotional grants                                            |
+| `PLATFORM_REVENUE`                                                      | Captured spend / commissions                                             |
+| `REFUND_CLEARING`                                                       | Reserved for refund settlement                                           |
+| `EXTERNAL`                                                              | Off-platform settlement — the contra side of a real Stripe Coin purchase |
 
 ## Balance classifications
 
@@ -88,8 +88,22 @@ This serialises reservations, captures, releases, and grants per wallet.
 - Staff adjustments require staff account types and a written reason.
 - Cross-wallet access is rejected.
 
+## Coin purchases (live)
+
+`CoinPurchase` (separate table from `Order` — no shop, no escrow, no seller
+payout: KOBA is the seller and the charge settles to and stays on KOBA's own
+Stripe balance) tracks a real-money Stripe Checkout Session against one of a
+fixed set of Coin packages (`features/wallet/lib/coin-packages.ts` —
+hardcoded catalog, a known simplification; a real admin-managed pricing table
+is future work). Same trust model as marketplace checkout: the browser can
+never mark a purchase paid — only a signed `checkout.session.completed`
+webhook, routed by `session.metadata.kind === "coin_purchase"`, calls
+`markCoinPurchasePaid`, which credits the buyer's `PURCHASED` bucket via
+`creditPurchasedCoins` using `CoinPurchase.idempotencyKey` as the ledger's
+own idempotency key — a retried webhook can never double-credit.
+
 ## Deferred
 
-- Live Coin purchases / Stripe packs
 - Cash withdrawal
 - Real Aiden AI capture path (today reserves then releases on stub failure)
+- Admin-configurable Coin package pricing (currently a fixed hardcoded catalog)

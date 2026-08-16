@@ -6,6 +6,8 @@ import { StatusPill } from "@/components/koba/status-pill";
 import { getAccountSnapshot } from "@/features/accounts/services/account.service";
 import { ServerFavouriteButton } from "@/features/servers/components/server-favourite-button";
 import { ServerManagePanel } from "@/features/servers/components/server-manage-panel";
+import { ServerBioPanel } from "@/features/servers/components/server-bio-panel";
+import { ActiveMapPanel } from "@/features/servers/components/active-map-panel";
 import {
   hasCapability,
   metricStateLabel,
@@ -13,7 +15,13 @@ import {
   visiblePlayerCount,
   visibleQueue,
 } from "@/features/servers/lib/types";
-import { getBySlugOrRef, getOwnerServer } from "@/features/servers/services/server.service";
+import {
+  getBySlugOrRef,
+  getLiveServerStatus,
+  getOwnerServer,
+  getServerBio,
+  isServerOwner,
+} from "@/features/servers/services/server.service";
 
 export const metadata = { title: "Server detail" };
 
@@ -32,6 +40,13 @@ export default async function ServerDetailPage({
   const snapshot = session?.user.id ? await getAccountSnapshot(session.user.id) : null;
   const ownerView =
     snapshot && (await getOwnerServer(session!.user.id, serverId).catch(() => null));
+  const myBio = session?.user.id
+    ? await getServerBio(session.user.id, server.slug).catch(() => null)
+    : null;
+  const isOwner = session?.user.id
+    ? await isServerOwner(session.user.id, server.slug).catch(() => false)
+    : false;
+  const liveStatus = await getLiveServerStatus(server.slug).catch(() => null);
 
   const players = visiblePlayerCount(server);
   const queue = visibleQueue(server);
@@ -158,6 +173,60 @@ export default async function ServerDetailPage({
           ))}
         </div>
       </Card>
+
+      <Card>
+        <CardTitle>Your bio for this server</CardTitle>
+        <CardDescription>
+          A KOBA Plus perk — a bio just for this community, separate from your account bio.
+        </CardDescription>
+        <div className="mt-4">
+          <ServerBioPanel
+            serverSlug={server.slug}
+            initialBio={myBio}
+            signedIn={Boolean(session?.user.id)}
+          />
+        </div>
+      </Card>
+
+      <Card>
+        <CardTitle>Server rarity</CardTitle>
+        <CardDescription>
+          Derived from a Map the owner purchased on the KOBA marketplace and set active here.
+        </CardDescription>
+        <div className="mt-4">
+          <ActiveMapPanel
+            serverSlug={server.slug}
+            isOwner={isOwner}
+            activeMapTitle={server.activeMapTitle}
+            activeMapRarity={server.activeMapRarity}
+          />
+        </div>
+      </Card>
+
+      {liveStatus ? (
+        <Card>
+          <CardTitle>Live query</CardTitle>
+          <CardDescription>
+            Fetched just now via a real A2S server query (cached ~45s) — not stored/stale data.
+          </CardDescription>
+          <dl className="mt-4 grid gap-3 sm:grid-cols-3 text-sm">
+            <div>
+              <dt className="text-muted">Server name</dt>
+              <dd>{liveStatus.serverName}</dd>
+            </div>
+            <div>
+              <dt className="text-muted">Players</dt>
+              <dd>
+                {liveStatus.players} / {liveStatus.maxPlayers}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-muted">Map</dt>
+              <dd>{liveStatus.mapName}</dd>
+            </div>
+          </dl>
+        </Card>
+      ) : null}
 
       {ownerView ? <ServerManagePanel server={ownerView} /> : null}
 

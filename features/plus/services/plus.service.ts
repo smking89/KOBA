@@ -31,6 +31,7 @@ import {
   priceIdFromStripeSubscription,
   shouldApplyStripeEvent,
 } from "@/features/plus/lib/stripe-map";
+import { tenureBadgeLabel, tenureBadgeTier } from "@/features/plus/lib/tenure";
 import type { PlusSubscriptionState, PlusSubscriptionView } from "@/features/plus/lib/types";
 
 type SubscriptionRow = {
@@ -48,8 +49,19 @@ type SubscriptionRow = {
   stripeCustomerId: string | null;
   stripeSubscriptionId: string | null;
   lastStripeEventCreated: number | null;
+  firstActivatedAt?: Date | null;
   plan: { code: string; interval: NonNullable<PlusSubscriptionView["interval"]> } | null;
 };
+
+function tenureFields(
+  firstActivatedAt?: Date | null,
+): Pick<PlusSubscriptionView, "tenureBadgeTier" | "tenureBadgeLabel"> {
+  if (!firstActivatedAt) {
+    return { tenureBadgeTier: null, tenureBadgeLabel: null };
+  }
+  const tier = tenureBadgeTier(firstActivatedAt);
+  return { tenureBadgeTier: tier, tenureBadgeLabel: tenureBadgeLabel(tier) };
+}
 
 function entitledFromRow(row: {
   state: PlusSubscriptionState;
@@ -83,6 +95,7 @@ export function toSubscriptionView(
       processing: extras?.processing ?? false,
       accountType: null,
       hasBillingCustomer: false,
+      ...tenureFields(null),
     };
   }
 
@@ -106,6 +119,7 @@ export function toSubscriptionView(
     processing: extras?.processing ?? false,
     accountType: row.accountType,
     hasBillingCustomer: Boolean(row.stripeCustomerId),
+    ...tenureFields(row.firstActivatedAt),
   };
 }
 
@@ -252,6 +266,17 @@ export async function getSubscriptionStatus(userId: string): Promise<PlusSubscri
     !entitledFromRow(row),
   );
   return toSubscriptionView(row, { entitlements, processing });
+}
+
+/** Whether the active KOBAID currently has Plus perks (identity-scoped). */
+export async function isPlusActive(userId: string): Promise<boolean> {
+  try {
+    const identity = await resolveActivePlusIdentity(userId);
+    const row = await loadIdentitySubscription(identity.identityId);
+    return Boolean(row && entitledFromRow(row));
+  } catch {
+    return false;
+  }
 }
 
 /** @deprecated Use getSubscriptionStatus — kept for existing callers. */
@@ -622,6 +647,12 @@ export async function syncSubscriptionFromStripe(
         : (opts?.eventCreated ?? Math.floor(Date.now() / 1000)),
     version: { increment: 1 },
   };
+
+  const existingFirstActivatedAt = (byIdentity as { firstActivatedAt?: Date | null } | null)
+    ?.firstActivatedAt;
+  if (state === "ACTIVE" && !existingFirstActivatedAt) {
+    Object.assign(data, { firstActivatedAt: new Date() });
+  }
 
   const saved = byIdentity
     ? await prisma.plusSubscription.update({

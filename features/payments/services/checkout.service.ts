@@ -1,4 +1,4 @@
-import { AuditAction } from "@/lib/generated/prisma/client";
+import { AuditAction, type GamePlatform, type ProductRarity } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/db";
 import { writeAuditLog } from "@/features/auth/services/audit-log.service";
 import { getPublicEnv } from "@/lib/env";
@@ -7,10 +7,14 @@ import { generateOrderRef } from "@/features/payments/lib/order-ref";
 import {
   canCheckoutListing,
   canPayReservedAuction,
+  exceedsStripeChargeLimit,
   resolveCommissionBps,
   splitPayment,
 } from "@/features/payments/lib/money";
+import { computeEscrowReleaseAt, escrowHoldDays } from "@/features/payments/lib/escrow-rules";
 import { getStripe, isStripeConfigured } from "@/features/payments/lib/stripe";
+import { isPlatformFunctionEnabled } from "@/features/platform-control/services/platform-function.service";
+import { generateInventoryRef } from "@/features/trade/lib/refs";
 import type { CheckoutInput } from "@/features/payments/schemas/checkout.schemas";
 import {
   resolveReferralForCheckout,
@@ -43,6 +47,45 @@ async function allocateOrderRef(): Promise<string> {
   throw new PaymentError("Could not allocate an order reference.", "CONFLICT");
 }
 
+type GrantableOrderItem = {
+  productId: string;
+  titleSnapshot: string;
+  quantity: number;
+  product: { game: { name: string }; rarity: ProductRarity; platforms: GamePlatform[] };
+};
+
+/**
+ * Grants the buyer a real, tradeable InventoryItem per unit — shared by
+ * fulfillOrder (paid orders) and claimFreebie (free claims), since a
+ * free item should be just as real/tradeable as a paid one. One row per
+ * unit (quantity > 1 grants that many discrete items, not one row with
+ * a quantity field). Platform picks the product's first listed platform
+ * when it supports several — a known simplification (no way to know
+ * which platform the buyer actually plays on without asking).
+ */
+async function grantInventoryForOrderItems(
+  buyerUserId: string,
+  items: readonly GrantableOrderItem[],
+): Promise<void> {
+  for (const item of items) {
+    for (let unit = 0; unit < item.quantity; unit += 1) {
+      await prisma.inventoryItem.create({
+        data: {
+          publicRef: generateInventoryRef(),
+          ownerUserId: buyerUserId,
+          title: item.titleSnapshot,
+          game: item.product.game.name,
+          platform: item.product.platforms[0] ?? "STEAM",
+          rarity: item.product.rarity,
+          transferable: true,
+          acquisitionSource: "PURCHASE",
+          productId: item.productId,
+        },
+      });
+    }
+  }
+}
+
 export async function createCheckoutSession(
   buyerUserId: string,
   input: CheckoutInput,
@@ -53,6 +96,9 @@ export async function createCheckoutSession(
       "Stripe test mode is not configured. Add sk_test_ keys to continue.",
       "NOT_CONFIGURED",
     );
+  }
+  if (!(await isPlatformFunctionEnabled("STRIPE_PAYMENTS"))) {
+    throw new PaymentError("Payments are temporarily disabled by KOBA staff.", "DISABLED");
   }
 
   const existing = await prisma.order.findUnique({
@@ -145,6 +191,12 @@ export async function createCheckoutSession(
   }
 
   const originalSubtotalCents = unitPriceCents * quantity;
+  if (exceedsStripeChargeLimit(originalSubtotalCents)) {
+    throw new PaymentError(
+      "This order total is too large for a single checkout. Try a smaller quantity, or contact KOBA staff to arrange this purchase.",
+      "AMOUNT_TOO_LARGE",
+    );
+  }
   const feeBps = resolveCommissionBps(shop.verificationStatus);
   const checkoutStartedAt = new Date();
   const buyerSnapshot = await getAccountSnapshot(buyerUserId);
@@ -321,9 +373,13 @@ export async function createCheckoutSession(
                 },
               },
         ],
+        // No transfer_data/application_fee_amount here: the charge settles to the
+        // PLATFORM's own Stripe balance, not a destination charge to the seller's
+        // Connect account. This is the escrow hold — the seller's payout
+        // (order.sellerPayoutCents) is transferred out separately, later, by
+        // escrow.service.ts's releaseEscrow (auto-release sweep or staff
+        // dispute resolution), not instantly at charge time.
         payment_intent_data: {
-          application_fee_amount: split.applicationFeeCents,
-          transfer_data: { destination: stripeAccountId },
           metadata: { orderRef: order.publicRef },
         },
         metadata: { orderRef: order.publicRef },
@@ -415,14 +471,28 @@ export async function markOrderPaid(input: {
     throw new PaymentError("Order cannot be marked paid.", "CONFLICT");
   }
 
+  const paidAt = new Date();
   const paid = await prisma.order.update({
     where: { id: order.id },
     data: {
       status: "PAID",
-      paidAt: new Date(),
+      paidAt,
       stripePaymentIntentId: input.paymentIntentId,
       stripeCheckoutSessionId: input.sessionId,
     },
+  });
+
+  // The seller's payout stays on the platform's Stripe balance (no
+  // transfer_data on the PaymentIntent) until this escrow hold clears —
+  // see escrow.service.ts for release/dispute handling.
+  await prisma.orderEscrow.upsert({
+    where: { orderId: order.id },
+    create: {
+      orderId: order.id,
+      status: "HOLDING",
+      releaseAt: computeEscrowReleaseAt(paidAt, escrowHoldDays()),
+    },
+    update: {},
   });
 
   await writeAuditLog({
@@ -481,6 +551,7 @@ export async function getOrderReceipt(publicRef: string, viewerUserId: string, i
       items: true,
       shop: { select: { slug: true, name: true, ownerUserId: true } },
       buyer: { select: { id: true, name: true, email: true } },
+      escrow: true,
     },
   });
   if (!order) {
@@ -510,6 +581,14 @@ export async function getOrderReceipt(publicRef: string, viewerUserId: string, i
       unitPriceCents: item.unitPriceCents,
     })),
     confirming: order.status === "PENDING",
+    viewerIsBuyer: isBuyer,
+    escrow: order.escrow
+      ? {
+          status: order.escrow.status,
+          releaseAt: order.escrow.releaseAt.toISOString(),
+          disputeReason: isBuyer || isSeller || isStaff ? order.escrow.disputeReason : null,
+        }
+      : null,
   };
 }
 
@@ -529,7 +608,7 @@ export async function refundOrder(actorUserId: string, publicRef: string, actorI
 
   const order = await prisma.order.findUnique({
     where: { publicRef },
-    include: { shop: true, items: true },
+    include: { shop: true, items: true, escrow: true },
   });
   if (!order) {
     throw new PaymentError("Order not found.", "NOT_FOUND");
@@ -544,12 +623,24 @@ export async function refundOrder(actorUserId: string, publicRef: string, actorI
     throw new PaymentError("Missing payment intent.", "NOT_FOUND");
   }
 
+  // Escrow-aware: this PaymentIntent is a plain platform-balance charge with
+  // no `transfer_data` attached — `reverse_transfer: true` only reverses a
+  // transfer attached to the charge itself. Seller payout is a separate
+  // `stripe.transfers.create()` in escrow.service.ts#releaseEscrow.
+  const stripe = getStripe();
   try {
-    await getStripe().refunds.create({
-      payment_intent: order.stripePaymentIntentId,
-      reverse_transfer: true,
-      refund_application_fee: true,
-    });
+    if (order.escrow?.status === "RELEASED" && order.escrow.stripeTransferId) {
+      await stripe.transfers.createReversal(
+        order.escrow.stripeTransferId,
+        { amount: order.sellerPayoutCents },
+        { idempotencyKey: `transfer-reversal:${order.publicRef}` },
+      );
+    }
+
+    await stripe.refunds.create(
+      { payment_intent: order.stripePaymentIntentId },
+      { idempotencyKey: `refund:${order.publicRef}` },
+    );
   } catch (error) {
     await emitAlert("refund_failure", "Stripe refund create failed", {
       labels: { operation: "refund", errorClass: "payment" },
@@ -564,7 +655,7 @@ export async function refundOrder(actorUserId: string, publicRef: string, actorI
 export async function markOrderRefunded(publicRef: string, actorUserId?: string | null) {
   const order = await prisma.order.findUnique({
     where: { publicRef },
-    include: { items: true },
+    include: { items: true, escrow: true },
   });
   if (!order) {
     throw new PaymentError("Order not found.", "NOT_FOUND");
@@ -581,6 +672,16 @@ export async function markOrderRefunded(publicRef: string, actorUserId?: string 
           data: { inventoryQty: { increment: item.quantity } },
         });
       }
+    }
+    // If escrow never reached RELEASED, no seller payout was ever sent — mark
+    // the hold REFUNDED so the sweep won't try to release it later. If it was
+    // already RELEASED, leave it as-is: the transfer reversal above (when
+    // applicable) is the historical record of what happened to those funds.
+    if (order.escrow && order.escrow.status !== "RELEASED" && order.escrow.status !== "REFUNDED") {
+      await tx.orderEscrow.update({
+        where: { orderId: order.id },
+        data: { status: "REFUNDED" },
+      });
     }
     return tx.order.update({
       where: { id: order.id },
@@ -625,7 +726,14 @@ export async function markOrderRefunded(publicRef: string, actorUserId?: string 
 export async function fulfillOrder(actorUserId: string, publicRef: string) {
   const order = await prisma.order.findUnique({
     where: { publicRef },
-    include: { shop: true },
+    include: {
+      shop: true,
+      items: {
+        include: {
+          product: { select: { game: { select: { name: true } }, rarity: true, platforms: true } },
+        },
+      },
+    },
   });
   if (!order) {
     throw new PaymentError("Order not found.", "NOT_FOUND");
@@ -642,6 +750,13 @@ export async function fulfillOrder(actorUserId: string, publicRef: string) {
     data: { status: "FULFILLED" },
   });
 
+  // Closes a real gap (createInventoryItem existed with an
+  // InventoryAcquisitionSource.PURCHASE value clearly anticipating this,
+  // but nothing ever called it from order fulfillment). Without this,
+  // Phase 19's rarity-matched trading could only ever operate on
+  // seeded/admin-granted items, never anything a buyer actually bought.
+  await grantInventoryForOrderItems(order.buyerUserId, order.items);
+
   await writeAuditLog({
     actorUserId,
     action: AuditAction.ORDER_FULFILLED,
@@ -651,4 +766,145 @@ export async function fulfillOrder(actorUserId: string, publicRef: string) {
   });
 
   return fulfilled;
+}
+
+/**
+ * $0 claim path for a Freebie product (ROADMAP.md Phase 18) — a
+ * separate flow from paid checkout, never touches Stripe (a $0 Checkout
+ * Session is possible but wasteful for a transaction moving no money).
+ * Goes straight to FULFILLED in one transaction: there is no payment
+ * intent to wait on, so the PENDING -> PAID -> FULFILLED sequence real
+ * money orders go through doesn't apply here — nothing meaningful is
+ * being bypassed, there's simply nothing to confirm.
+ *
+ * Gated on the same MARKETPLACE_CHECKOUT platform-function switch as
+ * paid checkout (features/platform-control) — not STRIPE_PAYMENTS,
+ * since disabling Stripe shouldn't block a free claim that never
+ * touches it.
+ */
+export async function claimFreebie(buyerUserId: string, slug: string, ipAddress?: string | null) {
+  if (!(await isPlatformFunctionEnabled("MARKETPLACE_CHECKOUT"))) {
+    throw new PaymentError(
+      "Marketplace checkout is temporarily disabled by KOBA staff.",
+      "DISABLED",
+    );
+  }
+
+  const product = await prisma.product.findUnique({
+    where: { slug },
+    include: {
+      shop: { include: { members: { select: { userId: true } } } },
+      game: { select: { name: true } },
+    },
+  });
+  if (!product || product.moderationStatus !== "APPROVED" || product.publishedAt == null) {
+    throw new PaymentError("Listing is not available.", "NOT_LIVE");
+  }
+  if (!product.shop) {
+    throw new PaymentError("Listing is not tied to a shop.", "NOT_FOUND");
+  }
+  if (product.freebiePolicy === "NONE") {
+    throw new PaymentError("This listing is not a freebie.", "NOT_FREEBIE");
+  }
+
+  const shopMemberUserIds = product.shop.members.map((row) => row.userId);
+  if (
+    !canCheckoutListing({
+      buyerUserId,
+      sellerUserId: product.sellerUserId,
+      shopMemberUserIds,
+    })
+  ) {
+    throw new PaymentError("You cannot claim your own listing.", "SELF_BUY");
+  }
+
+  // One-claim-per-buyer, checked up front for a clear error message —
+  // the @@unique([productId, buyerUserId]) constraint is the real
+  // enforcement (race-safe), this is just a friendlier early exit.
+  const existingClaim = await prisma.freebieClaim.findUnique({
+    where: { productId_buyerUserId: { productId: product.id, buyerUserId } },
+  });
+  if (existingClaim) {
+    throw new PaymentError("You already claimed this freebie.", "CONFLICT");
+  }
+
+  const publicRef = await allocateOrderRef();
+  const shopId = product.shop.id;
+
+  const order = await prisma.$transaction(async (tx) => {
+    // A free claim still consumes real stock — inventoryQty decrements
+    // either way. LIMITED_QUANTITY additionally decrements its own
+    // independent counter; PERMANENT has no such cap (free for as long
+    // as stock lasts, not infinite stock).
+    if (product.freebiePolicy === "LIMITED_QUANTITY") {
+      if (product.freebieQuantityRemaining == null || product.freebieQuantityRemaining <= 0) {
+        throw new PaymentError("This freebie is no longer available.", "SOLD_OUT");
+      }
+      const updated = await tx.product.update({
+        where: { id: product.id },
+        data: { freebieQuantityRemaining: { decrement: 1 }, inventoryQty: { decrement: 1 } },
+      });
+      if ((updated.freebieQuantityRemaining ?? -1) < 0 || updated.inventoryQty < 0) {
+        throw new PaymentError("This freebie is no longer available.", "SOLD_OUT");
+      }
+    } else {
+      const updated = await tx.product.update({
+        where: { id: product.id },
+        data: { inventoryQty: { decrement: 1 } },
+      });
+      if (updated.inventoryQty < 0) {
+        throw new PaymentError("This item is out of stock.", "SOLD_OUT");
+      }
+    }
+
+    const created = await tx.order.create({
+      data: {
+        publicRef,
+        shopId,
+        buyerUserId,
+        status: "FULFILLED",
+        kind: "FIXED",
+        totalCents: 0,
+        applicationFeeCents: 0,
+        sellerPayoutCents: 0,
+        currency: product.currency,
+        idempotencyKey: `freebie:${product.id}:${buyerUserId}`,
+        paidAt: new Date(),
+        items: {
+          create: {
+            productId: product.id,
+            titleSnapshot: product.title,
+            quantity: 1,
+            unitPriceCents: 0,
+          },
+        },
+      },
+    });
+
+    await tx.freebieClaim.create({
+      data: { productId: product.id, buyerUserId, orderId: created.id },
+    });
+
+    return created;
+  });
+
+  await grantInventoryForOrderItems(buyerUserId, [
+    {
+      productId: product.id,
+      titleSnapshot: product.title,
+      quantity: 1,
+      product: { game: product.game, rarity: product.rarity, platforms: product.platforms },
+    },
+  ]);
+
+  await writeAuditLog({
+    actorUserId: buyerUserId,
+    action: AuditAction.FREEBIE_CLAIMED,
+    targetType: "Order",
+    targetId: order.id,
+    metadata: { publicRef: order.publicRef, productSlug: product.slug },
+    ipAddress: ipAddress ?? null,
+  });
+
+  return order;
 }

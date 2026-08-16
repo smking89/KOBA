@@ -9,6 +9,7 @@ import {
   canVerifyShop,
   slugify,
 } from "@/features/shops/lib/access";
+import { rarityDistribution } from "@/features/shops/services/analytics.service";
 import type { createShopSchema } from "@/features/shops/schemas/shop.schemas";
 import type { z } from "zod";
 import { plusBadgeByIdentityIds } from "@/features/plus/services/plus.service";
@@ -17,7 +18,14 @@ export class ShopError extends Error {
   constructor(
     message: string,
     readonly code:
-      "FORBIDDEN" | "NOT_FOUND" | "ALREADY_EXISTS" | "SELF_ACTION" | "UNVERIFIED_BUSINESS",
+      | "FORBIDDEN"
+      | "NOT_FOUND"
+      | "ALREADY_EXISTS"
+      | "SELF_ACTION"
+      | "UNVERIFIED_BUSINESS"
+      | "INVALID_PAYOUT_VALUE"
+      | "GENERATION_FAILED"
+      | "DISABLED",
   ) {
     super(message);
     this.name = "ShopError";
@@ -347,6 +355,11 @@ export async function getShopAnalytics(userId: string) {
     orderCounts[row.status] = row._count._all;
   }
 
+  const rarityRows = await prisma.product.findMany({
+    where: { shopId: shop.id },
+    select: { rarity: true },
+  });
+
   return {
     shop,
     listings: { approved, pending, draft },
@@ -354,6 +367,7 @@ export async function getShopAnalytics(userId: string) {
     reviews: shop._count.reviews,
     inventoryQty: inventory._sum.inventoryQty ?? 0,
     orders: orderCounts,
+    rarityDistribution: rarityDistribution(rarityRows),
   };
 }
 
@@ -368,6 +382,6 @@ export async function listShopOrders(userId: string) {
     where: { shopId: shop.id },
     orderBy: { createdAt: "desc" },
     take: 50,
-    include: { items: true, buyer: { select: { name: true } } },
+    include: { items: true, buyer: { select: { name: true } }, escrow: true },
   });
 }

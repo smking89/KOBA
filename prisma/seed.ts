@@ -13,28 +13,117 @@ const connectionString =
 const pool = new Pool({ connectionString });
 const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
 
+// Per-game content policy from the ARK deep-dive + per-title ToS sweep
+// (2026-08-14, docs/game-content-policy.md) — desk research, not legal
+// counsel. See that doc before changing any of these.
 const games = [
-  { slug: "rust", name: "Rust" },
-  { slug: "minecraft", name: "Minecraft" },
-  { slug: "minecraft-java", name: "Minecraft Java" },
-  { slug: "minecraft-bedrock", name: "Minecraft Bedrock" },
-  { slug: "ark-survival-ascended", name: "ARK: Survival Ascended" },
-  { slug: "ark-survival-evolved", name: "ARK: Survival Evolved" },
-  { slug: "ark-console", name: "ARK Console Editions" },
-  { slug: "dayz", name: "DayZ" },
-  { slug: "7-days-to-die", name: "7 Days to Die" },
-  { slug: "7-days-to-die-console", name: "7 Days to Die Console" },
-  { slug: "conan-exiles", name: "Conan Exiles" },
-  { slug: "conan-exiles-console", name: "Conan Exiles Console" },
-  { slug: "valheim", name: "Valheim" },
-  { slug: "unturned", name: "Unturned" },
-  { slug: "garrys-mod", name: "Garry’s Mod" },
-  { slug: "sbox", name: "S&Box" },
-  { slug: "project-zomboid", name: "Project Zomboid" },
-  { slug: "eco", name: "Eco" },
-  { slug: "terraria", name: "Terraria" },
-  { slug: "starbound", name: "Starbound" },
-  { slug: "rust-console", name: "Rust Console Edition" },
+  { slug: "rust", name: "Rust", contentPolicy: "FULL" as const, policyNote: null },
+  {
+    slug: "garrys-mod",
+    name: "Garry's Mod",
+    contentPolicy: "FULL" as const,
+    policyNote:
+      'Facepunch\'s own legal docs: "Can I sell a Mod I own? Yes" — server cosmetics explicitly permitted too.',
+  },
+  { slug: "sbox", name: "S&Box", contentPolicy: "FULL" as const, policyNote: null },
+  {
+    slug: "minecraft",
+    name: "Minecraft",
+    contentPolicy: "SKINS_ONLY" as const,
+    policyNote:
+      "EULA bans currency-for-cash/pay-to-win; cosmetics/social perks are the sanctioned path.",
+  },
+  {
+    slug: "minecraft-java",
+    name: "Minecraft Java",
+    contentPolicy: "SKINS_ONLY" as const,
+    policyNote:
+      "EULA bans currency-for-cash/pay-to-win; cosmetics/social perks are the sanctioned path.",
+  },
+  {
+    slug: "minecraft-bedrock",
+    name: "Minecraft Bedrock",
+    contentPolicy: "SKINS_ONLY" as const,
+    policyNote:
+      "EULA bans currency-for-cash/pay-to-win; cosmetics/social perks are the sanctioned path.",
+  },
+  {
+    slug: "dayz",
+    name: "DayZ",
+    contentPolicy: "SKINS_ONLY" as const,
+    policyNote:
+      "Official Bohemia server monetization policy: cosmetics/perks on private shards only.",
+  },
+  {
+    slug: "ark-survival-ascended",
+    name: "ARK: Survival Ascended",
+    contentPolicy: "EXCLUDED" as const,
+    policyNote:
+      "Wildcard's own CurseForge moderation guidelines mandate Tebex-wallet-only payout for monetized mods — conflicts with KOBA's Stripe Connect architecture; no compliant path found.",
+  },
+  {
+    slug: "ark-survival-evolved",
+    name: "ARK: Survival Evolved",
+    contentPolicy: "EXCLUDED" as const,
+    policyNote:
+      "Wildcard's own CurseForge moderation guidelines mandate Tebex-wallet-only payout for monetized mods — conflicts with KOBA's Stripe Connect architecture; no compliant path found.",
+  },
+  {
+    slug: "ark-console",
+    name: "ARK Console Editions",
+    contentPolicy: "EXCLUDED" as const,
+    policyNote:
+      "Wildcard's own CurseForge moderation guidelines mandate Tebex-wallet-only payout for monetized mods — conflicts with KOBA's Stripe Connect architecture; no compliant path found.",
+  },
+  {
+    slug: "conan-exiles",
+    name: "Conan Exiles",
+    contentPolicy: "EXCLUDED" as const,
+    policyNote:
+      "Funcom EULA explicitly bans selling Virtual Goods/Game Currency and secondary markets; no cosmetics carve-out found.",
+  },
+  {
+    slug: "conan-exiles-console",
+    name: "Conan Exiles Console",
+    contentPolicy: "EXCLUDED" as const,
+    policyNote:
+      "Funcom EULA explicitly bans selling Virtual Goods/Game Currency and secondary markets; no cosmetics carve-out found.",
+  },
+  {
+    slug: "valheim",
+    name: "Valheim",
+    contentPolicy: "EXCLUDED" as const,
+    policyNote:
+      "Official Iron Gate developer statement directly opposes paid mods; no server-cosmetics system exists as a fallback.",
+  },
+  {
+    slug: "7-days-to-die",
+    name: "7 Days to Die",
+    contentPolicy: "FULL" as const,
+    policyNote: null,
+  },
+  {
+    slug: "7-days-to-die-console",
+    name: "7 Days to Die Console",
+    contentPolicy: "FULL" as const,
+    policyNote: null,
+  },
+  { slug: "unturned", name: "Unturned", contentPolicy: "FULL" as const, policyNote: null },
+  {
+    slug: "project-zomboid",
+    name: "Project Zomboid",
+    contentPolicy: "FULL" as const,
+    policyNote: null,
+  },
+  { slug: "eco", name: "Eco", contentPolicy: "FULL" as const, policyNote: null },
+  { slug: "terraria", name: "Terraria", contentPolicy: "FULL" as const, policyNote: null },
+  { slug: "starbound", name: "Starbound", contentPolicy: "FULL" as const, policyNote: null },
+  {
+    slug: "rust-console",
+    name: "Rust Console Edition",
+    contentPolicy: "FULL" as const,
+    policyNote: null,
+  },
 ] as const;
 
 const categories = [
@@ -54,7 +143,11 @@ async function main() {
   for (const game of games) {
     await prisma.game.upsert({
       where: { slug: game.slug },
-      update: { name: game.name },
+      update: {
+        name: game.name,
+        contentPolicy: game.contentPolicy,
+        policyNote: game.policyNote,
+      },
       create: game,
     });
   }
@@ -121,10 +214,13 @@ async function main() {
   });
 
   const rust = await prisma.game.findUniqueOrThrow({ where: { slug: "rust" } });
-  const ark = await prisma.game.findUniqueOrThrow({ where: { slug: "ark-survival-ascended" } });
-  const conan = await prisma.game.findUniqueOrThrow({ where: { slug: "conan-exiles" } });
+  // ARK: Survival Ascended and Conan Exiles are EXCLUDED per
+  // docs/game-content-policy.md — demo listings below use compliant
+  // games instead (Garry's Mod, DayZ) rather than seeding data that
+  // violates the policy this repo enforces.
+  const garrysMod = await prisma.game.findUniqueOrThrow({ where: { slug: "garrys-mod" } });
+  const dayz = await prisma.game.findUniqueOrThrow({ where: { slug: "dayz" } });
   const monuments = await prisma.category.findUniqueOrThrow({ where: { slug: "monuments" } });
-  const cosmetics = await prisma.category.findUniqueOrThrow({ where: { slug: "cosmetics" } });
   const skins = await prisma.category.findUniqueOrThrow({ where: { slug: "skins" } });
   const kits = await prisma.category.findUniqueOrThrow({ where: { slug: "kits" } });
 
@@ -147,47 +243,6 @@ async function main() {
       ],
     },
     {
-      slug: "wyvern-crest-avatar",
-      title: "Avatar Decoration — Wyvern Crest",
-      description:
-        "Profile crest for ARK communities. Cosmetic display only — not a gameplay item.",
-      rarity: "EPIC" as const,
-      listingType: "FIXED" as const,
-      priceCents: 1800,
-      inventoryQty: 25,
-      platforms: ["STEAM"] as const,
-      gameId: ark.id,
-      categoryId: cosmetics.id,
-      variants: [],
-    },
-    {
-      slug: "ember-wake-profile-effect",
-      title: "Profile Effect — Ember Wake",
-      description:
-        "Relic 1-of-1 profile effect. Unique, non-transferable display once checkout ships.",
-      rarity: "RELIC" as const,
-      listingType: "AUCTION" as const,
-      priceCents: 12000,
-      inventoryQty: 1,
-      platforms: ["STEAM", "XBOX", "PLAYSTATION", "PC"] as const,
-      gameId: conan.id,
-      categoryId: cosmetics.id,
-      variants: [],
-    },
-    {
-      slug: "bronze-age-nameplate",
-      title: "Bronze-Age Nameplate",
-      description: "Rust nameplate for shop and group headers.",
-      rarity: "RARE" as const,
-      listingType: "FIXED" as const,
-      priceCents: 900,
-      inventoryQty: 40,
-      platforms: ["STEAM"] as const,
-      gameId: rust.id,
-      categoryId: cosmetics.id,
-      variants: [],
-    },
-    {
       slug: "trader-skin-bundle",
       title: "Trader Skin Bundle",
       description: "Common trader skins. Currently sold out.",
@@ -197,6 +252,34 @@ async function main() {
       inventoryQty: 0,
       platforms: ["STEAM"] as const,
       gameId: rust.id,
+      categoryId: skins.id,
+      variants: [],
+    },
+    {
+      slug: "chroma-playermodel-skin",
+      title: "Chroma Playermodel Skin",
+      description: "Full-body playermodel reskin for Garry's Mod servers.",
+      rarity: "EPIC" as const,
+      listingType: "FIXED" as const,
+      priceCents: 1200,
+      inventoryQty: 50,
+      platforms: ["STEAM"] as const,
+      gameId: garrysMod.id,
+      categoryId: skins.id,
+      variants: [],
+    },
+    {
+      slug: "wasteland-outfit-skin",
+      title: "Wasteland Outfit Skin",
+      // DayZ is SKINS_ONLY per docs/game-content-policy.md — this listing
+      // exists specifically to demonstrate a real compliant DayZ listing.
+      description: "In-game clothing skin for DayZ private shards.",
+      rarity: "RARE" as const,
+      listingType: "FIXED" as const,
+      priceCents: 700,
+      inventoryQty: 30,
+      platforms: ["STEAM"] as const,
+      gameId: dayz.id,
       categoryId: skins.id,
       variants: [],
     },
@@ -266,11 +349,66 @@ async function main() {
     }
   }
 
-  const now = new Date();
-  const auctionSeeds = [
-    { slug: "oxide-camo-monument-kit", hours: 2, increment: 1000 },
-    { slug: "ember-wake-profile-effect", hours: 6, increment: 1000 },
+  // Real Cosmetic rows (avatar decoration/profile effect/nameplate) —
+  // these were previously modeled as Product rows tied to a gameId, which
+  // was wrong: Cosmetics are universal KOBA profile/shop customization,
+  // never game-specific (see docs/game-content-policy.md), priced in USD
+  // like the rest of the marketplace, and unrelated to any single game's
+  // ToS. gameId does not exist on this model at all.
+  const cosmeticSeeds = [
+    {
+      slug: "wyvern-crest-avatar",
+      subType: "AVATAR_DECORATION" as const,
+      name: "Avatar Decoration — Wyvern Crest",
+      description: "Animated profile crest. Cosmetic display only — not a gameplay item.",
+      rarity: "EPIC" as const,
+      priceCents: 1800,
+    },
+    {
+      slug: "ember-wake-profile-effect",
+      subType: "PROFILE_EFFECT" as const,
+      name: "Profile Effect — Ember Wake",
+      description: "Relic 1-of-1 profile effect. Unique, non-transferable display.",
+      rarity: "RELIC" as const,
+      priceCents: 12000,
+    },
+    {
+      slug: "bronze-age-nameplate",
+      subType: "NAMEPLATE" as const,
+      name: "Bronze-Age Nameplate",
+      description: "Nameplate for shop and group headers.",
+      rarity: "RARE" as const,
+      priceCents: 900,
+    },
   ] as const;
+
+  for (const cosmetic of cosmeticSeeds) {
+    await prisma.cosmetic.upsert({
+      where: { slug: cosmetic.slug },
+      update: {
+        subType: cosmetic.subType,
+        name: cosmetic.name,
+        description: cosmetic.description,
+        rarity: cosmetic.rarity,
+        priceCents: cosmetic.priceCents,
+        moderationStatus: "APPROVED",
+      },
+      create: {
+        slug: cosmetic.slug,
+        ownerShopId: shop.id,
+        subType: cosmetic.subType,
+        name: cosmetic.name,
+        description: cosmetic.description,
+        rarity: cosmetic.rarity,
+        priceCents: cosmetic.priceCents,
+        currency: "USD",
+        moderationStatus: "APPROVED",
+      },
+    });
+  }
+
+  const now = new Date();
+  const auctionSeeds = [{ slug: "oxide-camo-monument-kit", hours: 2, increment: 1000 }] as const;
 
   for (const seed of auctionSeeds) {
     const product = await prisma.product.findUniqueOrThrow({ where: { slug: seed.slug } });
@@ -659,7 +797,7 @@ async function main() {
       publicRef: "KOBA-INV-SEED0003",
       ownerUserId: seller.id,
       title: "Raid Beacon Decal",
-      game: "ARK: Survival Ascended",
+      game: "Garry's Mod",
       platform: "STEAM" as const,
       rarity: "EPIC" as const,
     },
@@ -667,7 +805,7 @@ async function main() {
       publicRef: "KOBA-INV-SEED0004",
       ownerUserId: applicant.id,
       title: "Wyvern Profile Effect",
-      game: "ARK: Survival Ascended",
+      game: "Garry's Mod",
       platform: "STEAM" as const,
       rarity: "EPIC" as const,
     },
@@ -682,8 +820,8 @@ async function main() {
     {
       publicRef: "KOBA-INV-SEED0006",
       ownerUserId: applicant.id,
-      title: "Exiles Trade Token",
-      game: "Conan Exiles",
+      title: "Trade Token",
+      game: "DayZ",
       platform: "STEAM" as const,
       rarity: "EPIC" as const,
     },

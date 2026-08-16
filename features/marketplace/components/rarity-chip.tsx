@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { RARITY_LABEL, type ProductRarity } from "@/features/marketplace/lib/catalog";
 
@@ -19,7 +20,35 @@ const accentClass: Record<ProductRarity, string> = {
   RELIC: "border-t-rarity-relic",
 };
 
-export function RarityChip({ rarity, className }: { rarity: ProductRarity; className?: string }) {
+/**
+ * Client-supplied rarity badge marks (2026-08-16, public/brand/rarity/) —
+ * the same crest shape per tier, recolored gray → green → blue → purple
+ * → orange/gold → red, matching the existing rarity-* color tokens
+ * exactly (common=gray, uncommon=green, rare=blue, epic=purple,
+ * legendary=orange, relic=red). Replaces the earlier lucide-icon
+ * placeholder approximation.
+ */
+export const RARITY_ICON_SRC: Record<ProductRarity, string> = {
+  COMMON: "/brand/rarity/common.png",
+  UNCOMMON: "/brand/rarity/uncommon.png",
+  RARE: "/brand/rarity/rare.png",
+  EPIC: "/brand/rarity/epic.png",
+  LEGENDARY: "/brand/rarity/legendary.png",
+  RELIC: "/brand/rarity/relic.png",
+};
+
+export function RarityChip({
+  rarity,
+  showLabel = false,
+  className,
+}: {
+  rarity: ProductRarity;
+  /** Show the text label alongside the badge — off by default per the
+   * client's "icon, not word" direction; used on the /settings legend
+   * where the word is the point. */
+  showLabel?: boolean;
+  className?: string;
+}) {
   return (
     <span
       className={cn(
@@ -27,8 +56,17 @@ export function RarityChip({ rarity, className }: { rarity: ProductRarity; class
         rarityClass[rarity],
         className,
       )}
+      title={RARITY_LABEL[rarity]}
     >
-      {RARITY_LABEL[rarity]}
+      <Image
+        src={RARITY_ICON_SRC[rarity]}
+        alt=""
+        width={12}
+        height={12}
+        className="h-3 w-3"
+        aria-hidden
+      />
+      {showLabel ? RARITY_LABEL[rarity] : <span className="sr-only">{RARITY_LABEL[rarity]}</span>}
     </span>
   );
 }

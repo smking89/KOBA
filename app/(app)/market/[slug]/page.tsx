@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { FavoriteButton } from "@/features/marketplace/components/favorite-button";
 import { CheckoutButton } from "@/features/payments/components/checkout-button";
+import { ClaimFreebieButton } from "@/features/payments/components/claim-freebie-button";
 import { RarityChip } from "@/features/marketplace/components/rarity-chip";
 import { formatPrice, PLATFORM_LABEL } from "@/features/marketplace/lib/catalog";
 import { getPublicProduct } from "@/features/marketplace/services/product.service";
@@ -78,10 +79,16 @@ export default async function ProductDetailPage({
           <div className="rounded-lg border border-border bg-surface p-4">
             <p className="text-xs text-muted uppercase">Price</p>
             <p className="mt-1 font-mono text-3xl">
-              {formatPrice(product.priceCents, product.currency)}
+              {product.freebiePolicy !== "NONE"
+                ? "Free"
+                : formatPrice(product.priceCents, product.currency)}
             </p>
             <p className="mt-1 text-xs text-muted">
-              {sold ? "Out of stock" : `${product.inventoryQty} in inventory`}
+              {sold
+                ? "Out of stock"
+                : product.freebiePolicy === "LIMITED_QUANTITY"
+                  ? `${product.inventoryQty} free left`
+                  : `${product.inventoryQty} in inventory`}
             </p>
           </div>
         )}
@@ -103,7 +110,14 @@ export default async function ProductDetailPage({
           </ul>
         ) : null}
         <div className="flex flex-wrap gap-2">
-          {auction ? null : (
+          {auction ? null : product.freebiePolicy !== "NONE" ? (
+            <ClaimFreebieButton
+              slug={product.slug}
+              signedIn={signedIn}
+              disabled={sold}
+              alreadyClaimed={product.freebieClaimed}
+            />
+          ) : (
             <CheckoutButton
               slug={product.slug}
               signedIn={signedIn}

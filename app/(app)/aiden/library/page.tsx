@@ -1,14 +1,19 @@
 import Link from "next/link";
-import { auth } from "@/lib/auth";
-import { AidenLibraryCard } from "@/features/aiden/components/aiden-library-card";
 import { AIDEN_DISCLAIMER } from "@/features/aiden/lib/types";
+import { LibraryAssetCard } from "@/features/aiden/components/library-asset-card";
 import { listLibrary } from "@/features/aiden/services/aiden.service";
+import { requireAidenPage } from "@/features/aiden/lib/require-business";
+import { listCategories, listGames } from "@/features/marketplace/services/product.service";
 
 export const metadata = { title: "Aiden library" };
 
 export default async function AidenLibraryPage() {
-  const session = await auth();
-  const assets = session?.user.id ? await listLibrary(session.user.id).catch(() => []) : [];
+  const { userId } = await requireAidenPage("/aiden/library");
+  const [assets, games, categories] = await Promise.all([
+    listLibrary(userId).catch(() => []),
+    listGames(),
+    listCategories(),
+  ]);
 
   return (
     <div className="space-y-8">
@@ -26,7 +31,7 @@ export default async function AidenLibraryPage() {
         <ul className="grid gap-4 md:grid-cols-2">
           {assets.map((asset) => (
             <li key={asset.publicRef}>
-              <AidenLibraryCard asset={asset} />
+              <LibraryAssetCard asset={asset} games={games} categories={categories} />
             </li>
           ))}
         </ul>

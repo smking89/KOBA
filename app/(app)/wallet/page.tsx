@@ -11,6 +11,10 @@ import {
   type WalletSummary,
 } from "@/features/wallet/lib/types";
 import { getTransactionHistory, getWalletSummary } from "@/features/wallet/services/ledger.service";
+import { listCoinPackages } from "@/features/wallet/lib/coin-packages";
+import { BuyCoinsPanel } from "@/features/wallet/components/buy-coins-panel";
+import { BoostWalletPanel } from "@/features/boost/components/boost-wallet-panel";
+import { listMyBoosts } from "@/features/boost/services/boost.service";
 
 export const metadata = { title: "Wallet" };
 export const dynamic = "force-dynamic";
@@ -30,6 +34,7 @@ export default async function WalletPage() {
   const session = await auth();
   let wallet: WalletSummary = EMPTY;
   let transactions: CoinTransactionView[] = [];
+  let boosts: Awaited<ReturnType<typeof listMyBoosts>> = [];
   let loadError: string | null = null;
 
   if (!session?.user.id) {
@@ -50,12 +55,14 @@ export default async function WalletPage() {
   }
 
   try {
-    const [summary, page] = await Promise.all([
+    const [summary, page, myBoosts] = await Promise.all([
       getWalletSummary(session.user.id),
       getTransactionHistory(session.user.id, { limit: 40 }),
+      listMyBoosts(session.user.id),
     ]);
     wallet = summary;
     transactions = page.items;
+    boosts = myBoosts;
   } catch {
     loadError = "Could not load wallet ledger. Try again shortly.";
   }
@@ -65,7 +72,7 @@ export default async function WalletPage() {
       <PageHeader
         eyebrow="Wallet"
         title="KOBA Coins"
-        description="Double-entry ledger balances. Available is spendable now; reserved is held for open reservations. Coin purchase checkout is not enabled yet."
+        description="Double-entry ledger balances. Available is spendable now; reserved is held for open reservations. Buy Coins through Stripe Checkout (test mode) — credit lands only after a verified webhook."
       />
 
       {loadError ? (
@@ -104,14 +111,33 @@ export default async function WalletPage() {
 
       <Card>
         <CardTitle>Buy Coins</CardTitle>
-        <CardDescription>Real Coin purchasing ships after payment approval.</CardDescription>
-        <button
-          type="button"
-          disabled
-          className={cn(buttonVariants({ size: "sm" }), "mt-4 opacity-60")}
-        >
-          Coming soon
-        </button>
+        <CardDescription>
+          Stripe Checkout (test mode). Coins credit once payment is confirmed by webhook — never
+          instantly on redirect back.
+        </CardDescription>
+        <div className="mt-4">
+          <BuyCoinsPanel packages={listCoinPackages()} />
+        </div>
+      </Card>
+
+      <Card>
+        <CardTitle>Boosts</CardTitle>
+        <CardDescription>
+          A Boost is a 10-minute, 3x-exposure token you can apply to your own product, shop, or
+          group — or gift to a favorite shop/influencer to apply themselves.
+        </CardDescription>
+        <div className="mt-4">
+          <BoostWalletPanel
+            initialBoosts={boosts.map((boost) => ({
+              id: boost.id,
+              status: boost.status,
+              purchaseCoinCost: boost.purchaseCoinCost,
+              targetType: boost.targetType,
+              targetId: boost.targetId,
+              expiresAt: boost.expiresAt ? boost.expiresAt.toISOString() : null,
+            }))}
+          />
+        </div>
       </Card>
 
       <Card>

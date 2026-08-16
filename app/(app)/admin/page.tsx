@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
+import { DisputedOrdersPanel } from "@/features/admin/components/disputed-orders-panel";
 import { IssueStaffForm } from "@/features/admin/components/issue-staff-form";
 import { PendingAidenPanel } from "@/features/admin/components/pending-aiden-panel";
 import { PendingDeveloperProductsPanel } from "@/features/admin/components/pending-developer-products-panel";
@@ -21,6 +22,7 @@ import {
 } from "@/features/admin/lib/access";
 import {
   getAdminOverview,
+  listDisputedOrders,
   listOpenReports,
   listPendingAidenAssets,
   listPendingProducts,
@@ -31,6 +33,9 @@ import { listPendingDeveloperProducts } from "@/features/developers/services/mod
 import { listStaffPromotionQueue } from "@/features/promotions/services/moderation.service";
 import { getAccountSnapshot } from "@/features/accounts/services/account.service";
 import { isStaffAccountType } from "@/features/koba-id/lib/format";
+import { canManagePlatformFunctions } from "@/features/platform-control/lib/functions";
+import { listPlatformFunctions } from "@/features/platform-control/services/platform-function.service";
+import { PlatformFunctionsPanel } from "@/features/platform-control/components/platform-functions-panel";
 import { auth } from "@/lib/auth";
 import {
   challengePath,
@@ -75,34 +80,44 @@ export default async function AdminPage() {
   const actorTypes = snapshot.identities.map((identity) => identity.accountType);
   const overview = await getAdminOverview(session.user.id);
 
-  const [products, shops, reports, pendingServers, pendingAiden, pendingDev, promotions] =
-    await Promise.all([
-      canStaffApproveListing(actorTypes)
-        ? listPendingProducts(session.user.id)
-        : Promise.resolve([]),
-      canStaffVerifyShop(actorTypes) ? listPendingShops(session.user.id) : Promise.resolve([]),
-      canStaffModerateContent(actorTypes) ? listOpenReports(session.user.id) : Promise.resolve([]),
-      isAnyStaff(actorTypes) ? listPendingServers(session.user.id) : Promise.resolve([]),
-      canStaffModerateContent(actorTypes)
-        ? listPendingAidenAssets(session.user.id)
-        : Promise.resolve([]),
-      canStaffApproveListing(actorTypes) || canStaffModerateContent(actorTypes)
-        ? listPendingDeveloperProducts(session.user.id).catch(() => [])
-        : Promise.resolve([]),
-      isAnyStaff(actorTypes)
-        ? listStaffPromotionQueue().catch(() => ({
-            campaigns: [],
-            ads: [],
-            influencers: [],
-            commissions: [],
-          }))
-        : Promise.resolve({ campaigns: [], ads: [], influencers: [], commissions: [] }),
-    ]);
+  const [
+    products,
+    shops,
+    reports,
+    pendingServers,
+    pendingAiden,
+    pendingDev,
+    promotions,
+    disputedOrders,
+  ] = await Promise.all([
+    canStaffApproveListing(actorTypes) ? listPendingProducts(session.user.id) : Promise.resolve([]),
+    canStaffVerifyShop(actorTypes) ? listPendingShops(session.user.id) : Promise.resolve([]),
+    canStaffModerateContent(actorTypes) ? listOpenReports(session.user.id) : Promise.resolve([]),
+    isAnyStaff(actorTypes) ? listPendingServers(session.user.id) : Promise.resolve([]),
+    canStaffModerateContent(actorTypes)
+      ? listPendingAidenAssets(session.user.id)
+      : Promise.resolve([]),
+    canStaffApproveListing(actorTypes) || canStaffModerateContent(actorTypes)
+      ? listPendingDeveloperProducts(session.user.id).catch(() => [])
+      : Promise.resolve([]),
+    isAnyStaff(actorTypes)
+      ? listStaffPromotionQueue().catch(() => ({
+          campaigns: [],
+          ads: [],
+          influencers: [],
+          commissions: [],
+        }))
+      : Promise.resolve({ campaigns: [], ads: [], influencers: [], commissions: [] }),
+    canStaffRefund(actorTypes) ? listDisputedOrders(session.user.id) : Promise.resolve([]),
+  ]);
 
   const canIssue =
     canIssueStaffRole(actorTypes, "MODERATOR") ||
     canIssueStaffRole(actorTypes, "ADMIN") ||
     canIssueStaffRole(actorTypes, "SUPERADMIN");
+
+  const canManageFunctions = canManagePlatformFunctions(actorTypes);
+  const platformFunctions = canManageFunctions ? await listPlatformFunctions() : [];
 
   return (
     <div className="space-y-8">
@@ -272,6 +287,17 @@ export default async function AdminPage() {
         </div>
       </Card>
 
+      <Card>
+        <CardTitle>Disputed orders</CardTitle>
+        <CardDescription>
+          Escrow holds a seller&apos;s payout until it auto-releases. Resolve buyer disputes here —
+          release to the seller or refund the buyer (SA/AD).
+        </CardDescription>
+        <div className="mt-4">
+          <DisputedOrdersPanel orders={disputedOrders} canResolve={canStaffRefund(actorTypes)} />
+        </div>
+      </Card>
+
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardTitle>Issue staff KOBAID</CardTitle>
@@ -298,6 +324,24 @@ export default async function AdminPage() {
           </CardDescription>
           <div className="mt-4">
             <PlusSubscriptionsPanel />
+          </div>
+        </Card>
+      ) : null}
+
+      {canManageFunctions ? (
+        <Card>
+          <CardTitle>Platform functions</CardTitle>
+          <CardDescription>
+            Superadmin-only kill switches for major platform functions. Disabling a function blocks
+            it immediately across the platform (TDLS trust-boundary control, see docs/tdls.md).
+          </CardDescription>
+          <div className="mt-4">
+            <PlatformFunctionsPanel
+              initialFunctions={platformFunctions.map((fn) => ({
+                ...fn,
+                updatedAt: fn.updatedAt ? fn.updatedAt.toISOString() : null,
+              }))}
+            />
           </div>
         </Card>
       ) : null}

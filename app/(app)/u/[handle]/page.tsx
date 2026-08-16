@@ -25,7 +25,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
   try {
     const profile = await getProfileByHandle(handle, session?.user.id);
     const posts = profile.blocked
-      ? { items: [], hasMore: false, page: 1 }
+      ? { items: [], hasMore: false, nextCursor: null }
       : await listProfilePosts({ handle: profile.handle, viewerUserId: session?.user.id });
 
     return (

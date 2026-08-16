@@ -12,6 +12,12 @@ export function shopErrorStatus(code: ShopError["code"]): number {
     case "SELF_ACTION":
     case "UNVERIFIED_BUSINESS":
       return 403;
+    case "INVALID_PAYOUT_VALUE":
+      return 400;
+    case "GENERATION_FAILED":
+      return 502;
+    case "DISABLED":
+      return 503;
     default:
       return 400;
   }

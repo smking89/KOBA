@@ -48,11 +48,18 @@ export type PlusSubscriptionView = {
   processing: boolean;
   accountType: string | null;
   hasBillingCustomer: boolean;
+  /** Null unless this identity has (or has ever had) an ACTIVE period. */
+  tenureBadgeTier: string | null;
+  tenureBadgeLabel: string | null;
 };
 
+/**
+ * Single advertised monthly price for UI copy. Plan checkout still uses
+ * identity-scoped PLUS_PLANS / SubscriptionPlan rows.
+ */
+export const PLUS_MONTHLY_PRICE_LABEL = "$7.99 / month";
+
 export const PLUS_BENEFITS: PlusBenefit[] = [
-  { id: "browse", label: "Browse market, feed, groups, LFG", free: true, plus: true },
-  { id: "trade", label: "Create trade offers", free: true, plus: true },
   {
     id: "security",
     label: "Security, moderation, accessibility, account recovery",
@@ -61,10 +68,39 @@ export const PLUS_BENEFITS: PlusBenefit[] = [
     note: "Never paywalled.",
   },
   {
-    id: "badge",
-    label: "KOBA Plus badge on profile",
+    id: "tenure-badge",
+    label: "Profile badge that evolves with tenure",
     free: false,
     plus: true,
+    note: "Bronze → Silver → Gold → Diamond as your subscription continues.",
+  },
+  {
+    id: "server-bio",
+    label: "Per-server bio",
+    free: false,
+    plus: true,
+    note: "A different bio per game-server community, separate from your account bio.",
+  },
+  {
+    id: "animated-media",
+    label: "Animated avatar & profile banner",
+    free: false,
+    plus: false,
+    note: "Coming soon — avatar/banner uploads don't exist yet for any account.",
+  },
+  {
+    id: "themes",
+    label: "Custom app themes, icons, notification sounds",
+    free: false,
+    plus: false,
+    note: "Coming soon — no theming system exists yet.",
+  },
+  {
+    id: "shop-discount",
+    label: "Member discount on KOBA Shop cosmetics",
+    free: false,
+    plus: false,
+    note: "Coming soon — blocked on the KOBA Shop itself (ROADMAP.md Phase 23).",
   },
   {
     id: "aiden-quota",
@@ -117,6 +153,8 @@ export const MOCK_PLUS_SUBSCRIPTION: PlusSubscriptionView = {
   processing: false,
   accountType: null,
   hasBillingCustomer: false,
+  tenureBadgeTier: null,
+  tenureBadgeLabel: null,
 };
 
 export function plusStateLabel(state: PlusSubscriptionState | "CANCEL_AT_PERIOD_END"): string {

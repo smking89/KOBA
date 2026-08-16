@@ -16,12 +16,18 @@ progress on `feat/influencer-promotions`. See
 
 **Phase 14G — Aiden AI generation MVP** remains on `feat/aiden-generation`
 (async concept-image jobs, KOBA Coin reservation, mock provider). See
-[docs/aiden.md](docs/aiden.md).
+[docs/aiden.md](docs/aiden.md). Aiden Studio OS (Master/Adapter/Orchestration
+pipeline) is documented in [docs/aiden-studio-os.md](docs/aiden-studio-os.md);
+no AI vendor is wired until a provider API key is set.
 
-Phase 14F KOBA Plus remains on `feat/koba-plus`. See [docs/plus.md](docs/plus.md).
+Phase 14F KOBA Plus remains on `feat/koba-plus` — membership is per active
+KOBAID. See [docs/plus.md](docs/plus.md).
 
 Phase 14E Rust read-only RCON remains on `feat/rcon-rust-readonly`. See
 [docs/rcon-rust.md](docs/rcon-rust.md).
+
+**Live KOBA Coin purchases** are available at `/wallet` (Stripe Checkout, test
+mode). See [ROADMAP.md](ROADMAP.md) for remaining work.
 
 The HTML prototype remains the information-architecture reference:
 
@@ -47,12 +53,14 @@ live in `app/globals.css` and `lib/design-tokens.ts`.
 
 See [docs/wallet-ledger.md](docs/wallet-ledger.md) for the Phase 14B accounting model,
 [docs/plus.md](docs/plus.md) for Plus ownership, entitlements, and webhooks,
-[docs/aiden.md](docs/aiden.md) for Aiden generation, pricing, and worker recovery, and
+[docs/aiden.md](docs/aiden.md) for Aiden generation, pricing, and worker recovery,
+[docs/aiden-studio-os.md](docs/aiden-studio-os.md) for the Studio OS pipeline,
 [docs/developers.md](docs/developers.md) for the developer portal, API keys, and marketplace,
 [docs/influencer.md](docs/influencer.md) for legacy referral codes, and
 [docs/promotions.md](docs/promotions.md) for campaigns, promo codes, commissions, and ads.
-Coin purchases, live paid AI providers, and cash withdrawal remain deferred. Promotional
-Plus Coins are not granted until the owner approves amount and refund policy.
+Coins can be bought for real money at `/wallet` (Stripe Checkout, test mode).
+Cash withdrawal remains deferred. Promotional Plus Coins are not granted until
+the owner approves amount and refund policy.
 
 ## Stack
 
@@ -195,8 +203,22 @@ Staff (SA/AD) verify shops at `POST /api/admin/shops/[slug]/verify`. Follows and
 reviews require a signed-in user who is not the shop owner.
 
 Business dashboard analytics count live listings, drafts, followers, reviews,
-inventory, and orders. Connect payouts at `/business/payouts` before buyers can
-check out.
+inventory, orders, and a live-computed rarity distribution across the shop's
+catalog (no rollup job — recomputed on every dashboard read).
+
+Connect payouts at `/business/payouts` before buyers can check out.
+
+**Cosmetics** are a separate, closed-catalog track from `Product`: avatar
+decorations, profile effects, and nameplates, sold pre-made with no
+custom-build fields. Each cosmetic belongs to a shop (`ownerShopId`, a real
+FK). Sellers create/update drafts via `POST`/`PATCH /api/business/cosmetics`;
+the public catalog reads only `APPROVED` cosmetics via `GET /api/market/cosmetics`
+and `GET /api/market/cosmetics/[slug]`.
+
+**Promo settings** (`ShopPromoConfig`) let a shop opt into influencer
+eligibility and set payout terms — percent (basis points, 0–10000) or fixed
+(cents) — via `GET`/`PATCH /api/business/promo`. This is the shop-side half of
+a future influencer payout system; nothing reads these terms yet.
 
 ### Auctions (Phase 7)
 
@@ -214,28 +236,37 @@ service worker.
 
 ### Payments (Phase 8)
 
-Stripe Connect **test mode** only. Destination charges take a platform fee of
+Stripe Connect **test mode** only. Platform fee of
 **8%** unverified / **4%** Blue-Badge verified
 (`KOBA_COMMISSION_BPS` default 800, `KOBA_COMMISSION_BPS_VERIFIED` default 400,
 cap 2500). Hosted Checkout is the
 payment UI. **Paid status comes only from signed webhooks** — the browser cannot
 mark an order paid (`?checkout=success` is ignored).
 
-| Path                                      | Purpose                                |
-| ----------------------------------------- | -------------------------------------- |
-| `POST /api/checkout`                      | Create a Checkout Session (idempotent) |
-| `POST /api/stripe/webhook`                | Signed Stripe events                   |
-| `GET`/`POST /api/business/connect`        | Express onboarding                     |
-| `POST /api/business/orders/[ref]/fulfill` | Shop owner fulfill                     |
-| `POST /api/business/orders/[ref]/refund`  | Shop owner refund                      |
-| `POST /api/admin/orders/[ref]/refund`     | Staff (SA/AD) refund                   |
-| `/orders` · `/orders/[ref]`               | Buyer history and receipts             |
-| `/business/payouts`                       | Connect charges/payouts status         |
+Checkout charges settle to **KOBA's own Stripe balance** — no
+`transfer_data`/`application_fee_amount` on the PaymentIntent, so nothing moves
+to the seller's Connect account at charge time. See Escrow below for how and
+when the seller actually gets paid.
+
+| Path                                           | Purpose                                   |
+| ---------------------------------------------- | ----------------------------------------- |
+| `POST /api/checkout`                           | Create a Checkout Session (idempotent)    |
+| `POST /api/stripe/webhook`                     | Signed Stripe events                      |
+| `GET`/`POST /api/business/connect`             | Express onboarding                        |
+| `POST /api/business/orders/[ref]/fulfill`      | Shop owner fulfill                        |
+| `POST /api/business/orders/[ref]/refund`       | Shop owner refund                         |
+| `POST /api/admin/orders/[ref]/refund`          | Staff (SA/AD) refund                      |
+| `POST /api/orders/[ref]/dispute`               | Buyer flags an escrow dispute             |
+| `POST /api/admin/orders/[ref]/resolve-dispute` | Staff (SA/AD) release or refund a dispute |
+| `/orders` · `/orders/[ref]`                    | Buyer history and receipts                |
+| `/business/payouts`                            | Connect charges/payouts status            |
 
 Sellers and shop members cannot buy their own listings. Auction checkout requires
 `RESERVED`, the winning bidder, and a future `reservedUntil`. Inventory decrements
 when checkout starts and restores if the session expires or the order is refunded.
-Refunds reverse the Connect transfer and the application fee.
+Refunds after escrow has released reverse the Connect transfer; refunds before
+release (escrow still `HOLDING`/`DISPUTED`) skip `reverse_transfer` because no
+transfer to the seller ever happened.
 
 KOBA Plus uses platform Stripe Billing (not Connect destination charges).
 Membership is per active KOBAID. The browser success redirect never activates
@@ -257,6 +288,27 @@ instead of faking paid. Forward webhooks locally with:
 ```bash
 stripe listen --forward-to localhost:3000/api/stripe/webhook
 ```
+
+#### Escrow (order holds and disputes)
+
+Digital goods deliver instantly, so a bad-faith seller or "not as described"
+item previously had zero recourse — the seller's payout used to transfer the
+instant the buyer paid. Now the seller's payout sits on KOBA's own Stripe
+balance in an `OrderEscrow` row (`HOLDING → RELEASED`) for a short hold window
+(`KOBA_ESCROW_HOLD_DAYS`, default 3 days, cap 30) after `markOrderPaid`, then
+auto-releases via `escrow.service.ts`'s `releaseEscrow` — a real
+`stripe.transfers.create` to the seller's Connect account.
+
+The buyer can flag a dispute any time before release
+(`POST /api/orders/[ref]/dispute`), which freezes the timer (`DISPUTED`).
+Staff (SA/AD) resolve manually (`POST /api/admin/orders/[ref]/resolve-dispute`)
+by releasing to the seller or refunding the buyer — no arbitration workflow or
+evidence upload. `Order.status` is untouched by any of this; escrow state
+lives entirely in the sibling `OrderEscrow` table.
+
+There is no cron here. `sweepExpiredEscrowHolds` (all `HOLDING` rows past
+`releaseAt`) is built to be invoked by a future scheduler or manually — same
+deferred-scheduler pattern used elsewhere in this codebase.
 
 ### Groups and LFG (Phase 9)
 
@@ -451,8 +503,19 @@ self-registered. Group Admin/Moderator badges are community roles, not staff.
 17. **Owner product expansion UI** ✅
 18. **Owner expansion backends** ✅
 19. **KOBA Coins double-entry ledger** ✅
-20. **Player-to-player item trading** ← current
-21. Influencer ads network / live Coin purchases (deferred)
+20. **Player-to-player item trading** ✅ (rarity-matched — see ROADMAP.md Phase 19)
+21. **Live KOBA Coin purchases** ✅
+22. **Aiden Studio OS** ✅ (real pipeline; no AI vendor wired yet — ROADMAP.md Phase 14)
+23. KOBAads + Boost (ROADMAP.md Phase 15)
+24. KOBA Plus subscriptions (ROADMAP.md Phase 16)
+25. Live RCON + server directory (real per-game protocols — ROADMAP.md Phase 17)
+26. Freebie products (ROADMAP.md Phase 18)
+27. Multi-subdomain split (koba.games / developer. / app. / admin. / aiden. — ROADMAP.md Phase 20)
+28. KOBA PC Plugin (free; Steam-linked skin application — ROADMAP.md Phase 21)
+29. Discord bot (free; live feeds, account linking, item delivery — ROADMAP.md Phase 22)
+
+See [ROADMAP.md](ROADMAP.md) for the full scope, data models, and open
+questions behind each of 22–29 — none of them are built yet.
 
 ## License
 

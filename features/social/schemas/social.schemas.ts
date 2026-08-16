@@ -43,7 +43,7 @@ export const PAGE_SIZE = 8;
 export const MAX_PAGE_SIZE = 24;
 
 export const feedQuerySchema = z.object({
-  page: z.coerce.number().int().min(1).default(1),
+  cursor: z.string().trim().max(512).optional(),
   pageSize: z.coerce.number().int().min(1).max(MAX_PAGE_SIZE).default(PAGE_SIZE),
   group: z.string().trim().max(64).optional(),
   handle: z.string().trim().min(1).max(64).optional(),
@@ -53,10 +53,10 @@ export function parseFeedQuery(input: Record<string, string | string[] | undefin
   const scalar = (value: string | string[] | undefined) =>
     Array.isArray(value) ? value[0] : value;
   const parsed = feedQuerySchema.safeParse({
-    page: scalar(input.page) || 1,
+    cursor: scalar(input.cursor) || undefined,
     pageSize: scalar(input.pageSize) || PAGE_SIZE,
     group: scalar(input.group) || undefined,
     handle: scalar(input.handle) || undefined,
   });
-  return parsed.success ? parsed.data : { page: 1, pageSize: PAGE_SIZE };
+  return parsed.success ? parsed.data : { pageSize: PAGE_SIZE };
 }

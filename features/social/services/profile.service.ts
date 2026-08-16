@@ -3,6 +3,7 @@ import { SocialError } from "@/features/social/lib/errors";
 import { canFollowUser } from "@/features/social/lib/rules";
 import type { TagPrivacy } from "@/features/social/lib/rules";
 import { plusBadgeByIdentityIds } from "@/features/plus/services/plus.service";
+import { tenureBadgeLabel, tenureBadgeTier } from "@/features/plus/lib/tenure";
 
 const userPublic = {
   id: true,
@@ -53,25 +54,37 @@ export async function getProfileByHandle(handle: string, viewerUserId?: string |
     profile.user.kobaIdentities.find((row) => row.accountType === profile.activeAccountType) ??
     profile.user.kobaIdentities[0] ??
     null;
-  const badges = await plusBadgeByIdentityIds(activeIdentity ? [activeIdentity.id] : []);
-  const [followers, following, posts, viewerFollows, blocked] = await Promise.all([
-    prisma.userFollow.count({ where: { followingUserId: userId } }),
-    prisma.userFollow.count({ where: { followerUserId: userId } }),
-    prisma.post.count({
-      where: { authorUserId: userId, moderationStatus: "LIVE", visibility: "PUBLIC" },
-    }),
-    viewerUserId
-      ? prisma.userFollow.findUnique({
-          where: {
-            followerUserId_followingUserId: {
-              followerUserId: viewerUserId,
-              followingUserId: userId,
+  const [followers, following, posts, viewerFollows, blocked, plusSubscription, badges] =
+    await Promise.all([
+      prisma.userFollow.count({ where: { followingUserId: userId } }),
+      prisma.userFollow.count({ where: { followerUserId: userId } }),
+      prisma.post.count({
+        where: { authorUserId: userId, moderationStatus: "LIVE", visibility: "PUBLIC" },
+      }),
+      viewerUserId
+        ? prisma.userFollow.findUnique({
+            where: {
+              followerUserId_followingUserId: {
+                followerUserId: viewerUserId,
+                followingUserId: userId,
+              },
             },
-          },
-        })
-      : null,
-    viewerUserId ? isBlocked(viewerUserId, userId) : false,
-  ]);
+          })
+        : null,
+      viewerUserId ? isBlocked(viewerUserId, userId) : false,
+      activeIdentity
+        ? prisma.plusSubscription.findUnique({
+            where: { kobaIdentityId: activeIdentity.id },
+          })
+        : Promise.resolve(null),
+      plusBadgeByIdentityIds(activeIdentity ? [activeIdentity.id] : []),
+    ]);
+
+  const plusTenure = plusSubscription as { state?: string; firstActivatedAt?: Date | null } | null;
+  const plusBadgeLabel =
+    plusTenure?.state === "ACTIVE" && plusTenure.firstActivatedAt
+      ? tenureBadgeLabel(tenureBadgeTier(plusTenure.firstActivatedAt))
+      : null;
 
   return {
     handle: profile.handle,
@@ -93,6 +106,7 @@ export async function getProfileByHandle(handle: string, viewerUserId?: string |
     isSelf: viewerUserId === userId,
     followingThem: Boolean(viewerFollows),
     blocked,
+    plusBadgeLabel,
   };
 }
 

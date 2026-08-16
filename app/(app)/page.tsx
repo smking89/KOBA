@@ -6,22 +6,22 @@ import { cn } from "@/lib/utils";
 
 const pillars = [
   {
-    title: "Marketplace",
-    body: "Skins, maps, monuments, kits, cosmetics — browse what's out there, see what's rare, and grab what you want.",
+    title: "Market & Trade",
+    body: "List skins, maps, kits, and cosmetics with a real rarity tier — common through relic. Sell for KOBA Coins or trade rarity-matched, item for item.",
     href: "/market",
     action: "Browse listings",
     mark: "M",
   },
   {
-    title: "Community",
-    body: "Find your people. Join a group, post an LFG, and squad up for whatever you're playing.",
+    title: "Groups, LFG & servers",
+    body: "Run a group, post an LFG, and check live player counts and maps on the server directory before you queue up.",
     href: "/groups",
     action: "Find a group",
     mark: "C",
   },
   {
-    title: "Identity",
-    body: "Your KOBAID is yours the moment you sign up — one per account type, and it never changes.",
+    title: "KOBAID",
+    body: "One identity per account role — Player, Business, or Influencer. Switch modes from Settings; your KOBAID stays yours.",
     href: "/settings",
     action: "View KOBAID",
     mark: "K",

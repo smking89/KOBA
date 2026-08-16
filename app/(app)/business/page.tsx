@@ -5,6 +5,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { CreateShopForm } from "@/features/shops/components/create-shop-form";
 import { RequestVerificationButton } from "@/features/shops/components/request-verification-button";
+import { ShopRarityDistributionCard } from "@/features/shops/components/shop-rarity-distribution-card";
 import { TaggingToggle } from "@/features/social/components/tagging-toggle";
 import { requireBusinessDashboard } from "@/features/shops/lib/require-business";
 import { getShopAnalytics } from "@/features/shops/services/shop.service";
@@ -110,6 +111,8 @@ export default async function BusinessDashboardPage() {
         <p className="mt-2 font-mono text-2xl">{data.inventoryQty}</p>
         <CardDescription>Units across all shop listings, including drafts.</CardDescription>
       </Card>
+
+      <ShopRarityDistributionCard distribution={data.rarityDistribution} />
 
       <div className="flex flex-wrap items-center gap-3">
         <Link href="/business/orders" className={cn(buttonVariants({ variant: "secondary" }))}>

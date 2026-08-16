@@ -1385,7 +1385,3 @@ export async function reserveCoinsForGeneration(
     reservationPublicRef: result.publicRef,
   };
 }
-
-export async function buyCoinsPlaceholder(): Promise<never> {
-  throw new WalletError("Coin purchase is not implemented in this phase.", "NOT_IMPLEMENTED");
-}

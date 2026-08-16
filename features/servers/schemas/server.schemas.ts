@@ -115,3 +115,16 @@ export const rconActionSchema = z.discriminatedUnion("action", [
 export type RconActionInput = z.infer<typeof rconActionSchema>;
 
 export { gameSlugs };
+
+export const serverBioSchema = z.object({
+  bio: z.string().trim().min(1).max(280),
+});
+
+export type ServerBioInput = z.infer<typeof serverBioSchema>;
+
+export const giveKitSchema = z.object({
+  kitName: z.string().trim().min(1).max(64),
+  gamertag: z.string().trim().min(1).max(64),
+});
+
+export type GiveKitInput = z.infer<typeof giveKitSchema>;

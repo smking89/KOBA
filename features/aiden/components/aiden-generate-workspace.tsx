@@ -180,7 +180,13 @@ export function AidenGenerateWorkspace({ initialJobs = [] }: { initialJobs?: Aid
                   <p className="text-xs text-muted">
                     {job.game} · {aidenAssetTypeLabel(job.assetType)} · {job.estimatedCostCoins}{" "}
                     Coins
+                    {job.coinCostActual != null && job.coinCostActual !== job.coinCostPreview
+                      ? ` (actual: ${job.coinCostActual})`
+                      : ""}
                   </p>
+                  {job.state === "FAILED" && job.failureReason ? (
+                    <p className="mt-1 text-xs text-destructive">{job.failureReason}</p>
+                  ) : null}
                 </div>
                 <StatusPill
                   tone={

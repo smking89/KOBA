@@ -12,20 +12,23 @@ export function FeedList({
   authorHandle,
   empty = "No posts yet. Follow people or publish the first one.",
 }: {
-  initial: { items: FeedPost[]; hasMore: boolean; page: number };
+  initial: { items: FeedPost[]; hasMore: boolean; nextCursor: string | null };
   signedIn: boolean;
   groupSlug?: string;
   authorHandle?: string;
   empty?: string;
 }) {
   const [items, setItems] = useState(initial.items);
-  const [page, setPage] = useState(initial.page);
+  const [cursor, setCursor] = useState(initial.nextCursor);
   const [hasMore, setHasMore] = useState(initial.hasMore);
   const [busy, setBusy] = useState(false);
 
   async function more() {
+    if (!cursor) {
+      return;
+    }
     setBusy(true);
-    const params = new URLSearchParams({ page: String(page + 1) });
+    const params = new URLSearchParams({ cursor });
     if (groupSlug) {
       params.set("group", groupSlug);
     }
@@ -39,7 +42,7 @@ export function FeedList({
       return;
     }
     setItems((current) => [...current, ...payload.items]);
-    setPage(payload.page);
+    setCursor(payload.nextCursor);
     setHasMore(payload.hasMore);
   }
 

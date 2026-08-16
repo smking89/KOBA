@@ -1,0 +1,281 @@
+import { describe, expect, it } from "vitest";
+import { decodePacket, encodePacket } from "@/features/servers/lib/rcon/source-rcon";
+import { buildRequest, parseInfoResponse } from "@/features/servers/lib/rcon/source-query";
+import { queryProtocolForGame, rconProtocolForGame } from "@/features/servers/lib/rcon/registry";
+import {
+  buildWebRconUrl,
+  parsePlayerListOutput,
+  parseStatusOutput,
+} from "@/features/servers/lib/rcon/rust-webrcon";
+import {
+  buildAddKitItemCommand,
+  buildAssignKitToSpawnGroupCommand,
+  buildCreateKitCommand,
+  buildGiveKitCommand,
+} from "@/features/servers/lib/rcon/kit-commands";
+
+describe("Source RCON packet encode/decode", () => {
+  it("round-trips id/type/body through encode then decode", () => {
+    const packet = encodePacket(42, 3, "hunter2");
+    // Strip the 4-byte size prefix decodePacket expects to receive
+    // separately (the real socket reader does this split itself).
+    const decoded = decodePacket(packet.subarray(4));
+    expect(decoded.id).toBe(42);
+    expect(decoded.type).toBe(3);
+    expect(decoded.body).toBe("hunter2");
+  });
+
+  it("round-trips an empty body", () => {
+    const packet = encodePacket(1, 2, "");
+    const decoded = decodePacket(packet.subarray(4));
+    expect(decoded.body).toBe("");
+  });
+
+  it("encodes the size prefix correctly (ID + Type + body + null + pad)", () => {
+    const packet = encodePacket(1, 2, "status");
+    const size = packet.readInt32LE(0);
+    // 4 (ID) + 4 (Type) + 6 (body "status") + 1 (null) + 1 (pad)
+    expect(size).toBe(16);
+    expect(packet.length).toBe(4 + size);
+  });
+
+  it("preserves a -1 auth-failure id (must not be coerced to unsigned)", () => {
+    const packet = encodePacket(-1, 2, "");
+    const decoded = decodePacket(packet.subarray(4));
+    expect(decoded.id).toBe(-1);
+  });
+});
+
+describe("A2S_INFO query request", () => {
+  it("starts with the FF FF FF FF 54 header + query string", () => {
+    const req = buildRequest();
+    expect(req.subarray(0, 5)).toEqual(Buffer.from([0xff, 0xff, 0xff, 0xff, 0x54]));
+    expect(req.toString("ascii", 5)).toBe("Source Engine Query\0");
+  });
+
+  it("appends the challenge bytes on a second request", () => {
+    const challenge = Buffer.from([0x01, 0x02, 0x03, 0x04]);
+    const req = buildRequest(challenge);
+    expect(req.subarray(req.length - 4)).toEqual(challenge);
+  });
+});
+
+describe("A2S_INFO response parsing", () => {
+  function buildInfoResponse(input: {
+    name: string;
+    map: string;
+    folder: string;
+    game: string;
+    players: number;
+    maxPlayers: number;
+  }): Buffer {
+    return Buffer.concat([
+      Buffer.from([0xff, 0xff, 0xff, 0xff, 0x49, 0x11]), // header + 'I' + protocol version
+      Buffer.from(`${input.name}\0`, "utf8"),
+      Buffer.from(`${input.map}\0`, "utf8"),
+      Buffer.from(`${input.folder}\0`, "utf8"),
+      Buffer.from(`${input.game}\0`, "utf8"),
+      Buffer.from([0x00, 0x00]), // steam app id (short)
+      Buffer.from([input.players]),
+      Buffer.from([input.maxPlayers]),
+    ]);
+  }
+
+  it("parses server name, map, and player counts", () => {
+    const buf = buildInfoResponse({
+      name: "Legacy Raiders US",
+      map: "Procedural Map",
+      folder: "rust",
+      game: "Rust",
+      players: 42,
+      maxPlayers: 100,
+    });
+    const info = parseInfoResponse(buf);
+    expect(info).toEqual({
+      serverName: "Legacy Raiders US",
+      mapName: "Procedural Map",
+      players: 42,
+      maxPlayers: 100,
+    });
+  });
+
+  it("throws SourceQueryError on an unterminated string rather than reading garbage", () => {
+    const malformed = Buffer.from([0xff, 0xff, 0xff, 0xff, 0x49, 0x11, 0x41, 0x42]); // no null terminator
+    expect(() => parseInfoResponse(malformed)).toThrow();
+  });
+});
+
+describe("rconProtocolForGame", () => {
+  it("returns RUST_WEBRCON for Rust on both PC and CONSOLE", () => {
+    expect(rconProtocolForGame("Rust", "PC")).toBe("RUST_WEBRCON");
+    expect(rconProtocolForGame("rust", "PC")).toBe("RUST_WEBRCON");
+    expect(rconProtocolForGame("Rust", "CONSOLE")).toBe("RUST_WEBRCON");
+  });
+
+  it("returns SOURCE for PC Garry's Mod only", () => {
+    expect(rconProtocolForGame("Garry's Mod", "PC")).toBe("SOURCE");
+    expect(rconProtocolForGame("Garry's Mod", "CONSOLE")).toBeNull();
+  });
+
+  it("returns null for a game with no known RCON adapter", () => {
+    expect(rconProtocolForGame("Minecraft", "PC")).toBeNull();
+    expect(rconProtocolForGame("DayZ", "PC")).toBeNull();
+  });
+});
+
+describe("buildWebRconUrl", () => {
+  it("puts the password in the URL path, not a query string", () => {
+    expect(buildWebRconUrl("play.example.com", 28016, "hunter2")).toBe(
+      "ws://play.example.com:28016/hunter2",
+    );
+  });
+
+  it("URL-encodes a password containing special characters", () => {
+    expect(buildWebRconUrl("play.example.com", 28016, "p@ss/word?")).toBe(
+      "ws://play.example.com:28016/p%40ss%2Fword%3F",
+    );
+  });
+});
+
+describe("parseStatusOutput", () => {
+  it("parses the widely-documented status header shape", () => {
+    const output = [
+      "hostname: Legacy Raiders US",
+      "version : 12345 secure (secure mode enabled, connected to Steam3)",
+      "map     : Procedural Map",
+      "players : 42 (200 max) (5 queued) (0 joining)",
+      "id name ping connected addr owner violation kicks",
+    ].join("\n");
+    const info = parseStatusOutput(output);
+    expect(info).toEqual({
+      hostname: "Legacy Raiders US",
+      mapName: "Procedural Map",
+      players: 42,
+      maxPlayers: 200,
+      queued: 5,
+    });
+  });
+
+  it("parses players/max without a queued count present", () => {
+    const output = "hostname: My Server\nmap     : Facepunch Island\nplayers : 10 (50 max)";
+    const info = parseStatusOutput(output);
+    expect(info.players).toBe(10);
+    expect(info.maxPlayers).toBe(50);
+    expect(info.queued).toBeNull();
+  });
+
+  it("fails closed (all-null) on unrecognized output rather than guessing", () => {
+    const info = parseStatusOutput("Unknown command\n");
+    expect(info).toEqual({
+      hostname: null,
+      mapName: null,
+      players: null,
+      maxPlayers: null,
+      queued: null,
+    });
+  });
+
+  it("is case-insensitive on field labels", () => {
+    const output = "HOSTNAME: Loud Server\nPLAYERS : 3 (10 MAX)";
+    const info = parseStatusOutput(output);
+    expect(info.hostname).toBe("Loud Server");
+    expect(info.players).toBe(3);
+    expect(info.maxPlayers).toBe(10);
+  });
+});
+
+describe("parsePlayerListOutput", () => {
+  it("counts entries in a real playerlist JSON array shape", () => {
+    const raw = JSON.stringify([
+      { SteamID: "111", OwnerSteamID: "0", DisplayName: "Alice", Ping: 28 },
+      { SteamID: "222", OwnerSteamID: "0", DisplayName: "Bob", Ping: 41 },
+    ]);
+    expect(parsePlayerListOutput(raw)).toBe(2);
+  });
+
+  it("counts zero for an empty array (nobody online)", () => {
+    expect(parsePlayerListOutput("[]")).toBe(0);
+  });
+
+  it("fails closed (null) on invalid JSON rather than throwing or guessing", () => {
+    expect(parsePlayerListOutput("Unknown command")).toBeNull();
+  });
+
+  it("fails closed (null) on valid JSON that isn't an array", () => {
+    expect(parsePlayerListOutput('{"error": "no rcon"}')).toBeNull();
+  });
+});
+
+describe("queryProtocolForGame", () => {
+  it("returns SOURCE_A2S for PC Rust and Garry's Mod", () => {
+    expect(queryProtocolForGame("Rust", "PC")).toBe("SOURCE_A2S");
+    expect(queryProtocolForGame("Garry's Mod", "PC")).toBe("SOURCE_A2S");
+  });
+
+  it("returns null for CONSOLE regardless of game — not confirmed reachable, even for Rust", () => {
+    expect(queryProtocolForGame("Rust", "CONSOLE")).toBeNull();
+  });
+
+  it("returns null for a game with no known query adapter", () => {
+    expect(queryProtocolForGame("Minecraft", "PC")).toBeNull();
+  });
+});
+
+describe("Rust `kit` console-command builders", () => {
+  it("builds a kit-create command", () => {
+    expect(buildCreateKitCommand("Starter")).toBe('kit add "Starter"');
+  });
+
+  it("builds a kit-add-item command matching the sourced example exactly", () => {
+    expect(
+      buildAddKitItemCommand({
+        kitName: "Starter",
+        itemShortname: "rifle.ak",
+        amount: 1,
+        condition: 1,
+        container: "Belt",
+      }),
+    ).toBe('kit add "Starter" "rifle.ak" "1" "1" "Belt"');
+  });
+
+  it("builds a give-to-player command", () => {
+    expect(buildGiveKitCommand("Starter", "SomeGamertag")).toBe(
+      'kit givetoplayer "Starter" "SomeGamertag"',
+    );
+  });
+
+  it("builds a spawn-group assignment command matching the sourced example exactly", () => {
+    expect(buildAssignKitToSpawnGroupCommand("Starter", "user")).toBe(
+      'kit edit "Starter" add group "user"',
+    );
+  });
+
+  it("rejects a kit-add-item amount that isn't a positive integer", () => {
+    expect(() =>
+      buildAddKitItemCommand({
+        kitName: "Starter",
+        itemShortname: "rifle.ak",
+        amount: 0,
+        condition: 1,
+        container: "Belt",
+      }),
+    ).toThrow();
+  });
+
+  it("rejects a kit-add-item condition that's negative", () => {
+    expect(() =>
+      buildAddKitItemCommand({
+        kitName: "Starter",
+        itemShortname: "rifle.ak",
+        amount: 1,
+        condition: -1,
+        container: "Belt",
+      }),
+    ).toThrow();
+  });
+
+  it("fails closed on a double-quote in an argument rather than emitting a malformed command", () => {
+    expect(() => buildCreateKitCommand('Star"ter')).toThrow();
+    expect(() => buildGiveKitCommand("Starter", 'Game"tag')).toThrow();
+  });
+});

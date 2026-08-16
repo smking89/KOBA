@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { activeBoostedTargetIds } from "@/features/boost/services/boost.service";
 import {
   buildProductOrderBy,
   buildPublicProductWhere,
@@ -9,19 +10,31 @@ import type {
   PublicProductDetail,
   PublicSeller,
 } from "@/features/marketplace/lib/product-dto";
-import type { GamePlatform, ListingType, ProductRarity } from "@/features/marketplace/lib/catalog";
+import type {
+  FreebiePolicy,
+  GamePlatform,
+  ListingType,
+  ProductRarity,
+} from "@/features/marketplace/lib/catalog";
 
 const productInclude = {
   game: { select: { slug: true, name: true } },
   category: { select: { slug: true, name: true } },
   media: { orderBy: { sortOrder: "asc" as const } },
   variants: { orderBy: { createdAt: "asc" as const } },
-  shop: { select: { slug: true, verificationStatus: true } },
+  shop: {
+    select: {
+      slug: true,
+      verificationStatus: true,
+      reviews: { select: { rating: true } },
+      _count: { select: { reviews: true } },
+    },
+  },
   auction: true,
   seller: {
     select: {
       name: true,
-      profile: { select: { displayName: true } },
+      profile: { select: { displayName: true, handle: true } },
       kobaIdentities: { select: { accountType: true, code: true } },
       ownedShop: { select: { slug: true, verificationStatus: true } },
     },
@@ -42,10 +55,34 @@ function sellerFrom(product: NonNullable<ProductRecord>): PublicSeller {
 
   return {
     displayName: product.seller.profile?.displayName ?? product.seller.name ?? "KOBA seller",
+    handle: product.seller.profile?.handle ?? null,
     kobaId,
     shopSlug: product.seller.ownedShop?.slug ?? product.shop?.slug ?? null,
     verified: product.seller.ownedShop?.verificationStatus === "VERIFIED",
   };
+}
+
+function shopRating(product: NonNullable<ProductRecord>): {
+  shopRatingAvg: number | null;
+  shopReviewCount: number;
+} {
+  if (!product.shop) {
+    return { shopRatingAvg: null, shopReviewCount: 0 };
+  }
+  const count = product.shop._count.reviews;
+  if (count === 0) {
+    return { shopRatingAvg: null, shopReviewCount: 0 };
+  }
+  const sum = product.shop.reviews.reduce((total, review) => total + review.rating, 0);
+  return { shopRatingAvg: sum / count, shopReviewCount: count };
+}
+
+function descriptionSnippet(description: string, maxLength = 90): string {
+  const trimmed = description.trim();
+  if (trimmed.length <= maxLength) {
+    return trimmed;
+  }
+  return `${trimmed.slice(0, maxLength).trimEnd()}…`;
 }
 
 function stockQty(product: NonNullable<ProductRecord>): number {
@@ -55,7 +92,11 @@ function stockQty(product: NonNullable<ProductRecord>): number {
   return product.inventoryQty;
 }
 
-function toCard(product: NonNullable<ProductRecord>, favorited: boolean): PublicProductCard {
+function toCard(
+  product: NonNullable<ProductRecord>,
+  favorited: boolean,
+  boosted: boolean,
+): PublicProductCard {
   return {
     slug: product.slug,
     title: product.title,
@@ -70,6 +111,10 @@ function toCard(product: NonNullable<ProductRecord>, favorited: boolean): Public
     seller: sellerFrom(product),
     thumbnailAlt: product.media[0]?.alt ?? product.title,
     favorited,
+    boosted,
+    freebiePolicy: product.freebiePolicy as FreebiePolicy,
+    descriptionSnippet: descriptionSnippet(product.description),
+    ...shopRating(product),
     auction: product.auction
       ? {
           status: product.auction.status,
@@ -117,8 +162,18 @@ export async function listPublicProducts(
     }
   }
 
+  // Boosted-first within this page only — a true global (cross-page)
+  // boosted-first sort needs a DB-level CASE/computed-column ordering,
+  // deferred (see ROADMAP.md Phase 15). This still gives an active Boost
+  // real, visible priority on whichever page the product already sorts
+  // into, not just a badge.
+  const boostedIds = await activeBoostedTargetIds("PRODUCT");
+  const cards = rows
+    .map((row) => toCard(row, favoriteSlugs.has(row.slug), boostedIds.has(row.id)))
+    .sort((a, b) => Number(b.boosted) - Number(a.boosted));
+
   return {
-    items: rows.map((row) => toCard(row, favoriteSlugs.has(row.slug))),
+    items: cards,
     total,
     page: query.page,
     pageSize: query.pageSize,
@@ -152,11 +207,21 @@ export async function getPublicProduct(
   }
 
   const qty = stockQty(product);
+  const boostedIds = await activeBoostedTargetIds("PRODUCT");
+
+  let freebieClaimed = false;
+  if (viewerUserId && product.freebiePolicy !== "NONE") {
+    const claim = await prisma.freebieClaim.findUnique({
+      where: { productId_buyerUserId: { productId: product.id, buyerUserId: viewerUserId } },
+    });
+    freebieClaimed = Boolean(claim);
+  }
 
   return {
-    ...toCard(product, favorited),
+    ...toCard(product, favorited, boostedIds.has(product.id)),
     description: product.description,
     inventoryQty: qty,
+    freebieClaimed,
     variants: product.variants.map((variant) => ({
       sku: variant.sku,
       name: variant.name,

@@ -13,12 +13,12 @@ export async function GET(request: Request) {
       ? await listProfilePosts({
           handle: query.handle,
           viewerUserId: session?.user.id,
-          page: query.page,
+          page: query.cursor ? Number(query.cursor) || 1 : 1,
           pageSize: query.pageSize,
         })
       : await listFeed({
           viewerUserId: session?.user.id,
-          page: query.page,
+          cursor: query.cursor,
           pageSize: query.pageSize,
           groupSlug: query.group,
         });

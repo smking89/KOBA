@@ -39,6 +39,9 @@ enum AuditAction {
   ORDER_PAID
   ORDER_REFUNDED
   ORDER_FULFILLED
+  ORDER_ESCROW_RELEASED
+  ORDER_ESCROW_DISPUTED
+  ORDER_ESCROW_DISPUTE_RESOLVED
   CONNECT_ONBOARDED
   GROUP_CREATED
   GROUP_JOINED
@@ -139,6 +142,34 @@ enum AuditAction {
   STAFF_SESSIONS_REVOKED_ALL
   STAFF_ROLE_CHANGED
   STAFF_PASSWORD_CHANGED
+  AIDEN_JOB_FAILED
+  PLATFORM_FUNCTION_ENABLED
+  PLATFORM_FUNCTION_DISABLED
+  BOOST_PURCHASED
+  BOOST_GIFTED
+  BOOST_APPLIED
+  AIDEN_ASSET_PUBLISHED
+  SERVER_ACTIVE_MAP_SET
+  FREEBIE_CLAIMED
+  SERVER_KIT_DELIVERED
+}
+
+// Major, independently-toggleable platform functions. This is the registry
+// key set for the superadmin "kill switch" panel — see
+// features/platform-control/lib/functions.ts for the human-readable
+// registry (label/description) that maps onto these keys, and
+// docs/tdls.md for why this exists (TDLS trust-boundary enforcement,
+// slice 1 of 3: superadmin function control).
+enum PlatformFunctionKey {
+  STRIPE_PAYMENTS
+  AIDEN_GENERATION
+  CLAUDE_DESCRIPTION_ASSIST
+  SOCIAL_POSTING
+  MESSAGING
+  TRADE
+  MARKETPLACE_CHECKOUT
+  SERVER_RCON
+  PLUS_SUBSCRIPTIONS
 }
 
 model User {
@@ -159,6 +190,9 @@ model User {
   staffMfaFactor StaffMfaFactor?
   staffMfaChallenges StaffMfaChallenge[]
   staffSessions  StaffSession[]
+  platformFunctionFlagUpdates PlatformFunctionFlag[] @relation("PlatformFunctionFlagUpdatedBy")
+  boostsOwned    Boost[]        @relation("BoostOwner")
+  boostsGifted   Boost[]        @relation("BoostGiftedFrom")
   products       Product[]
   favorites      ProductFavorite[]
   ownedShop      Shop?            @relation("ShopOwner")
@@ -166,6 +200,9 @@ model User {
   shopFollows    ShopFollow[]
   shopReviews    ShopReview[]     @relation("ShopReviewAuthor")
   ordersBought   Order[]          @relation("OrderBuyer")
+  coinPurchases  CoinPurchase[]
+  escrowDisputesFiled    OrderEscrow[] @relation("OrderEscrowDisputedBy")
+  escrowDisputesResolved OrderEscrow[] @relation("OrderEscrowResolvedBy")
   bids           Bid[]
   wonAuctions    Auction[]        @relation("AuctionWinner")
   ownedGroups    Group[]          @relation("GroupOwner")
@@ -199,6 +236,8 @@ model User {
   serverNotices   ServerOwnerNotice[]
   plusSubscriptions PlusSubscription[]
   stripeCustomerId  String?            @unique
+  serverBios       ServerBio[]
+  freebieClaims    FreebieClaim[]
   coinWallet      CoinWallet?
   ledgerAccounts  LedgerAccount[]
   aidenJobs       AidenJob[]
@@ -297,6 +336,12 @@ model KobaIdentity {
   @@index([code])
 }
 
+// prevHash/hash form a tamper-evident hash chain: each row's hash commits to
+// its own fields plus the previous row's hash, so editing or deleting a past
+// entry breaks the chain from that point forward (detectable via
+// verifyAuditChain() in audit-log.service.ts). Rows written before this
+// chaining was added have null prevHash/hash — the chain is considered to
+// start fresh at the first non-null row.
 model AuditLog {
   id          String      @id @default(cuid())
   actorUserId String?
@@ -306,12 +351,83 @@ model AuditLog {
   metadata    Json?
   ipAddress   String?     @db.VarChar(45)
   createdAt   DateTime    @default(now())
+  prevHash    String?     @db.VarChar(64)
+  hash        String?     @db.VarChar(64)
 
   actor User? @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
 
   @@index([actorUserId])
   @@index([action])
   @@index([createdAt])
+}
+
+// One row per PlatformFunctionKey. Absence of a row means "enabled" (the
+// default, so shipping a new function doesn't require a migration to turn
+// it on) — only an explicit row with enabled=false blocks the function.
+// Runtime callers use isPlatformFunctionEnabled(), which fails CLOSED
+// (treats the function as disabled) if the DB read itself errors, since
+// this guards real money/API-cost paths and a silent bypass on DB outage
+// would be worse than a false block.
+model PlatformFunctionFlag {
+  id              String              @id @default(cuid())
+  key             PlatformFunctionKey @unique
+  enabled         Boolean             @default(true)
+  note            String?
+  updatedByUserId String?
+  updatedAt       DateTime            @updatedAt
+  createdAt       DateTime            @default(now())
+
+  updatedBy User? @relation("PlatformFunctionFlagUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([key])
+}
+
+// Boost target kind — deliberately extensible ("or any supported
+// feature" per client direction). Adding a new boostable surface (e.g.
+// LFG posts) is a new enum value + a new case in
+// features/boost/services/boost.service.ts's ownership check, not a
+// schema rewrite.
+enum BoostTargetKind {
+  PRODUCT
+  SHOP
+  GROUP
+  SERVER
+  INFLUENCER
+}
+
+enum BoostStatus {
+  UNUSED
+  APPLIED
+  EXPIRED
+}
+
+// A Boost is a purchasable, held item (like Coins, it sits in the
+// buyer's wallet until spent) rather than a live ad campaign. Fixed
+// effect (see features/boost/lib/pricing.ts: 10 minutes, 3x exposure —
+// both client-specified, not configurable per-purchase). Follows the
+// AuditLog.targetType/targetId string-pair convention for its
+// polymorphic target rather than three nullable FK columns, since this
+// codebase already uses that pattern for exactly this kind of
+// "one row can point at several different entity types" case.
+model Boost {
+  id                String           @id @default(cuid())
+  ownerUserId       String
+  status            BoostStatus      @default(UNUSED)
+  purchaseCoinCost  Int
+  purchasedAt       DateTime         @default(now())
+  giftedFromUserId  String?
+  giftedAt          DateTime?
+  targetType        BoostTargetKind?
+  targetId          String?
+  appliedAt         DateTime?
+  expiresAt         DateTime?
+  idempotencyKey    String           @unique
+
+  owner       User  @relation("BoostOwner", fields: [ownerUserId], references: [id], onDelete: Cascade)
+  giftedFrom  User? @relation("BoostGiftedFrom", fields: [giftedFromUserId], references: [id], onDelete: SetNull)
+
+  @@index([ownerUserId])
+  @@index([targetType, targetId])
 }
 
 enum ProductRarity {
@@ -357,13 +473,41 @@ enum ProductMediaKind {
   VIDEO
 }
 
+/// Per-game marketplace-content policy, derived from the ARK deep-dive +
+/// per-title ToS sweep (2026-08-14). Desk research, not legal counsel — see
+/// docs/game-content-policy.md. FULL = mods/maps/kits/skins all allowed.
+/// SKINS_ONLY = only Category.kind = SKINS listings allowed (in-game
+/// character/item skins — the actual thing publisher policies like
+/// Minecraft's mean by "cosmetics/perks are the sanctioned path"; mods/
+/// maps/kits are not). EXCLUDED = no listings of any kind — a sourced,
+/// direct conflict with the publisher's stated policy. LEGAL_REVIEW = no
+/// public policy found either direction; blocked pending actual legal
+/// counsel or direct publisher contact, not desk-research clearance.
+/// NOTE: Category.kind = COSMETICS and the separate Cosmetic model
+/// (avatar decorations, profile effects, nameplates, profile frames, shop
+/// banners, emojis — KOBA's own subscription-style profile/shop
+/// customization) are never game-specific and are NEVER gated by this
+/// policy at all.
+enum GameContentPolicy {
+  FULL
+  SKINS_ONLY
+  EXCLUDED
+  LEGAL_REVIEW
+}
+
 model Game {
-  id        String    @id @default(cuid())
-  slug      String    @unique
-  name      String
-  createdAt DateTime  @default(now())
-  products  Product[]
-  lfgPosts  LfgPost[]
+  id            String            @id @default(cuid())
+  slug          String            @unique
+  name          String
+  contentPolicy GameContentPolicy @default(FULL)
+  /// Human-readable citation for contentPolicy, shown to sellers/staff —
+  /// e.g. "Wildcard's CurseForge moderation guidelines mandate Tebex-only
+  /// payout for monetized mods; conflicts with KOBA's Stripe Connect
+  /// architecture." Null only for FULL-policy games with nothing to cite.
+  policyNote    String?
+  createdAt     DateTime          @default(now())
+  products      Product[]
+  lfgPosts      LfgPost[]
 }
 
 model Category {
@@ -373,6 +517,20 @@ model Category {
   kind      ProductCategoryKind
   createdAt DateTime            @default(now())
   products  Product[]
+}
+
+/// Freebie policy (ROADMAP.md Phase 18): NONE = normal paid listing.
+/// PERMANENT = always free, no quantity limit. LIMITED_QUANTITY = free
+/// for the first `freebieQuantityRemaining` claims, then reverts to
+/// `priceCents` as a normal paid listing. Deliberately NOT a separate
+/// $0-price convention (priceCents already allows 0) — freebiePolicy
+/// disambiguates "genuinely free" from "a seller priced this at zero,"
+/// which are different things (a $0 non-freebie product would still go
+/// through paid checkout's Stripe flow, wastefully, for no money moved).
+enum FreebiePolicy {
+  NONE
+  PERMANENT
+  LIMITED_QUANTITY
 }
 
 model Product {
@@ -393,6 +551,14 @@ model Product {
   gameId             String
   categoryId         String
   publishedAt        DateTime?
+  freebiePolicy      FreebiePolicy    @default(NONE)
+  /// Meaningful only when freebiePolicy = LIMITED_QUANTITY — a one-time
+  /// lifetime pool per product (client direction not yet given on
+  /// replenishment; "first 15 free" is modeled as never resetting,
+  /// flagged in ROADMAP.md as the default, not a guess left unstated).
+  /// Decrements independently of inventoryQty, which also decrements on
+  /// a free claim (a free claim still consumes real stock).
+  freebieQuantityRemaining Int?
   createdAt          DateTime         @default(now())
   updatedAt          DateTime         @updatedAt
 
@@ -408,6 +574,8 @@ model Product {
   referralCodes   ReferralCode[]
   campaignProducts AffiliateCampaignProduct[]
   promoCodeProducts PromoCodeProduct[]
+  aidenAsset      AidenAsset?
+  freebieClaims   FreebieClaim[]
 
   @@index([moderationStatus, publishedAt])
   @@index([gameId])
@@ -417,6 +585,25 @@ model Product {
   @@index([shopId])
   @@index([priceCents])
   @@index([rarityRank])
+  @@index([freebiePolicy])
+}
+
+/// One row per successful free claim — enforces one-claim-per-buyer
+/// (Order itself has no such constraint; multiple paid orders for the
+/// same product are normal). Modeled on DevInstall's shape.
+model FreebieClaim {
+  id           String   @id @default(cuid())
+  productId    String
+  buyerUserId  String
+  orderId      String   @unique
+  createdAt    DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  buyer   User    @relation(fields: [buyerUserId], references: [id], onDelete: Cascade)
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, buyerUserId])
+  @@index([buyerUserId])
 }
 
 model ProductVariant {
@@ -502,6 +689,7 @@ model Shop {
   products      Product[]
   orders        Order[]
   servers       GameServer[]
+  cosmetics     Cosmetic[]
   promoConfig          ShopPromoConfig?
   referralCodes        ReferralCode[]
   affiliateCampaigns   AffiliateCampaign[]
@@ -546,6 +734,47 @@ model ShopReview {
 
   @@unique([shopId, authorUserId])
   @@index([shopId])
+}
+
+/// Universal KOBA identity/shop customization, purchased in USD (not KOBA
+/// Coins) — the client's own framing (ROADMAP.md Phase 3: "sold
+/// pre-made"; KOBA Plus/Phase 16 expands the same idea into a recurring
+/// subscription). Never game-specific — a Cosmetic decorates a KOBA
+/// profile or shop, not an in-game character, so it is never subject to
+/// any single game's ToS and is deliberately NOT gated by
+/// Game.contentPolicy (see features/marketplace/lib/game-policy.ts and
+/// docs/game-content-policy.md).
+enum CosmeticSubType {
+  AVATAR_DECORATION
+  PROFILE_EFFECT
+  NAMEPLATE
+  PROFILE_FRAME
+  SHOP_BANNER
+  EMOJI
+}
+
+/// Sold pre-made, closed sub-type enum, no custom-build fields, per
+/// ROADMAP.md Phase 3's explicit non-goal.
+model Cosmetic {
+  id               String            @id @default(cuid())
+  slug             String            @unique
+  ownerShopId      String
+  subType          CosmeticSubType
+  rarity           ProductRarity
+  name             String
+  description      String            @db.Text
+  priceCents       Int
+  currency         String            @default("USD")
+  moderationStatus ModerationStatus  @default(DRAFT)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  ownerShop Shop @relation(fields: [ownerShopId], references: [id], onDelete: Cascade)
+
+  @@index([ownerShopId])
+  @@index([moderationStatus])
+  @@index([subType])
+  @@index([rarity])
 }
 
 enum OrderKind {
@@ -594,6 +823,8 @@ model Order {
   participation           CampaignParticipation? @relation(fields: [participationId], references: [id], onDelete: SetNull)
   promotionCommission     PromotionCommission?
   promoRedemption         PromoCodeRedemption?
+  escrow                  OrderEscrow?
+  freebieClaim            FreebieClaim?
 
   @@index([shopId, createdAt])
   @@index([buyerUserId])
@@ -601,6 +832,39 @@ model Order {
   @@index([referralCodeId])
   @@index([promoCodeId])
   @@index([campaignId])
+}
+
+enum EscrowStatus {
+  HOLDING
+  DISPUTED
+  RELEASED
+  REFUNDED
+}
+
+/// Holds the seller's payout on the platform's own Stripe balance for a short
+/// window after payment. Auto-releases (transfer to the seller's Connect
+/// account) once `releaseAt` passes, unless the buyer flags a dispute first.
+/// Deliberately kept as a sibling table to `Order` — `Order.status` keeps its
+/// existing meaning and existing code paths reading it are unaffected.
+model OrderEscrow {
+  id               String       @id @default(cuid())
+  orderId          String       @unique
+  status           EscrowStatus @default(HOLDING)
+  releaseAt        DateTime
+  disputedAt       DateTime?
+  disputeReason    String?      @db.Text
+  disputedByUserId String?
+  resolvedAt       DateTime?
+  resolvedByUserId String?
+  stripeTransferId String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  order      Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  disputedBy User? @relation("OrderEscrowDisputedBy", fields: [disputedByUserId], references: [id], onDelete: SetNull)
+  resolvedBy User? @relation("OrderEscrowResolvedBy", fields: [resolvedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([status, releaseAt])
 }
 
 model ProcessedStripeEvent {
@@ -1958,9 +2222,10 @@ model InventoryItem {
   createdAt          DateTime                   @default(now())
   updatedAt          DateTime                   @updatedAt
 
-  owner          User             @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
-  lockTradeOffer TradeOffer?      @relation("TradeItemLocks", fields: [lockTradeOfferId], references: [id], onDelete: SetNull)
-  tradeLines     TradeOfferItem[]
+  owner            User             @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+  lockTradeOffer   TradeOffer?      @relation("TradeItemLocks", fields: [lockTradeOfferId], references: [id], onDelete: SetNull)
+  tradeLines       TradeOfferItem[]
+  activeMapForServer GameServer?
 
   @@index([ownerUserId, listedForTrade, status])
   @@index([rarity, game])
@@ -2084,6 +2349,15 @@ model GameServer {
   pollFailures       Int                      @default(0)
   nextPollAt         DateTime?
   rconTestState      RconTestState            @default(IDLE)
+  /// "Rarity" for a server (client clarification, 2026-08-15): derived
+  /// from a Map they own on this server, purchased on the KOBA
+  /// marketplace — NOT a standalone server-level tier the owner just
+  /// sets. Nullable: a server with no active map has no rarity to show.
+  /// Must reference an InventoryItem the server's owner actually owns
+  /// (features/servers/services/server.service.ts#setActiveMap
+  /// enforces this — schema alone can't express "owned by the same
+  /// user as ownerUserId").
+  activeMapInventoryItemId String? @unique
   createdAt          DateTime                 @default(now())
   updatedAt          DateTime                 @updatedAt
 
@@ -2097,6 +2371,8 @@ model GameServer {
   jobs         ServerIntegrationJob[]
   notices      ServerOwnerNotice[]
   idempotency  IntegrationIdempotency[]
+  bios         ServerBio[]
+  activeMapInventoryItem InventoryItem? @relation(fields: [activeMapInventoryItemId], references: [id], onDelete: SetNull)
 
   @@index([ownerUserId])
   @@index([game, region])
@@ -2299,6 +2575,13 @@ model PlanEntitlement {
   @@unique([planId, code])
 }
 
+// A row exists per-user from their first visit to /plus (ensureSubscription
+// upserts eagerly, state NONE) — so `createdAt` is NOT a tenure anchor,
+// it's "first time this page was loaded." `firstActivatedAt` is the real
+// tenure clock: set once, the first time state transitions to ACTIVE, and
+// never touched again (a lapse-and-resubscribe does not reset it — see
+// features/plus/lib/tenure.ts for why that's the deliberate choice, not
+// an oversight).
 model PlusSubscription {
   id                     String                @id @default(cuid())
   publicRef              String                @unique
@@ -2322,6 +2605,7 @@ model PlusSubscription {
   lastStripeEventId      String?
   lastStripeEventCreated Int?
   version                Int                   @default(0)
+  firstActivatedAt       DateTime?
   createdAt              DateTime              @default(now())
   updatedAt              DateTime              @updatedAt
 
@@ -2349,6 +2633,25 @@ model PlusEntitlementGrant {
 
   @@index([kobaIdentityId, code])
   @@index([expiresAt])
+}
+
+// Plus perk: a bio that can differ per game-server community, distinct
+// from AccountProfile.bio (account-wide). Gated to active Plus
+// subscribers at the service layer, not enforced at the schema level
+// (same pattern as every other perk gate in this codebase).
+model ServerBio {
+  id           String   @id @default(cuid())
+  userId       String
+  gameServerId String
+  bio          String   @db.Text
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user   User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  server GameServer @relation(fields: [gameServerId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, gameServerId])
+  @@index([gameServerId])
 }
 
 model CoinWallet {
@@ -2465,6 +2768,43 @@ model CoinReservation {
   @@index([status, expiresAt])
 }
 
+enum CoinPurchaseStatus {
+  PENDING
+  PAID
+  CANCELLED
+}
+
+/// A real-money purchase of a fixed Coin package via Stripe Checkout. Kept
+/// separate from Order (marketplace purchases) since this is KOBA selling
+/// its own Coins directly — no shop, no escrow, no seller payout: the
+/// charge settles to and stays on KOBA's own Stripe balance. On payment
+/// (webhook-driven only, same trust model as checkout.service.ts) this
+/// credits the buyer's PURCHASED bucket via ledger.service.ts's
+/// creditPurchasedCoins, using idempotencyKey as the ledger idempotency key
+/// so a retried webhook can never double-credit.
+model CoinPurchase {
+  id                      String             @id @default(cuid())
+  publicRef               String             @unique
+  userId                  String
+  packageId               String
+  priceCents              Int
+  coinAmount              BigInt
+  currency                String             @default("USD")
+  status                  CoinPurchaseStatus @default(PENDING)
+  stripeCheckoutSessionId String?            @unique
+  stripePaymentIntentId   String?
+  idempotencyKey          String             @unique
+  ledgerTransactionRef    String?
+  paidAt                  DateTime?
+  createdAt               DateTime           @default(now())
+  updatedAt               DateTime           @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([userId, createdAt])
+  @@index([status])
+}
+
 model AidenJob {
   id                     String                 @id @default(cuid())
   publicRef              String                 @unique
@@ -2478,6 +2818,18 @@ model AidenJob {
   settingsJson           String                 @default("{}")
   state                  AidenJobState          @default(QUEUED)
   coinCostPreview        Int
+  /// Actual Coin-equivalent cost reported by the frontier-model provider's
+  /// usage response, once real providers are wired (features/aiden/providers).
+  /// Recorded for audit/margin analysis only in this phase — the reservation
+  /// is still always captured in full at coinCostPreview; reconciling the
+  /// delta (releasing coinCostPreview - coinCostActual back to the wallet
+  /// when the real cost is lower) is a deferred refinement, same pattern as
+  /// this codebase's other "deferred: X" spots.
+  coinCostActual         Int?
+  /// Raw provider usage payload (tokens, compute units, whatever that
+  /// provider's response shape is), stored as-is for audit. Null until a
+  /// real (non-stub) provider is configured and actually called.
+  frontierModelUsageJson String?                @db.Text
   estimatedCostCoins     BigInt                 @default(0)
   actualCostCoins        BigInt?
   reservationPublicRef   String?
@@ -2536,11 +2888,23 @@ model AidenAsset {
   model            String?
   modelVersion     String?
   provenanceJson   String?
+  /// Generated output location (image/model/map file URL). Null for
+  /// CONCEPT_ONLY assets and anything created before real generation existed.
+  assetUrl         String?
+  /// Set once this asset has been published to the marketplace as a
+  /// Product (features/aiden/services/aiden.service.ts's
+  /// publishAssetToMarketplace). Null means never published; presence
+  /// blocks re-publishing the same asset as a second listing. The
+  /// created Product still starts DRAFT and goes through the same
+  /// seller submit -> staff review pipeline as any other listing — this
+  /// is lineage tracking, not a moderation bypass.
+  publishedProductId String?              @unique
   createdAt        DateTime              @default(now())
   updatedAt        DateTime              @updatedAt
 
-  user User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  job  AidenJob? @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job             AidenJob? @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  publishedProduct Product? @relation(fields: [publishedProductId], references: [id], onDelete: SetNull)
 
   @@index([userId, createdAt])
   @@index([moderation])

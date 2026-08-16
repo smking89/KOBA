@@ -31,6 +31,7 @@ export const DESKTOP_MORE_LINKS: readonly NavLink[] = [
   { href: "/wallet", label: "Wallet" },
   { href: "/developers", label: "Developers" },
   { href: "/apps", label: "Apps" },
+  { href: "/enter", label: "Dashboard" },
 ] as const;
 
 /** Discord-style icon rail (host shortcuts). */
@@ -49,6 +50,7 @@ export const SIDEBAR_SECTIONS: readonly NavSection[] = [
     label: "Community",
     links: [
       { href: "/", label: "Home" },
+      { href: "/enter", label: "Dashboard" },
       { href: "/feed", label: "Feed" },
       { href: "/messages", label: "Messages" },
       { href: "/groups", label: "Groups" },
@@ -92,11 +94,14 @@ export const MOBILE_MORE_LINKS: readonly NavLink[] = [
   { href: "/wallet", label: "Wallet" },
   { href: "/developers", label: "Developers" },
   { href: "/apps", label: "Apps" },
+  { href: "/enter", label: "Dashboard" },
+  { href: "/orders", label: "Orders" },
   { href: "/settings", label: "You" },
 ] as const;
 
 const TITLE_LINKS: readonly NavLink[] = [
   ...SIDEBAR_SECTIONS.flatMap((section) => section.links),
+  { href: "/enter", label: "Dashboard" },
   { href: "/settings", label: "Settings" },
   { href: "/orders", label: "Orders" },
   { href: "/admin", label: "Staff" },

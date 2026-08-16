@@ -4,10 +4,13 @@ import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { AIDEN_DISCLAIMER } from "@/features/aiden/lib/types";
+import { requireAidenPage } from "@/features/aiden/lib/require-business";
 
 export const metadata = { title: "Aiden" };
 
-export default function AidenLandingPage() {
+export default async function AidenLandingPage() {
+  await requireAidenPage("/aiden");
+
   return (
     <div className="space-y-8">
       <PageHeader

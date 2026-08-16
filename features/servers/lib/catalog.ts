@@ -50,6 +50,8 @@ export const MOCK_SERVERS: GameServerView[] = [
     mapSize: "4250",
     mapState: "AVAILABLE",
     pingState: "NOT_SUPPORTED",
+    activeMapRarity: null,
+    activeMapTitle: null,
   },
   {
     publicRef: "KOBA-SRV-MC0001",
@@ -83,6 +85,8 @@ export const MOCK_SERVERS: GameServerView[] = [
     mapState: "AVAILABLE",
     pingMs: 42,
     pingState: "AVAILABLE",
+    activeMapRarity: null,
+    activeMapTitle: null,
   },
   {
     publicRef: "KOBA-SRV-CON0001",
@@ -118,6 +122,8 @@ export const MOCK_SERVERS: GameServerView[] = [
     queueState: "NOT_SUPPORTED",
     mapState: "NOT_SUPPORTED",
     pingState: "NOT_SUPPORTED",
+    activeMapRarity: null,
+    activeMapTitle: null,
   },
 ];
 

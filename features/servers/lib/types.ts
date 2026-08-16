@@ -85,6 +85,9 @@ export type GameServerView = {
   /** Only populate fields the server capabilities allow and that are fresh. */
   status?: ServerOperationalStatus;
   statusState: MetricDisplayState;
+  /** Derived from a Map the owner purchased and marked active — null when unset. */
+  activeMapRarity: string | null;
+  activeMapTitle: string | null;
   livePlayers?: number;
   maxPlayers?: number;
   playersState: MetricDisplayState;
