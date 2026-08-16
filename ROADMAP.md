@@ -1253,6 +1253,13 @@ Live feeds from `koba.games` (group feeds, marketplace feeds) posted into
 Discord, plus account linking and in-game item delivery via slash
 commands.
 
+**Architecturally, KOBA plays the role Tip4Serv plays for KAOSBOT/
+Ch33kys/Veretech** (client framing, 2026-08-16) — a webshop whose
+purchases trigger RCON-based item delivery — except KOBA is both the
+storefront *and* the delivery bot (KOBAbot), not a webshop handing off
+to a separate third-party bot. Same delivery mechanism (RCON), no
+external dependency.
+
 **Free to use** — no KOBA Plus / paywall gate, same as the PC plugin.
 Distributed via the Business dashboard (`/business`): a bot-invite link,
 surfaced once the bot actually exists.
