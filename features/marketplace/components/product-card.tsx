@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { FavoriteButton } from "@/features/marketplace/components/favorite-button";
-import { ShareButton } from "@/features/marketplace/components/share-button";
+import { ProductActionRail } from "@/features/marketplace/components/product-action-rail";
+import { PlatformIcon } from "@/features/marketplace/components/platform-icon";
+import { StarRating } from "@/features/marketplace/components/star-rating";
 import { RarityChip, rarityAccentClass } from "@/features/marketplace/components/rarity-chip";
 import { AuctionCountdown } from "@/features/auctions/components/auction-countdown";
-import { formatPrice, PLATFORM_LABEL } from "@/features/marketplace/lib/catalog";
+import { formatPrice } from "@/features/marketplace/lib/catalog";
 import type { PublicProductCard } from "@/features/marketplace/lib/product-dto";
 import { cn } from "@/lib/utils";
 
@@ -35,7 +36,7 @@ export function ProductCard({
         rarityAccentClass(product.rarity),
       )}
     >
-      <div className="relative flex h-36 items-center justify-center bg-black/25">
+      <div className="relative flex h-40 items-center justify-center bg-black/25">
         <span className="font-mono text-xs tracking-widest text-muted uppercase">
           {product.game.name}
         </span>
@@ -51,13 +52,20 @@ export function ProductCard({
             </span>
           ) : null}
         </div>
-        <div className="absolute top-2 right-2 flex items-center gap-1">
-          <ShareButton slug={product.slug} title={product.title} />
-          <FavoriteButton
-            slug={product.slug}
-            initialFavorited={product.favorited}
-            signedIn={signedIn}
-          />
+        <div className="absolute top-2 right-2">
+          <ProductActionRail product={product} signedIn={signedIn} />
+        </div>
+        <div className="absolute bottom-2 left-2 flex items-center gap-1.5 rounded-full border border-white/10 bg-black/50 px-2 py-1 backdrop-blur-sm">
+          {product.platforms.map((platform) => (
+            <PlatformIcon
+              key={platform}
+              platform={platform}
+              className="h-3.5 w-3.5 text-foreground"
+            />
+          ))}
+        </div>
+        <div className="absolute right-2 bottom-2 rounded-full border border-white/10 bg-black/50 px-2 py-1 backdrop-blur-sm">
+          <StarRating ratingAvg={product.shopRatingAvg} reviewCount={product.shopReviewCount} />
         </div>
       </div>
       <div className="flex flex-1 flex-col gap-2 p-4">
@@ -68,6 +76,11 @@ export function ProductCard({
         >
           {product.title}
         </Link>
+        {product.descriptionSnippet ? (
+          <p className="text-xs leading-snug text-muted italic">
+            &ldquo;{product.descriptionSnippet}&rdquo;
+          </p>
+        ) : null}
         <p className="text-xs text-muted">
           {product.game.name} ·{" "}
           {product.seller.shopSlug ? (
@@ -81,9 +94,6 @@ export function ProductCard({
           {product.seller.kobaId ? (
             <span className="mt-0.5 block font-mono">{product.seller.kobaId}</span>
           ) : null}
-        </p>
-        <p className="text-[0.65rem] tracking-wide text-muted uppercase">
-          {product.platforms.map((platform) => PLATFORM_LABEL[platform]).join(" · ")}
         </p>
         <div className="mt-auto flex items-center justify-between gap-3 pt-2">
           <div>

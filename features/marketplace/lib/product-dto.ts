@@ -43,6 +43,10 @@ export type PublicProductCard = {
   /** From the selling Shop's real reviews (ShopReview) — null with no reviews yet, never fabricated. */
   shopRatingAvg: number | null;
   shopReviewCount: number;
+  /** Real ProductFavorite count — the "like" count. */
+  favoriteCount: number;
+  /** Real ProductComment count (moderationStatus LIVE only). */
+  commentCount: number;
 };
 
 export type PublicProductDetail = PublicProductCard & {
@@ -52,4 +56,11 @@ export type PublicProductDetail = PublicProductCard & {
   media: { url: string; alt: string; kind: "IMAGE" | "VIDEO" }[];
   /** True when the signed-in viewer has already claimed this freebie. */
   freebieClaimed: boolean;
+};
+
+export type PublicProductComment = {
+  publicRef: string;
+  body: string;
+  createdAt: string;
+  author: { name: string; handle: string | null; kobaId: string | null };
 };

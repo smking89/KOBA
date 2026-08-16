@@ -1,7 +1,9 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { KobaBadgeArt } from "@/components/koba/koba-badge-art";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
+import { HomeTour } from "@/components/koba/home-tour";
 import { cn } from "@/lib/utils";
 
 const pillars = [
@@ -11,6 +13,7 @@ const pillars = [
     href: "/market",
     action: "Browse listings",
     mark: "M",
+    tourId: "pillar-market",
   },
   {
     title: "Groups, LFG & servers",
@@ -18,6 +21,7 @@ const pillars = [
     href: "/groups",
     action: "Find a group",
     mark: "C",
+    tourId: "pillar-groups",
   },
   {
     title: "KOBAID",
@@ -25,6 +29,7 @@ const pillars = [
     href: "/settings",
     action: "View KOBAID",
     mark: "K",
+    tourId: "pillar-kobaid",
   },
 ] as const;
 
@@ -47,10 +52,18 @@ export default function HomePage() {
           KOBAID, and switch between Player, Business, and Influencer whenever you need to.
         </p>
         <div className="flex flex-wrap gap-2">
-          <Link href="/market" className={cn(buttonVariants({ variant: "primary" }))}>
+          <Link
+            href="/market"
+            data-tour="explore-market"
+            className={cn(buttonVariants({ variant: "primary" }))}
+          >
             Explore Market
           </Link>
-          <Link href="/lfg" className={cn(buttonVariants({ variant: "secondary" }))}>
+          <Link
+            href="/lfg"
+            data-tour="open-lfg"
+            className={cn(buttonVariants({ variant: "secondary" }))}
+          >
             Open LFG
           </Link>
         </div>
@@ -58,7 +71,7 @@ export default function HomePage() {
 
       <section className="grid gap-3 md:grid-cols-3">
         {pillars.map((pillar) => (
-          <Card key={pillar.title} className="flex h-full flex-col">
+          <Card key={pillar.title} className="flex h-full flex-col" data-tour={pillar.tourId}>
             <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-2xl bg-brand-gradient text-sm font-bold text-background">
               {pillar.mark}
             </div>
@@ -75,6 +88,10 @@ export default function HomePage() {
           </Card>
         ))}
       </section>
+
+      <Suspense fallback={null}>
+        <HomeTour />
+      </Suspense>
     </div>
   );
 }

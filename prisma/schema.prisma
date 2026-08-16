@@ -152,6 +152,7 @@ enum AuditAction {
   SERVER_ACTIVE_MAP_SET
   FREEBIE_CLAIMED
   SERVER_KIT_DELIVERED
+  PRODUCT_COMMENT_POSTED
 }
 
 // Major, independently-toggleable platform functions. This is the registry
@@ -195,6 +196,7 @@ model User {
   boostsGifted   Boost[]        @relation("BoostGiftedFrom")
   products       Product[]
   favorites      ProductFavorite[]
+  productComments ProductComment[]
   ownedShop      Shop?            @relation("ShopOwner")
   shopMemberships ShopMember[]
   shopFollows    ShopFollow[]
@@ -576,6 +578,7 @@ model Product {
   promoCodeProducts PromoCodeProduct[]
   aidenAsset      AidenAsset?
   freebieClaims   FreebieClaim[]
+  comments        ProductComment[]
 
   @@index([moderationStatus, publishedAt])
   @@index([gameId])
@@ -645,6 +648,22 @@ model ProductFavorite {
 
   @@id([userId, productId])
   @@index([productId])
+}
+
+model ProductComment {
+  id               String         @id @default(cuid())
+  publicRef        String         @unique
+  productId        String
+  authorUserId     String
+  body             String         @db.Text
+  moderationStatus PostModeration @default(LIVE)
+  createdAt        DateTime       @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  author  User    @relation(fields: [authorUserId], references: [id], onDelete: Cascade)
+
+  @@index([productId, createdAt])
+  @@index([authorUserId])
 }
 
 enum ShopVerificationStatus {

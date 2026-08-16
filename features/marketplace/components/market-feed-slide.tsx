@@ -1,8 +1,6 @@
 import Link from "next/link";
-import { Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { FavoriteButton } from "@/features/marketplace/components/favorite-button";
-import { ShareButton } from "@/features/marketplace/components/share-button";
+import { ProductActionRail } from "@/features/marketplace/components/product-action-rail";
 import { PlatformIcon } from "@/features/marketplace/components/platform-icon";
 import { StarRating } from "@/features/marketplace/components/star-rating";
 import { RarityChip } from "@/features/marketplace/components/rarity-chip";
@@ -82,25 +80,8 @@ export function MarketFeedSlide({
       ) : null}
 
       {/* Right action column — safe-zone convention, one tight group */}
-      <div className="absolute top-1/2 right-3 z-10 flex -translate-y-1/2 flex-col items-center gap-4">
-        <FavoriteButton
-          slug={product.slug}
-          initialFavorited={product.favorited}
-          signedIn={signedIn}
-        />
-        <ShareButton
-          slug={product.slug}
-          title={product.title}
-          className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-surface/90 text-foreground shadow-soft hover:text-neon-lime"
-        />
-        <Link
-          href="/wallet"
-          aria-label="Boost this listing"
-          title="Boost"
-          className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-surface/90 text-neon-lime shadow-soft transition-transform hover:scale-105"
-        >
-          <Zap className="h-5 w-5" aria-hidden />
-        </Link>
+      <div className="absolute top-1/2 right-3 z-10 -translate-y-1/2">
+        <ProductActionRail product={product} signedIn={signedIn} />
       </div>
 
       {/* Single caption sheet — everything else lives here, one block */}

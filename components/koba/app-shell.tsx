@@ -6,7 +6,6 @@ import { AppHeader } from "@/components/koba/app-header";
 import { AppSidebar } from "@/components/koba/app-sidebar";
 import { IconRail } from "@/components/koba/icon-rail";
 import { MobileNav } from "@/components/koba/mobile-nav";
-import { OnboardingTour } from "@/components/koba/onboarding-tour";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -51,7 +50,6 @@ export function AppShell({ children }: { children: ReactNode }) {
         </main>
       </div>
       <MobileNav />
-      <OnboardingTour />
     </div>
   );
 }

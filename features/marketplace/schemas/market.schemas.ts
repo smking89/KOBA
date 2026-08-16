@@ -23,6 +23,10 @@ export const marketQuerySchema = z.object({
 
 export type MarketQuery = z.infer<typeof marketQuerySchema>;
 
+export const postProductCommentSchema = z.object({
+  body: z.string().trim().min(1).max(1000),
+});
+
 export function parseMarketQuery(
   input: Record<string, string | string[] | undefined>,
 ): MarketQuery {
