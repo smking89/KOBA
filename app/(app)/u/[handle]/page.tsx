@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
+import { HexAvatar } from "@/components/koba/hex-avatar";
 import { BlockButton } from "@/features/social/components/block-button";
 import { FeedList } from "@/features/social/components/feed-list";
 import { FollowButton } from "@/features/social/components/follow-button";
@@ -32,27 +33,22 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
 
     return (
       <div className="mx-auto max-w-2xl space-y-6">
-        <header className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-3xl font-semibold tracking-tight">{profile.name}</h1>
-              <Badge>@{profile.handle}</Badge>
-              {profile.plusBadgeLabel ? (
-                <Badge tone="success">{profile.plusBadgeLabel}</Badge>
+        <div className="h-28 rounded-2xl bg-brand-gradient md:h-36" />
+
+        <header className="-mt-14 flex flex-wrap items-end justify-between gap-4 px-2 md:-mt-16">
+          <div className="flex items-end gap-4">
+            <HexAvatar name={profile.name} size="lg" badge={profile.plusBadgeLabel} />
+            <div className="pb-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-2xl font-semibold tracking-tight">{profile.name}</h1>
+                <Badge>@{profile.handle}</Badge>
+              </div>
+              {profile.kobaId ? (
+                <p className="font-mono text-xs text-muted">{profile.kobaId}</p>
               ) : null}
             </div>
-            {profile.kobaId ? (
-              <p className="mt-2 font-mono text-sm text-muted">{profile.kobaId}</p>
-            ) : null}
-            {profile.bio ? (
-              <p className="mt-3 max-w-xl text-sm leading-relaxed">{profile.bio}</p>
-            ) : null}
-            <p className="mt-3 text-sm text-muted">
-              {profile.followers} followers · {profile.following} following · {profile.posts} public
-              posts
-            </p>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 pb-1">
             <FollowButton
               handle={profile.handle}
               signedIn={Boolean(session?.user.id)}
@@ -73,6 +69,24 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
             />
           </div>
         </header>
+
+        {profile.bio ? <p className="px-2 text-sm leading-relaxed">{profile.bio}</p> : null}
+
+        <div className="grid grid-cols-3 divide-x divide-border rounded-xl border border-border bg-surface text-center">
+          <div className="px-2 py-3">
+            <p className="text-xl font-bold">{profile.posts}</p>
+            <p className="text-[0.65rem] tracking-wide text-muted uppercase">Posts</p>
+          </div>
+          <div className="px-2 py-3">
+            <p className="text-xl font-bold">{profile.followers}</p>
+            <p className="text-[0.65rem] tracking-wide text-muted uppercase">Followers</p>
+          </div>
+          <div className="px-2 py-3">
+            <p className="text-xl font-bold">{profile.following}</p>
+            <p className="text-[0.65rem] tracking-wide text-muted uppercase">Following</p>
+          </div>
+        </div>
+
         {profile.blocked ? (
           <p className="text-sm text-muted">This profile is blocked.</p>
         ) : (
