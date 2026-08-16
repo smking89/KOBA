@@ -390,6 +390,7 @@ export async function publishAssetToMarketplace(
       platforms: input.platforms,
       durationHours: input.durationHours,
       minIncrementCents: input.minIncrementCents,
+      freebiePolicy: "NONE",
     });
   } catch (error) {
     if (error instanceof ShopError) {

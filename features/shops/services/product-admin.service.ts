@@ -104,6 +104,9 @@ export async function createSellerProduct(userId: string, input: UpsertProductIn
       gameId: game.id,
       categoryId: category.id,
       publishedAt: null,
+      freebiePolicy: input.freebiePolicy,
+      freebieQuantityRemaining:
+        input.freebiePolicy === "LIMITED_QUANTITY" ? (input.freebieQuantity ?? 0) : null,
     },
   });
 
@@ -151,6 +154,12 @@ export async function updateSellerProduct(userId: string, slug: string, input: U
       moderationStatus:
         product.moderationStatus === "APPROVED" ? "PENDING" : product.moderationStatus,
       publishedAt: product.moderationStatus === "APPROVED" ? null : product.publishedAt,
+      freebiePolicy: input.freebiePolicy,
+      // The seller-facing form always submits the intended pool size for a
+      // LIMITED_QUANTITY freebie, so saving re-stocks/resets remaining count
+      // to that value rather than trying to diff against prior claims.
+      freebieQuantityRemaining:
+        input.freebiePolicy === "LIMITED_QUANTITY" ? (input.freebieQuantity ?? 0) : null,
     },
   });
 

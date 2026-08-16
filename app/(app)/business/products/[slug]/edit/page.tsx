@@ -49,6 +49,8 @@ export default async function EditProductPage({ params }: { params: Promise<{ sl
                 )
               : 48,
             minIncrementCents: product.auction?.minIncrementCents ?? 1000,
+            freebiePolicy: product.freebiePolicy,
+            freebieQuantity: product.freebieQuantityRemaining ?? undefined,
           }}
         />
       </div>

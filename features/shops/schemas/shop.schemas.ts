@@ -1,5 +1,6 @@
 import { z } from "zod";
 import {
+  FREEBIE_POLICIES,
   GAME_PLATFORMS,
   LISTING_TYPES,
   PRODUCT_RARITIES,
@@ -17,21 +18,32 @@ export const shopReviewSchema = z.object({
   body: z.string().trim().min(8).max(1000),
 });
 
-export const upsertProductSchema = z.object({
-  title: z.string().trim().min(3).max(80),
-  description: z.string().trim().min(12).max(4000),
-  rarity: z.enum(PRODUCT_RARITIES),
-  listingType: z.enum(LISTING_TYPES),
-  priceCents: z.number().int().min(0).max(10_000_000),
-  inventoryQty: z.number().int().min(0).max(100_000),
-  gameSlug: z.string().trim().min(1).max(64),
-  categorySlug: z.string().trim().min(1).max(64),
-  platforms: z.array(z.enum(GAME_PLATFORMS)).min(1).max(4),
-  durationHours: z.number().int().min(1).max(168),
-  minIncrementCents: z.number().int().min(100).max(1_000_000),
-});
+export const upsertProductSchema = z
+  .object({
+    title: z.string().trim().min(3).max(80),
+    description: z.string().trim().min(12).max(4000),
+    rarity: z.enum(PRODUCT_RARITIES),
+    listingType: z.enum(LISTING_TYPES),
+    priceCents: z.number().int().min(0).max(10_000_000),
+    inventoryQty: z.number().int().min(0).max(100_000),
+    gameSlug: z.string().trim().min(1).max(64),
+    categorySlug: z.string().trim().min(1).max(64),
+    platforms: z.array(z.enum(GAME_PLATFORMS)).min(1).max(4),
+    durationHours: z.number().int().min(1).max(168),
+    minIncrementCents: z.number().int().min(100).max(1_000_000),
+    freebiePolicy: z.enum(FREEBIE_POLICIES).default("NONE"),
+    /// Meaningful only when freebiePolicy = LIMITED_QUANTITY.
+    freebieQuantity: z.number().int().min(1).max(100_000).optional(),
+  })
+  .refine((value) => value.freebiePolicy !== "LIMITED_QUANTITY" || value.freebieQuantity != null, {
+    message: "A limited-quantity freebie needs a free quantity.",
+    path: ["freebieQuantity"],
+  });
 
 export type UpsertProductInput = z.infer<typeof upsertProductSchema>;
+// Pre-parse shape (freebiePolicy optional, matches its zod .default()) — use this
+// for react-hook-form's generic, since form state exists before validation runs.
+export type UpsertProductFormValues = z.input<typeof upsertProductSchema>;
 
 export const staffVerifyShopSchema = z.object({
   status: z.enum(["VERIFIED", "REJECTED"]),

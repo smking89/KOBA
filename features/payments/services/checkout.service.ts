@@ -1,4 +1,4 @@
-import { AuditAction } from "@/lib/generated/prisma/client";
+import { AuditAction, type GamePlatform, type ProductRarity } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/db";
 import { writeAuditLog } from "@/features/auth/services/audit-log.service";
 import { getPublicEnv } from "@/lib/env";
@@ -26,6 +26,45 @@ async function allocateOrderRef(): Promise<string> {
     }
   }
   throw new PaymentError("Could not allocate an order reference.", "CONFLICT");
+}
+
+type GrantableOrderItem = {
+  productId: string;
+  titleSnapshot: string;
+  quantity: number;
+  product: { game: { name: string }; rarity: ProductRarity; platforms: GamePlatform[] };
+};
+
+/**
+ * Grants the buyer a real, tradeable InventoryItem per unit — shared by
+ * fulfillOrder (paid orders) and claimFreebie (free claims), since a
+ * free item should be just as real/tradeable as a paid one. One row per
+ * unit (quantity > 1 grants that many discrete items, not one row with
+ * a quantity field). Platform picks the product's first listed platform
+ * when it supports several — a known simplification (no way to know
+ * which platform the buyer actually plays on without asking).
+ */
+async function grantInventoryForOrderItems(
+  buyerUserId: string,
+  items: readonly GrantableOrderItem[],
+): Promise<void> {
+  for (const item of items) {
+    for (let unit = 0; unit < item.quantity; unit += 1) {
+      await prisma.inventoryItem.create({
+        data: {
+          publicRef: generateInventoryRef(),
+          ownerUserId: buyerUserId,
+          title: item.titleSnapshot,
+          game: item.product.game.name,
+          platform: item.product.platforms[0] ?? "STEAM",
+          rarity: item.product.rarity,
+          transferable: true,
+          acquisitionSource: "PURCHASE",
+          productId: item.productId,
+        },
+      });
+    }
+  }
 }
 
 export async function createCheckoutSession(
@@ -522,34 +561,12 @@ export async function fulfillOrder(actorUserId: string, publicRef: string) {
     data: { status: "FULFILLED" },
   });
 
-  // Grants the buyer a real, tradeable InventoryItem per unit purchased —
-  // closes a real gap (createInventoryItem existed with an
+  // Closes a real gap (createInventoryItem existed with an
   // InventoryAcquisitionSource.PURCHASE value clearly anticipating this,
   // but nothing ever called it from order fulfillment). Without this,
   // Phase 19's rarity-matched trading could only ever operate on
   // seeded/admin-granted items, never anything a buyer actually bought.
-  // One row per unit (quantity > 1 grants that many discrete, individually
-  // tradeable items, not one row with a quantity field). Platform picks
-  // the product's first listed platform when it supports several — a
-  // known simplification (no way to know which platform the buyer
-  // actually plays on without asking).
-  for (const item of order.items) {
-    for (let unit = 0; unit < item.quantity; unit += 1) {
-      await prisma.inventoryItem.create({
-        data: {
-          publicRef: generateInventoryRef(),
-          ownerUserId: order.buyerUserId,
-          title: item.titleSnapshot,
-          game: item.product.game.name,
-          platform: item.product.platforms[0] ?? "STEAM",
-          rarity: item.product.rarity,
-          transferable: true,
-          acquisitionSource: "PURCHASE",
-          productId: item.productId,
-        },
-      });
-    }
-  }
+  await grantInventoryForOrderItems(order.buyerUserId, order.items);
 
   await writeAuditLog({
     actorUserId,
@@ -560,4 +577,142 @@ export async function fulfillOrder(actorUserId: string, publicRef: string) {
   });
 
   return fulfilled;
+}
+
+/**
+ * $0 claim path for a Freebie product (ROADMAP.md Phase 18) — a
+ * separate flow from paid checkout, never touches Stripe (a $0 Checkout
+ * Session is possible but wasteful for a transaction moving no money).
+ * Goes straight to FULFILLED in one transaction: there is no payment
+ * intent to wait on, so the PENDING -> PAID -> FULFILLED sequence real
+ * money orders go through doesn't apply here — nothing meaningful is
+ * being bypassed, there's simply nothing to confirm.
+ *
+ * Gated on the same MARKETPLACE_CHECKOUT platform-function switch as
+ * paid checkout (features/platform-control) — not STRIPE_PAYMENTS,
+ * since disabling Stripe shouldn't block a free claim that never
+ * touches it.
+ */
+export async function claimFreebie(buyerUserId: string, slug: string, ipAddress?: string | null) {
+  if (!(await isPlatformFunctionEnabled("MARKETPLACE_CHECKOUT"))) {
+    throw new PaymentError("Marketplace checkout is temporarily disabled by KOBA staff.", "DISABLED");
+  }
+
+  const product = await prisma.product.findUnique({
+    where: { slug },
+    include: {
+      shop: { include: { members: { select: { userId: true } } } },
+      game: { select: { name: true } },
+    },
+  });
+  if (!product || product.moderationStatus !== "APPROVED" || product.publishedAt == null) {
+    throw new PaymentError("Listing is not available.", "NOT_LIVE");
+  }
+  if (!product.shop) {
+    throw new PaymentError("Listing is not tied to a shop.", "NOT_FOUND");
+  }
+  if (product.freebiePolicy === "NONE") {
+    throw new PaymentError("This listing is not a freebie.", "NOT_FREEBIE");
+  }
+
+  const shopMemberUserIds = product.shop.members.map((row) => row.userId);
+  if (
+    !canCheckoutListing({
+      buyerUserId,
+      sellerUserId: product.sellerUserId,
+      shopMemberUserIds,
+    })
+  ) {
+    throw new PaymentError("You cannot claim your own listing.", "SELF_BUY");
+  }
+
+  // One-claim-per-buyer, checked up front for a clear error message —
+  // the @@unique([productId, buyerUserId]) constraint is the real
+  // enforcement (race-safe), this is just a friendlier early exit.
+  const existingClaim = await prisma.freebieClaim.findUnique({
+    where: { productId_buyerUserId: { productId: product.id, buyerUserId } },
+  });
+  if (existingClaim) {
+    throw new PaymentError("You already claimed this freebie.", "CONFLICT");
+  }
+
+  const publicRef = await allocateOrderRef();
+  const shopId = product.shop.id;
+
+  const order = await prisma.$transaction(async (tx) => {
+    // A free claim still consumes real stock — inventoryQty decrements
+    // either way. LIMITED_QUANTITY additionally decrements its own
+    // independent counter; PERMANENT has no such cap (free for as long
+    // as stock lasts, not infinite stock).
+    if (product.freebiePolicy === "LIMITED_QUANTITY") {
+      if (product.freebieQuantityRemaining == null || product.freebieQuantityRemaining <= 0) {
+        throw new PaymentError("This freebie is no longer available.", "SOLD_OUT");
+      }
+      const updated = await tx.product.update({
+        where: { id: product.id },
+        data: { freebieQuantityRemaining: { decrement: 1 }, inventoryQty: { decrement: 1 } },
+      });
+      if ((updated.freebieQuantityRemaining ?? -1) < 0 || updated.inventoryQty < 0) {
+        throw new PaymentError("This freebie is no longer available.", "SOLD_OUT");
+      }
+    } else {
+      const updated = await tx.product.update({
+        where: { id: product.id },
+        data: { inventoryQty: { decrement: 1 } },
+      });
+      if (updated.inventoryQty < 0) {
+        throw new PaymentError("This item is out of stock.", "SOLD_OUT");
+      }
+    }
+
+    const created = await tx.order.create({
+      data: {
+        publicRef,
+        shopId,
+        buyerUserId,
+        status: "FULFILLED",
+        kind: "FIXED",
+        totalCents: 0,
+        applicationFeeCents: 0,
+        sellerPayoutCents: 0,
+        currency: product.currency,
+        idempotencyKey: `freebie:${product.id}:${buyerUserId}`,
+        paidAt: new Date(),
+        items: {
+          create: {
+            productId: product.id,
+            titleSnapshot: product.title,
+            quantity: 1,
+            unitPriceCents: 0,
+          },
+        },
+      },
+    });
+
+    await tx.freebieClaim.create({
+      data: { productId: product.id, buyerUserId, orderId: created.id },
+    });
+
+    return created;
+  });
+
+  await grantInventoryForOrderItems(buyerUserId, [
+    {
+      productId: product.id,
+      titleSnapshot: product.title,
+      quantity: 1,
+      product: { game: product.game, rarity: product.rarity, platforms: product.platforms },
+    },
+  ]);
+
+  await writeAuditLog({
+    actorUserId: buyerUserId,
+    action: AuditAction.FREEBIE_CLAIMED,
+    targetType: "Order",
+    targetId: order.id,
+    metadata: { publicRef: order.publicRef, productSlug: product.slug },
+    ipAddress: ipAddress ?? null,
+  });
+
+  return order;
 }

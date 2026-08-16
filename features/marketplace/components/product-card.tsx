@@ -15,7 +15,13 @@ export function ProductCard({
   signedIn: boolean;
 }) {
   const sold = !product.inStock;
-  const actionLabel = sold ? "Sold" : product.listingType === "AUCTION" ? "Bid" : "Buy";
+  const actionLabel = sold
+    ? "Sold"
+    : product.freebiePolicy !== "NONE"
+      ? "Claim"
+      : product.listingType === "AUCTION"
+        ? "Bid"
+        : "Buy";
   const displayCents =
     product.listingType === "AUCTION"
       ? (product.auction?.highBidCents ?? product.priceCents)
@@ -35,6 +41,11 @@ export function ProductCard({
         {product.boosted ? (
           <span className="absolute top-2 left-2 rounded-full bg-neon-lime/15 px-2 py-0.5 text-[0.65rem] font-medium tracking-wide text-neon-lime uppercase">
             Boosted
+          </span>
+        ) : null}
+        {product.freebiePolicy !== "NONE" ? (
+          <span className="absolute bottom-2 left-2 rounded-full bg-neon-mint/15 px-2 py-0.5 text-[0.65rem] font-medium tracking-wide text-neon-mint uppercase">
+            Free
           </span>
         ) : null}
         <div className="absolute top-2 right-2">

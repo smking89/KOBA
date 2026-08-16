@@ -32,6 +32,9 @@ export function MarketFilters({
         params.set(field, value);
       }
     }
+    if (form.get("freebie")) {
+      params.set("freebie", "true");
+    }
     const qs = params.toString();
     router.push(qs ? `/market?${qs}` : "/market");
   }
@@ -124,6 +127,10 @@ export function MarketFilters({
           <option value="price_desc">Price · high</option>
           <option value="rarity">Rarity</option>
         </select>
+        <label className="flex h-10 items-center gap-2 rounded-md border border-border bg-surface-2 px-3 text-sm">
+          <input type="checkbox" name="freebie" defaultChecked={query.freebie === true} />
+          Freebies only
+        </label>
         <button
           type="submit"
           className="h-10 rounded-md bg-brand-gradient px-4 text-sm font-semibold text-background"
