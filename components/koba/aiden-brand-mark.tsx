@@ -32,6 +32,9 @@ export function AidenBrandMark({
         height={28}
         priority
         className="h-7 w-7 object-contain"
+        // See components/koba/brand-mark.tsx — same Dark Reader
+        // false-positive hydration warning mitigation.
+        suppressHydrationWarning
       />
       {showWordmark ? (
         <span className="font-sans text-lg font-bold tracking-[0.08em] text-foreground">AIDEN</span>
@@ -66,6 +69,7 @@ export function AidenProductLogo({
       width={200}
       height={110}
       className={cn("h-auto w-full max-w-[200px] object-contain", className)}
+      suppressHydrationWarning
     />
   );
 }

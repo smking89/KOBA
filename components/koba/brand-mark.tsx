@@ -18,6 +18,12 @@ export function BrandMark({ href = "/", className, showWordmark = true }: BrandM
         height={32}
         priority
         className="h-8 w-8 object-contain"
+        // Dark Reader (and similar browser extensions) injects a
+        // --darkreader-inline-color style attribute on this element
+        // before React hydrates, which triggers a false-positive
+        // hydration mismatch warning — not an app bug. This is React's
+        // own documented mitigation for extension-modified DOM nodes.
+        suppressHydrationWarning
       />
       {showWordmark ? (
         <span className="font-sans text-lg font-bold tracking-[0.08em] text-foreground">KOBA</span>

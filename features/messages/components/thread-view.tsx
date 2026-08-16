@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { Phone, Video } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { VANISH_LIMITATIONS } from "@/features/messages/lib/rules";
@@ -109,13 +110,37 @@ export function ThreadView({ initial }: { initial: ThreadData }) {
           </Link>
           <p className="text-sm text-muted">@{thread.peer.handle}</p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button size="sm" variant="ghost" disabled title="Voice and video calls ship later">
-            Call
-          </Button>
-          <Button size="sm" variant="ghost" disabled title="Voice and video calls ship later">
-            Video
-          </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative">
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled
+              aria-label="Voice call — coming soon"
+              title="Voice calls ship later"
+              className="h-9 w-9 p-0"
+            >
+              <Phone className="h-4 w-4" aria-hidden />
+            </Button>
+            <span className="absolute -top-1.5 -right-1.5 rounded-full bg-neon-lime px-1 text-[0.55rem] leading-tight font-bold text-background">
+              Soon
+            </span>
+          </div>
+          <div className="relative">
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled
+              aria-label="Video call — coming soon"
+              title="Video calls ship later"
+              className="h-9 w-9 p-0"
+            >
+              <Video className="h-4 w-4" aria-hidden />
+            </Button>
+            <span className="absolute -top-1.5 -right-1.5 rounded-full bg-neon-lime px-1 text-[0.55rem] leading-tight font-bold text-background">
+              Soon
+            </span>
+          </div>
           <Button
             size="sm"
             variant={thread.vanishMode ? "secondary" : "ghost"}
