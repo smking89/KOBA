@@ -754,19 +754,19 @@ KOBA-OPS-001 backups/DR → 15E. Backup alert is a named placeholder only. Legal
 
 ### 18.3 Quality command evidence (this machine, 2026-08-15)
 
-| Command | Result | Detail |
-| ------- | ------ | ------ |
-| `pnpm format:check` | **Pass** | Prettier `endOfLine: lf`. Extra `git status` dirty files are CRLF/index noise (Group A), not observability edits. |
-| `pnpm lint` | **Pass** | `eslint . --max-warnings 0` |
-| `pnpm typecheck` | **Pass** | `tsc --noEmit` |
-| `pnpm test` | **Pass** | 380 passed, 18 skipped |
-| `pnpm build` | **Pass** after `.next` race | First attempt `MODULE_NOT_FOUND` `next-font-manifest.json` while Playwright shared `.next`. Clean rebuild exit 0. No DSN; Sentry init skipped. |
-| `pnpm audit` | **Fail** (2 moderate) | Transitive `@sentry/nextjs@9.47.1`: `uuid` GHSA-w5hq-g745-h8pq; `@opentelemetry/core` GHSA-8988-4f7v-96qf. Not upgraded here. |
-| `pnpm prisma validate` | **Pass** | Schema valid |
-| `pnpm prisma generate` | **Pass** | Client 7.9.1 |
-| `pnpm test:e2e` | **Pass** | 2 passed on `127.0.0.1:3015`, `reuseExistingServer: false`. Not Trust-Link on :3000. |
-| Docker | **Unavailable** | `docker` not on PATH |
-| `pnpm test:a11y` / Lighthouse | **Unavailable** | No scripts |
+| Command                       | Result                      | Detail                                                                                                                                                                                                                          |
+| ----------------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm format:check`           | **Pass**                    | Prettier `endOfLine: lf`. Extra `git status` dirty files are CRLF/index noise (Group A), not observability edits.                                                                                                               |
+| `pnpm lint`                   | **Pass**                    | `eslint . --max-warnings 0`                                                                                                                                                                                                     |
+| `pnpm typecheck`              | **Pass**                    | `tsc --noEmit`                                                                                                                                                                                                                  |
+| `pnpm test`                   | **Pass**                    | 380 passed, 18 skipped                                                                                                                                                                                                          |
+| `pnpm build`                  | **Pass** after `.next` race | First attempt `MODULE_NOT_FOUND` `next-font-manifest.json` while Playwright shared `.next`. Clean rebuild exit 0. No DSN; Sentry init skipped.                                                                                  |
+| `pnpm audit`                  | **Pass**                    | After `@sentry/nextjs@10.70.0`: "No known vulnerabilities found". Previous 9.47.1 moderate `uuid` / `@opentelemetry/core` advisories resolved by the official SDK upgrade (OTel core 2.10.0; webpack-plugin uuid path removed). |
+| `pnpm prisma validate`        | **Pass**                    | Schema valid                                                                                                                                                                                                                    |
+| `pnpm prisma generate`        | **Pass**                    | Client 7.9.1                                                                                                                                                                                                                    |
+| `pnpm test:e2e`               | **Pass**                    | 2 passed on `127.0.0.1:3015`, `reuseExistingServer: false`. Not Trust-Link on :3000.                                                                                                                                            |
+| Docker                        | **Unavailable**             | `docker` not on PATH                                                                                                                                                                                                            |
+| `pnpm test:a11y` / Lighthouse | **Unavailable**             | No scripts                                                                                                                                                                                                                      |
 
 Do **not** treat Phase 15D as production-verified until the owner creates a Sentry project and alert rules.
 

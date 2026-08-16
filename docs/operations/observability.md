@@ -3,7 +3,7 @@
 KOBA records operational signals in three layers:
 
 1. **Structured logs** (`lib/observability/logger.ts`) — JSON in production (`NODE_ENV=production` or `KOBA_LOG_JSON=true`), readable lines in local development.
-2. **Sentry** (`@sentry/nextjs`) — optional. Missing DSN, placeholder DSN, `SENTRY_ENABLED=false`, or `NODE_ENV=test` leave capture disabled. The app must build and run without a Sentry project.
+2. **Sentry** (`@sentry/nextjs@10.70.0`) — optional. Missing DSN, placeholder DSN, `SENTRY_ENABLED=false`, or `NODE_ENV=test` leave capture disabled. The app must build and run without a Sentry project. Client init lives in `instrumentation-client.ts` (Sentry v10 / Turbopack requirement); `sentry.client.config.ts` re-exports that hook for Webpack.
 3. **Named alert events** (`lib/observability/alerts.ts`) — bounded labels only (`worker`, `operation`, `provider`, `outcome`, `errorClass`). Never user IDs, URLs, or raw error strings as metric labels.
 
 Session replay is **disabled** (`replaysSessionSampleRate` / `replaysOnErrorSampleRate` = 0). Do not enable replay on DMs, wallet, checkout, admin, MFA, RCON, developer secrets, or private Aiden prompts.
@@ -84,3 +84,13 @@ Auction settlement is request-driven (`settleExpiredAuctions`); it is instrument
 3. Set `SENTRY_ENVIRONMENT`, `SENTRY_RELEASE` (git SHA), and optionally `SENTRY_TRACES_SAMPLE_RATE` (0–1).
 4. Source-map upload: `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT` on CI/VPS only. Tokens must not reach the browser bundle.
 5. Create alert rules for the event names above. Until that project exists, Sentry remains **NOT VERIFIED**.
+
+## Turbopack `import-in-the-middle` warning
+
+`next dev --turbopack` may log that `import-in-the-middle` / `require-in-the-middle` “can't be external”. This is **expected development-only OpenTelemetry instrumentation behavior** from `@sentry/node`. It is a known Sentry + Turbopack limitation, not evidence of a misconfigured DSN.
+
+- **Production `next build` (Webpack):** not a build failure. Source maps upload only when `SENTRY_AUTH_TOKEN` is set.
+- **Required action:** none for Phase 15D. Do not install those packages solely to hide the warning.
+- **Tests:** Sentry stays disabled; no events are sent.
+
+---
