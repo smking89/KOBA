@@ -12,6 +12,7 @@ export function isBoostCurrentlyActive(
   if (boost.status !== "APPLIED" || !boost.expiresAt) {
     return false;
   }
-  const expiresAt = typeof boost.expiresAt === "string" ? new Date(boost.expiresAt) : boost.expiresAt;
+  const expiresAt =
+    typeof boost.expiresAt === "string" ? new Date(boost.expiresAt) : boost.expiresAt;
   return expiresAt.getTime() > now.getTime();
 }

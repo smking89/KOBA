@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { auth } from "@/lib/auth";
+import { PageHeader } from "@/components/koba/page-header";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
 import { StatusPill } from "@/components/koba/status-pill";
@@ -38,12 +39,17 @@ export default async function WalletPage() {
 
   if (!session?.user.id) {
     return (
-      <div className="space-y-4">
-        <h1 className="text-3xl font-semibold tracking-tight">KOBA Coins</h1>
-        <p className="text-sm text-muted">Sign in to view your wallet.</p>
-        <Link href="/login" className={buttonVariants({ size: "sm" })}>
-          Sign in
-        </Link>
+      <div className="space-y-6">
+        <PageHeader
+          eyebrow="Wallet"
+          title="KOBA Coins"
+          description="Sign in to view your wallet."
+          actions={
+            <Link href="/login?callbackUrl=/wallet" className={buttonVariants({ size: "sm" })}>
+              Sign in
+            </Link>
+          }
+        />
       </div>
     );
   }
@@ -63,13 +69,11 @@ export default async function WalletPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-semibold tracking-tight">KOBA Coins</h1>
-        <p className="mt-2 max-w-2xl text-sm text-muted">
-          Double-entry ledger balances. Available is spendable now; reserved is held for open
-          reservations.
-        </p>
-      </div>
+      <PageHeader
+        eyebrow="Wallet"
+        title="KOBA Coins"
+        description="Double-entry ledger balances. Available is spendable now; reserved is held for open reservations. Buy Coins through Stripe Checkout (test mode) — credit lands only after a verified webhook."
+      />
 
       {loadError ? (
         <Card>

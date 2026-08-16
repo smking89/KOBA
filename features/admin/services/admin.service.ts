@@ -10,31 +10,36 @@ import {
 } from "@/features/admin/lib/access";
 import { AdminError } from "@/features/admin/lib/errors";
 import { hidePost } from "@/features/social/services/post.service";
+import { assertStaffAal2 } from "@/features/staff-mfa/lib/assurance";
 
-async function loadActorTypes(userId: string) {
-  const actor = await prisma.user.findUnique({
-    where: { id: userId },
-    include: { kobaIdentities: { select: { accountType: true } } },
-  });
-  return actor?.kobaIdentities.map((row) => row.accountType) ?? [];
-}
-
-export async function requireAnyStaff(userId: string) {
-  const types = await loadActorTypes(userId);
-  if (!isAnyStaff(types)) {
+export async function requireAnyStaff(userId: string, opts?: { stepUp?: boolean }) {
+  const assurance = await assertStaffAal2(userId, opts);
+  if (!isAnyStaff(assurance.types)) {
     throw new AdminError("Staff only.", "FORBIDDEN");
   }
-  return types;
+  return assurance.types;
 }
 
 export async function getAdminOverview(actorUserId: string) {
   await requireAnyStaff(actorUserId);
 
-  const [pendingProducts, pendingShops, openReports, paidOrders, recentAudit] = await Promise.all([
+  const [
+    pendingProducts,
+    pendingShops,
+    openReports,
+    paidOrders,
+    pendingAidenAssets,
+    pendingDevProducts,
+    recentAudit,
+  ] = await Promise.all([
     prisma.product.count({ where: { moderationStatus: "PENDING" } }),
     prisma.shop.count({ where: { verificationStatus: "PENDING" } }),
     prisma.contentReport.count({ where: { status: "OPEN" } }),
     prisma.order.count({ where: { status: { in: ["PAID", "FULFILLED"] } } }),
+    prisma.aidenAsset.count({ where: { moderation: "PENDING_REVIEW" } }),
+    prisma.devProduct.count({
+      where: { reviewState: { in: ["SUBMITTED", "IN_REVIEW", "SECURITY_REVIEW"] } },
+    }),
     prisma.auditLog.findMany({
       orderBy: { createdAt: "desc" },
       take: 12,
@@ -56,6 +61,8 @@ export async function getAdminOverview(actorUserId: string) {
       pendingShops,
       openReports,
       refundableOrders: paidOrders,
+      pendingAidenAssets,
+      pendingDevProducts,
     },
     recentAudit,
   };
@@ -92,6 +99,12 @@ export async function listPendingProducts(actorUserId: string) {
     sellerHandle: product.seller.profile?.handle ?? null,
     sellerEmail: product.seller.email,
   }));
+}
+
+export async function listPendingServers(actorUserId: string) {
+  await requireAnyStaff(actorUserId);
+  const { listPendingServers: list } = await import("@/features/servers/services/server.service");
+  return list(actorUserId);
 }
 
 export async function listPendingShops(actorUserId: string) {
@@ -153,7 +166,7 @@ export async function resolveReport(
   input: { status: "REVIEWED" | "DISMISSED"; hidePost?: boolean | undefined },
   ipAddress?: string | null,
 ) {
-  const types = await requireAnyStaff(actorUserId);
+  const types = await requireAnyStaff(actorUserId, { stepUp: Boolean(input.hidePost) });
   if (!canStaffModerateContent(types)) {
     throw new AdminError("Staff only.", "FORBIDDEN");
   }
@@ -199,7 +212,7 @@ export async function staffRejectProduct(
   note?: string,
   ipAddress?: string | null,
 ) {
-  const types = await requireAnyStaff(actorUserId);
+  const types = await requireAnyStaff(actorUserId, { stepUp: true });
   if (!canStaffApproveListing(types)) {
     throw new AdminError("Staff only.", "FORBIDDEN");
   }
@@ -229,8 +242,88 @@ export async function staffRejectProduct(
   return updated;
 }
 
-export async function assertCanStaffRefund(actorUserId: string) {
+export async function listPendingAidenAssets(actorUserId: string) {
   const types = await requireAnyStaff(actorUserId);
+  if (!canStaffModerateContent(types)) {
+    throw new AdminError("Staff only.", "FORBIDDEN");
+  }
+
+  const assets = await prisma.aidenAsset.findMany({
+    where: { moderation: "PENDING_REVIEW" },
+    orderBy: { updatedAt: "asc" },
+    take: 50,
+    include: {
+      user: { select: { email: true, profile: { select: { handle: true } } } },
+    },
+  });
+
+  return assets.map((asset) => ({
+    publicRef: asset.publicRef,
+    title: asset.title,
+    game: asset.game,
+    assetType: asset.assetType,
+    technicalStatus: asset.technicalStatus,
+    provider: asset.provider,
+    model: asset.model,
+    modelVersion: asset.modelVersion,
+    createdAt: asset.createdAt.toISOString(),
+    ownerHandle: asset.user.profile?.handle ?? null,
+    ownerEmail: asset.user.email,
+  }));
+}
+
+export async function staffReviewAidenAsset(
+  actorUserId: string,
+  publicRef: string,
+  action: "approve" | "reject",
+  ipAddress?: string | null,
+) {
+  const types = await requireAnyStaff(actorUserId, { stepUp: action === "reject" });
+  if (!canStaffModerateContent(types)) {
+    throw new AdminError("Staff only.", "FORBIDDEN");
+  }
+
+  const asset = await prisma.aidenAsset.findUnique({ where: { publicRef } });
+  if (!asset) {
+    throw new AdminError("Aiden asset not found.", "NOT_FOUND");
+  }
+  if (asset.moderation !== "PENDING_REVIEW") {
+    throw new AdminError("Asset is not awaiting review.", "CONFLICT");
+  }
+
+  const updated = await prisma.aidenAsset.update({
+    where: { id: asset.id },
+    data: {
+      moderation: action === "approve" ? "APPROVED" : "REJECTED",
+      technicalStatus: action === "approve" ? "APPROVED_FOR_MARKETPLACE" : asset.technicalStatus,
+    },
+  });
+
+  await writeAuditLog({
+    actorUserId,
+    action:
+      action === "approve" ? AuditAction.AIDEN_ASSET_APPROVED : AuditAction.AIDEN_ASSET_REJECTED,
+    targetType: "AidenAsset",
+    targetId: asset.id,
+    metadata: {
+      publicRef,
+      listingCreated: false,
+      generatedByAiden: true,
+      provider: asset.provider,
+      model: asset.model,
+    },
+    ipAddress: ipAddress ?? null,
+  });
+
+  return {
+    publicRef: updated.publicRef,
+    moderation: updated.moderation,
+    technicalStatus: updated.technicalStatus,
+  };
+}
+
+export async function assertCanStaffRefund(actorUserId: string) {
+  const types = await requireAnyStaff(actorUserId, { stepUp: true });
   if (!canStaffRefund(types)) {
     throw new AdminError("Only Admin or Superadmin can refund.", "FORBIDDEN");
   }

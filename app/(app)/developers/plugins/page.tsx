@@ -49,9 +49,7 @@ export default async function DeveloperPluginsPage() {
           </li>
         ))}
       </ul>
-      {plugins.length === 0 ? (
-        <p className="text-sm text-muted">No plugins yet.</p>
-      ) : null}
+      {plugins.length === 0 ? <p className="text-sm text-muted">No plugins yet.</p> : null}
     </div>
   );
 }

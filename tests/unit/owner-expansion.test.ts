@@ -30,6 +30,7 @@ describe("expansion navigation", () => {
     );
     expect(DESKTOP_PRIMARY_LINKS.some((link) => link.href === "/trade")).toBe(true);
     expect(DESKTOP_MORE_LINKS.some((link) => link.href === "/aiden")).toBe(true);
+    expect(DESKTOP_MORE_LINKS.some((link) => link.href === "/influencer")).toBe(true);
     expect(isNavActive("/trade/KOBA-TRD-DEMO0001", "/trade")).toBe(true);
     expect(isMoreSectionActive("/aiden/generate")).toBe(true);
   });
@@ -95,6 +96,8 @@ describe("plus, aiden, wallet contracts", () => {
     expect(coinCategoryLabel("PROMOTIONAL_GRANT")).toBe("Promotional Grant");
     expect(isProtectedPath("/wallet")).toBe(true);
     expect(isProtectedPath("/servers/connect")).toBe(true);
+    expect(isProtectedPath("/aiden/create")).toBe(true);
+    expect(isProtectedPath("/aiden/jobs")).toBe(true);
   });
 });
 

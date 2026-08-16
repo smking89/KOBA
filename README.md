@@ -6,15 +6,28 @@ squads; all on one KOBAID.
 
 ## Status
 
-**Phase 14 — Aiden Studio OS** is built (a real, generic Master/Adapter/
-Orchestration/Category/Agent pipeline — see
-[docs/aiden-studio-os.md](docs/aiden-studio-os.md)), but **no AI vendor is
-wired yet** — Vest/Graft/Terra all fail closed until a provider API key is
-set. **Phase 15 — Live KOBA Coin purchases** is done (Stripe Checkout
-against a fixed Coin package catalog). Item trading (rarity-matched) is
-also merged. See [ROADMAP.md](ROADMAP.md) Phases 15–20 for what's still
-unbuilt (KOBAads + Boost, KOBA Plus, live RCON, freebie products,
-multi-subdomain split).
+**Phase 14I — Influencer referrals, promo codes, and sponsored ads** is in
+progress on `feat/influencer-promotions`. See
+[docs/promotions.md](docs/promotions.md) and
+[docs/influencer.md](docs/influencer.md).
+
+**Phase 14H — Developer portal and app marketplace MVP** remains on
+`feat/developer-marketplace`. See [docs/developers.md](docs/developers.md).
+
+**Phase 14G — Aiden AI generation MVP** remains on `feat/aiden-generation`
+(async concept-image jobs, KOBA Coin reservation, mock provider). See
+[docs/aiden.md](docs/aiden.md). Aiden Studio OS (Master/Adapter/Orchestration
+pipeline) is documented in [docs/aiden-studio-os.md](docs/aiden-studio-os.md);
+no AI vendor is wired until a provider API key is set.
+
+Phase 14F KOBA Plus remains on `feat/koba-plus` — membership is per active
+KOBAID. See [docs/plus.md](docs/plus.md).
+
+Phase 14E Rust read-only RCON remains on `feat/rcon-rust-readonly`. See
+[docs/rcon-rust.md](docs/rcon-rust.md).
+
+**Live KOBA Coin purchases** are available at `/wallet` (Stripe Checkout, test
+mode). See [ROADMAP.md](ROADMAP.md) for remaining work.
 
 The HTML prototype remains the information-architecture reference:
 
@@ -26,18 +39,28 @@ live in `app/globals.css` and `lib/design-tokens.ts`.
 
 ### Owner expansion routes (UI foundations)
 
-| Path                                                  | Purpose                                   |
-| ----------------------------------------------------- | ----------------------------------------- |
-| `/trade`, `/trade/[tradeId]`                          | Trade discovery, composer, history (mock) |
-| `/servers`, `/servers/[serverId]`, `/servers/connect` | Server directory + RCON connect wizard    |
-| `/plus`                                               | KOBA Plus plans and subscription states   |
-| `/aiden`, `/aiden/generate`, `/aiden/library`         | Aiden creator, jobs, asset library        |
-| `/wallet`                                             | KOBA Coins wallet (ledger-backed)         |
+| Path                                                  | Purpose                                    |
+| ----------------------------------------------------- | ------------------------------------------ |
+| `/trade`, `/trade/[tradeId]`                          | Trade discovery, composer, history (mock)  |
+| `/servers`, `/servers/[serverId]`, `/servers/connect` | Server directory + RCON connect wizard     |
+| `/plus`                                               | KOBA Plus membership and test checkout     |
+| `/aiden`, `/aiden/create`, `/aiden/library`           | Aiden concept generation + private library |
+| `/aiden/jobs/[jobId]`                                 | Generation job status                      |
+| `/developers`, `/developers/dashboard`, `/apps`       | Developer portal + app/plugin marketplace  |
+| `/influencer`, `/promo/[handle]`, `/r/[code]`         | Influencer referrals and public promo page |
+| `/library/apps`, `/orders/apps`                       | Owned developer products and purchases     |
+| `/wallet`                                             | KOBA Coins wallet (ledger-backed)          |
 
-See [docs/wallet-ledger.md](docs/wallet-ledger.md) for the Phase 14B accounting model.
-Coins can be bought for real money at `/wallet` (Stripe Checkout, test mode —
-see the Payments section below). Live AI capture and cash withdrawal remain
-deferred.
+See [docs/wallet-ledger.md](docs/wallet-ledger.md) for the Phase 14B accounting model,
+[docs/plus.md](docs/plus.md) for Plus ownership, entitlements, and webhooks,
+[docs/aiden.md](docs/aiden.md) for Aiden generation, pricing, and worker recovery,
+[docs/aiden-studio-os.md](docs/aiden-studio-os.md) for the Studio OS pipeline,
+[docs/developers.md](docs/developers.md) for the developer portal, API keys, and marketplace,
+[docs/influencer.md](docs/influencer.md) for legacy referral codes, and
+[docs/promotions.md](docs/promotions.md) for campaigns, promo codes, commissions, and ads.
+Coins can be bought for real money at `/wallet` (Stripe Checkout, test mode).
+Cash withdrawal remains deferred. Promotional Plus Coins are not granted until
+the owner approves amount and refund policy.
 
 ## Stack
 
@@ -85,6 +108,7 @@ Required env for auth (add to `.env.local`):
 - `DATABASE_URL` — Postgres connection string
 - `AUTH_SECRET` — at least 32 random characters (`openssl rand -base64 32`)
 - `AUTH_URL` — usually `http://localhost:3000`
+- `KOBA_STAFF_MFA_ENCRYPTION_KEY` — 32-byte base64 AES key for staff TOTP secrets (`openssl rand -base64 32`). Never reuse the RCON credential key. The VPS must run NTP because TOTP uses server time.
 
 ### Quality checks
 
@@ -244,6 +268,20 @@ Refunds after escrow has released reverse the Connect transfer; refunds before
 release (escrow still `HOLDING`/`DISPUTED`) skip `reverse_transfer` because no
 transfer to the seller ever happened.
 
+KOBA Plus uses platform Stripe Billing (not Connect destination charges).
+Membership is per active KOBAID. The browser success redirect never activates
+Plus — only a verified webhook does. Plan Price IDs come from
+`STRIPE_PRICE_PLUS_MONTHLY` / `STRIPE_PRICE_PLUS_ANNUAL`. Reconcile with
+`pnpm plus:reconcile`. Staff cannot mark subscriptions Active.
+
+Aiden concept generation uses the mock provider until a real adapter is reviewed.
+Queue a job at `/aiden/create`, then run `pnpm aiden:worker`. The HTTP request
+never calls the model. See [docs/aiden.md](docs/aiden.md).
+
+Developer marketplace purchases use KOBA Coins only. Issue sandbox API keys from
+`/developers/api-keys` and deliver webhooks with `pnpm developers:webhooks`.
+KOBA never executes uploaded third-party code. See [docs/developers.md](docs/developers.md).
+
 Placeholder Stripe keys (`sk_test_replace_me`) fail closed — checkout returns 503
 instead of faking paid. Forward webhooks locally with:
 
@@ -380,9 +418,17 @@ hide posts), issue staff KOBAIDs, and refund orders by public ref (SA/AD).
 | `POST /api/admin/reports/[ref]/resolve`   | Review / dismiss (+ optional hide) |
 | `POST /api/admin/kobaid`                  | Issue staff KOBAID                 |
 | `POST /api/admin/orders/[ref]/refund`     | Staff refund                       |
+| `GET /api/admin/plus`                     | Search Plus subscriptions          |
+| `POST /api/admin/plus/reconcile`          | Reconcile Plus from Stripe         |
+| `POST /api/admin/plus/grants`             | Audited compensatory entitlement   |
 | `POST /api/admin/posts/[ref]/hide`        | Hide a live post                   |
 
-Local seed staff: `staff@koba.local` / `KobaStaff1!` (SUPERADMIN). Queues include
+Local seed staff: `staff@koba.local` (SUPERADMIN). The password is generated on
+first seed and printed once to the terminal (override with `SEED_STAFF_PASSWORD`
+locally). Reseeding never resets it, and seeding refuses to run when
+`NODE_ENV=production`. **No TOTP secret is seeded.** On first privileged login
+the staff user is sent to `/settings/security/mfa` to enroll an authenticator.
+See `docs/staff-mfa.md`. Queues include
 `pending-oil-rig-kit`, shop `raid-ready-maps`, and report `KOBA-RPT-STAFF001`.
 
 ### Production readiness (Phase 13)
@@ -407,11 +453,11 @@ curl -s "http://localhost:3000/api/health?deep=1"
 
 | Token          | Value                                  |
 | -------------- | -------------------------------------- |
-| Background     | `#050505`                              |
-| Surface        | `#0D0F0E` / `#141816`                  |
-| Text           | `#F5FFF8` / muted `#98A69D`            |
+| Background     | `#0B0C0B`                              |
+| Surface        | `#161916` / `#1C201E` / `#232826`      |
+| Text           | `#F2F7F3` / muted `#8B958E`            |
 | Neon lime      | `#B8FF00`                              |
-| Electric green | `#35FF52`                              |
+| Electric green | `#3BA55D`                              |
 | Neon mint      | `#00F5A0`                              |
 | Brand gradient | `135deg · #C6FF00 → #55FF35 → #00F5A0` |
 

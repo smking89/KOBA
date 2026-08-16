@@ -5,10 +5,7 @@ import { rateLimit } from "@/lib/security/rate-limit";
 import { jsonDeveloperError } from "@/features/developers/lib/http";
 import { submitForReview } from "@/features/developers/services/developer.service";
 
-export async function POST(
-  request: Request,
-  context: { params: Promise<{ ref: string }> },
-) {
+export async function POST(request: Request, context: { params: Promise<{ ref: string }> }) {
   const session = await auth();
   if (!session?.user.id) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });

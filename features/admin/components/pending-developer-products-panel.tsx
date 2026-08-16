@@ -1,0 +1,112 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
+import { Button } from "@/components/ui/button";
+
+type PendingDevProduct = {
+  publicRef: string;
+  slug: string;
+  name: string;
+  reviewState: string;
+  category: string;
+  publisher: string | null;
+  publisherSlug: string | null;
+  versions: {
+    publicRef: string;
+    semver: string;
+    reviewState: string;
+    artifacts: {
+      filename: string;
+      mimeType: string;
+      byteSize: number;
+      sha256: string;
+      status: string;
+    }[];
+  }[];
+};
+
+export function PendingDeveloperProductsPanel({ products }: { products: PendingDevProduct[] }) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  async function act(
+    publicRef: string,
+    action: "approve" | "publish" | "reject" | "request_changes",
+  ) {
+    setError(null);
+    const response = await fetch("/api/admin/developers/products", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+      body: JSON.stringify({ publicRef, action, reason: `staff ${action}` }),
+    });
+    const payload = (await response.json().catch(() => ({}))) as { error?: string };
+    if (!response.ok) {
+      setError(payload.error ?? "Could not moderate product.");
+      return;
+    }
+    startTransition(() => router.refresh());
+  }
+
+  if (products.length === 0) {
+    return <p className="text-sm text-muted">No developer products waiting for review.</p>;
+  }
+
+  return (
+    <div className="space-y-3">
+      {error ? <p className="text-sm text-destructive">{error}</p> : null}
+      <ul className="divide-y divide-border rounded-md border border-border">
+        {products.map((product) => (
+          <li key={product.publicRef} className="space-y-2 px-4 py-3">
+            <p className="font-medium">{product.name}</p>
+            <p className="font-mono text-xs text-muted">
+              {product.publicRef} · {product.reviewState} · {product.category}
+              {product.publisher ? ` · ${product.publisher}` : ""}
+            </p>
+            {product.versions.map((version) => (
+              <p key={version.publicRef} className="text-xs text-muted">
+                v{version.semver}{" "}
+                {version.artifacts
+                  .map((artifact) => `${artifact.filename} ${artifact.sha256.slice(0, 8)}`)
+                  .join(", ")}
+              </p>
+            ))}
+            <div className="flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                disabled={pending}
+                onClick={() => void act(product.publicRef, "approve")}
+              >
+                Approve
+              </Button>
+              <Button
+                size="sm"
+                disabled={pending}
+                onClick={() => void act(product.publicRef, "publish")}
+              >
+                Publish
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={pending}
+                onClick={() => void act(product.publicRef, "request_changes")}
+              >
+                Request changes
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                disabled={pending}
+                onClick={() => void act(product.publicRef, "reject")}
+              >
+                Reject
+              </Button>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}

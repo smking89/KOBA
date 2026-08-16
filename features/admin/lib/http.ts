@@ -4,8 +4,14 @@ import { ShopError } from "@/features/shops/services/shop.service";
 import { SocialError, socialErrorStatus } from "@/features/social/lib/errors";
 import { KobaIdError } from "@/features/koba-id/services/koba-id-error";
 import { PaymentError, paymentErrorStatus } from "@/features/payments/lib/errors";
+import { DeveloperError, developerErrorStatus } from "@/features/developers/lib/errors";
+import { WalletError, walletErrorStatus } from "@/features/wallet/lib/errors";
+import { staffMfaErrorResponse } from "@/features/staff-mfa/lib/http";
+import { unexpectedJsonError } from "@/lib/observability/http";
 
 export function jsonAdminError(error: unknown, fallback = "Could not complete staff action.") {
+  const mfa = staffMfaErrorResponse(error);
+  if (mfa) return mfa;
   if (error instanceof AdminError) {
     return NextResponse.json(
       { error: error.message, code: error.code },
@@ -46,6 +52,17 @@ export function jsonAdminError(error: unknown, fallback = "Could not complete st
       { status: paymentErrorStatus(error.code) },
     );
   }
-  console.error(error);
-  return NextResponse.json({ error: fallback }, { status: 500 });
+  if (error instanceof DeveloperError) {
+    return NextResponse.json(
+      { error: error.message, code: error.code },
+      { status: developerErrorStatus(error.code) },
+    );
+  }
+  if (error instanceof WalletError) {
+    return NextResponse.json(
+      { error: error.message, code: error.code },
+      { status: walletErrorStatus(error.code) },
+    );
+  }
+  return unexpectedJsonError(error, fallback);
 }

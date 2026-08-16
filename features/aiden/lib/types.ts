@@ -10,19 +10,27 @@ export const AIDEN_ASSET_TYPES = [
 
 export type AidenAssetType = (typeof AIDEN_ASSET_TYPES)[number];
 
+export const AIDEN_ACTIVE_GENERATION_TYPES = ["CONCEPT_IMAGE"] as const;
+export type AidenActiveGenerationType = (typeof AIDEN_ACTIVE_GENERATION_TYPES)[number];
+
 export const AIDEN_TECHNICAL_STATUSES = [
+  "CONCEPT",
   "CONCEPT_ONLY",
   "PREVIEW",
   "REQUIRES_CONVERSION",
-  "GAME_READY",
   "VALIDATION_FAILED",
+  "APPROVED_FOR_MARKETPLACE",
+  "GAME_READY",
 ] as const;
 
 export type AidenTechnicalStatus = (typeof AIDEN_TECHNICAL_STATUSES)[number];
 
 export const AIDEN_JOB_STATES = [
+  "DRAFT",
   "QUEUED",
   "PROCESSING",
+  "MODERATING",
+  "SUCCEEDED",
   "COMPLETED",
   "FAILED",
   "CANCELLED",
@@ -48,9 +56,16 @@ export type AidenJobView = {
   assetType: AidenAssetType;
   state: AidenJobState;
   coinCostPreview: number;
+  estimatedCostCoins: string;
+  actualCostCoins: string | null;
   coinCostActual: number | null;
+  provider: string;
+  model: string;
+  modelVersion: string;
+  readiness: AidenTechnicalStatus;
   failureReason: string | null;
   createdAt: string;
+  assetPublicRef: string | null;
 };
 
 export type AidenAssetView = {
@@ -61,6 +76,9 @@ export type AidenAssetView = {
   moderation: AidenModerationState;
   game: string;
   previewLabel: string;
+  provider: string | null;
+  model: string | null;
+  createdAt?: string;
   assetUrl: string | null;
   /** Slug of the Product this asset was published as, once published.
    * Null means never published — see publishAssetToMarketplace. */
@@ -90,16 +108,20 @@ export function aidenAssetTypeLabel(type: AidenAssetType): string {
 
 export function aidenTechnicalLabel(status: AidenTechnicalStatus): string {
   switch (status) {
+    case "CONCEPT":
+      return "Concept";
     case "CONCEPT_ONLY":
       return "Concept only";
     case "PREVIEW":
       return "Preview";
     case "REQUIRES_CONVERSION":
       return "Requires conversion";
-    case "GAME_READY":
-      return "Game-ready";
     case "VALIDATION_FAILED":
       return "Validation failed";
+    case "APPROVED_FOR_MARKETPLACE":
+      return "Approved for marketplace review";
+    case "GAME_READY":
+      return "Game-ready";
     default:
       return status;
   }
@@ -107,12 +129,17 @@ export function aidenTechnicalLabel(status: AidenTechnicalStatus): string {
 
 export function aidenJobLabel(state: AidenJobState): string {
   switch (state) {
+    case "DRAFT":
+      return "Draft";
     case "QUEUED":
       return "Queued";
     case "PROCESSING":
       return "Processing";
+    case "MODERATING":
+      return "Moderating";
+    case "SUCCEEDED":
     case "COMPLETED":
-      return "Completed";
+      return state === "COMPLETED" ? "Completed" : "Succeeded";
     case "FAILED":
       return "Failed";
     case "CANCELLED":
@@ -120,6 +147,16 @@ export function aidenJobLabel(state: AidenJobState): string {
     default:
       return state;
   }
+}
+
+export function isTerminalAidenState(state: AidenJobState): boolean {
+  return (
+    state === "SUCCEEDED" || state === "COMPLETED" || state === "FAILED" || state === "CANCELLED"
+  );
+}
+
+export function isSuccessfulAidenState(state: AidenJobState): boolean {
+  return state === "SUCCEEDED" || state === "COMPLETED";
 }
 
 /** UI copy: AI output is not automatically a functional game asset. */

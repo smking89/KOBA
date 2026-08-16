@@ -1,7 +1,7 @@
 export class PlusError extends Error {
   constructor(
     message: string,
-    readonly code: "NOT_FOUND" | "FORBIDDEN" | "INVALID" | "CONFLICT",
+    readonly code: "NOT_FOUND" | "FORBIDDEN" | "INVALID" | "CONFLICT" | "NOT_CONFIGURED",
   ) {
     super(message);
     this.name = "PlusError";
@@ -16,6 +16,8 @@ export function plusErrorStatus(code: PlusError["code"]): number {
       return 403;
     case "CONFLICT":
       return 409;
+    case "NOT_CONFIGURED":
+      return 503;
     default:
       return 400;
   }

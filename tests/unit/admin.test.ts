@@ -46,5 +46,6 @@ describe("staff routes", () => {
     expect(isSensitivePath("/api/admin/overview")).toBe(true);
     expect(isSensitivePath("/api/admin/reports/KOBA-RPT-STAFF001/resolve")).toBe(true);
     expect(isSensitivePath("/api/admin/products/pending")).toBe(true);
+    expect(isSensitivePath("/api/admin/aiden/pending")).toBe(true);
   });
 });

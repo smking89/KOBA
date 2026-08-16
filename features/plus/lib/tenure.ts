@@ -16,8 +16,7 @@ const TIER_THRESHOLDS_MONTHS: Record<TenureBadgeTier, number> = {
 };
 
 function monthsBetween(from: Date, to: Date): number {
-  const months =
-    (to.getFullYear() - from.getFullYear()) * 12 + (to.getMonth() - from.getMonth());
+  const months = (to.getFullYear() - from.getFullYear()) * 12 + (to.getMonth() - from.getMonth());
   // If we haven't reached `from`'s day-of-month yet this month, that
   // month doesn't fully count.
   return to.getDate() < from.getDate() ? months - 1 : months;

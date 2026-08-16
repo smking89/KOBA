@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { SocialError, socialErrorStatus } from "@/features/social/lib/errors";
+import { unexpectedJsonError } from "@/lib/observability/http";
 
 export function jsonSocialError(error: unknown, fallback = "Could not complete social action.") {
   if (error instanceof SocialError) {
@@ -8,6 +9,5 @@ export function jsonSocialError(error: unknown, fallback = "Could not complete s
       { status: socialErrorStatus(error.code) },
     );
   }
-  console.error(error);
-  return NextResponse.json({ error: fallback }, { status: 500 });
+  return unexpectedJsonError(error, fallback);
 }

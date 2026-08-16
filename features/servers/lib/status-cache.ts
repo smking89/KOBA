@@ -48,11 +48,7 @@ async function upstashGet(key: string): Promise<SourceServerInfo | null> {
   }
 }
 
-async function upstashSet(
-  key: string,
-  value: SourceServerInfo,
-  ttlSeconds: number,
-): Promise<void> {
+async function upstashSet(key: string, value: SourceServerInfo, ttlSeconds: number): Promise<void> {
   const base = process.env.UPSTASH_REDIS_REST_URL!.replace(/\/$/, "");
   const token = process.env.UPSTASH_REDIS_REST_TOKEN!;
   const response = await fetch(`${base}/set/${encodeURIComponent(key)}?EX=${ttlSeconds}`, {
@@ -72,7 +68,10 @@ export async function getCachedServerStatus(serverId: string): Promise<SourceSer
     try {
       return await upstashGet(key);
     } catch (error) {
-      console.error("[KOBA] Upstash server-status cache read failed; falling back to memory.", error);
+      console.error(
+        "[KOBA] Upstash server-status cache read failed; falling back to memory.",
+        error,
+      );
       return memoryGet(key);
     }
   }
@@ -90,7 +89,10 @@ export async function setCachedServerStatus(
       await upstashSet(key, value, ttlSeconds);
       return;
     } catch (error) {
-      console.error("[KOBA] Upstash server-status cache write failed; falling back to memory.", error);
+      console.error(
+        "[KOBA] Upstash server-status cache write failed; falling back to memory.",
+        error,
+      );
     }
   }
   memorySet(key, value, ttlSeconds);

@@ -3,13 +3,12 @@ import { cn } from "@/lib/utils";
 import { RARITY_LABEL, type ProductRarity } from "@/features/marketplace/lib/catalog";
 
 const rarityClass: Record<ProductRarity, string> = {
-  COMMON: "text-rarity-common border-rarity-common/50 bg-rarity-common/10",
-  UNCOMMON: "text-rarity-uncommon border-rarity-uncommon/50 bg-rarity-uncommon/10",
-  RARE: "text-rarity-rare border-rarity-rare/50 bg-rarity-rare/10",
-  EPIC: "text-rarity-epic border-rarity-epic/50 bg-rarity-epic/10",
-  LEGENDARY: "text-rarity-legendary border-rarity-legendary/50 bg-rarity-legendary/10",
-  RELIC:
-    "text-rarity-relic border-rarity-relic/60 bg-rarity-relic/15 shadow-[0_0_14px_-4px_var(--color-rarity-relic)]",
+  COMMON: "border-rarity-common/30 bg-rarity-common/10 text-rarity-common",
+  UNCOMMON: "border-rarity-uncommon/30 bg-rarity-uncommon/10 text-rarity-uncommon",
+  RARE: "border-rarity-rare/30 bg-rarity-rare/10 text-rarity-rare",
+  EPIC: "border-rarity-epic/30 bg-rarity-epic/10 text-rarity-epic",
+  LEGENDARY: "border-rarity-legendary/30 bg-rarity-legendary/10 text-rarity-legendary",
+  RELIC: "border-rarity-relic/40 bg-rarity-relic/12 text-rarity-relic",
 };
 
 const accentClass: Record<ProductRarity, string> = {
@@ -62,10 +61,7 @@ export function RarityChip({
   return (
     <span
       className={cn(
-        // self-start: this renders inside flex-col cards elsewhere in the
-        // app, whose default align-items:stretch would otherwise stretch
-        // this pill to the full card width instead of hugging its content.
-        "inline-flex w-fit shrink-0 items-center self-start rounded-full border font-bold tracking-wide uppercase",
+        "inline-flex w-fit shrink-0 items-center self-start rounded-full border font-semibold tracking-[0.08em] uppercase",
         pill,
         rarityClass[rarity],
         className,

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { auth } from "@/lib/auth";
-import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/koba/empty-state";
+import { PageHeader } from "@/components/koba/page-header";
 import { MarketFilters } from "@/features/marketplace/components/market-filters";
 import { ProductCard } from "@/features/marketplace/components/product-card";
 import { MarketFeed } from "@/features/marketplace/components/market-feed";
@@ -10,6 +11,11 @@ import {
   listGames,
   listPublicProducts,
 } from "@/features/marketplace/services/product.service";
+import {
+  pickSponsoredPlacement,
+  resolveSponsoredCreative,
+} from "@/features/promotions/services/ads.service";
+import { SponsoredPlacementCard } from "@/features/promotions/components/sponsored-card";
 import { cn } from "@/lib/utils";
 
 export const metadata = { title: "Marketplace" };
@@ -25,42 +31,61 @@ export default async function MarketPage({
   const signedIn = Boolean(session?.user.id);
   const feedView = (Array.isArray(params.view) ? params.view[0] : params.view) === "feed";
 
-  const [games, categories, catalog] = await Promise.all([
+  const [games, categories, catalog, sponsored] = await Promise.all([
     listGames(),
     listCategories(),
     listPublicProducts(query, session?.user.id),
+    pickSponsoredPlacement({
+      placement: "MARKETPLACE",
+      context: {
+        gameId: query.game ?? null,
+        categoryId: query.category ?? null,
+      },
+      viewerUserId: session?.user.id ?? null,
+    }).catch(() => null),
   ]);
+  const sponsoredCreative = sponsored
+    ? await resolveSponsoredCreative(sponsored).catch(() => null)
+    : null;
 
   if (feedView) {
-    return <MarketFeed items={catalog.items} signedIn={signedIn} gridHref={viewHref(params, "grid")} />;
+    return (
+      <MarketFeed items={catalog.items} signedIn={signedIn} gridHref={viewHref(params, "grid")} />
+    );
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <Badge tone="live">Marketplace</Badge>
-          <h1 className="mt-3 text-3xl font-semibold tracking-tight">Skins, kits, and maps</h1>
-          <p className="mt-2 max-w-2xl text-muted">
-            Buy from verified sellers, bid on live auctions, or grab a free drop — every listing
-            here has been reviewed before it&apos;s live. Own something? You can trade it too.
-          </p>
-        </div>
-        <div className="flex overflow-hidden rounded-md border border-border text-sm">
-          <span className={cn("px-3 py-1.5", "bg-neon-lime text-background")}>Grid</span>
-          <Link href={viewHref(params, "feed")} className="px-3 py-1.5 text-muted">
-            Feed
-          </Link>
-        </div>
-      </div>
+      <PageHeader
+        eyebrow="Marketplace"
+        title="Trade what you build"
+        description="Skins, maps, monuments, kits, and cosmetics. Only approved listings appear here. Place bids on live auctions, then pay reserved wins through Stripe Checkout."
+        actions={
+          <div className="flex overflow-hidden rounded-md border border-border text-sm">
+            <span className={cn("px-3 py-1.5", "bg-neon-lime text-background")}>Grid</span>
+            <Link href={viewHref(params, "feed")} className="px-3 py-1.5 text-muted">
+              Feed
+            </Link>
+          </div>
+        }
+      />
 
       <MarketFilters query={query} games={games} categories={categories} />
 
+      {sponsored && sponsoredCreative ? (
+        <SponsoredPlacementCard
+          campaignId={sponsored.id}
+          href={sponsoredCreative.href}
+          title={sponsoredCreative.title}
+          subtitle={sponsoredCreative.subtitle}
+        />
+      ) : null}
+
       {catalog.items.length === 0 ? (
-        <p className="rounded-lg border border-border bg-surface p-6 text-sm text-muted">
+        <EmptyState>
           No approved listings match these filters. After migrating, seed a catalog with{" "}
-          <code className="font-mono text-xs">pnpm db:seed</code>.
-        </p>
+          <code className="font-mono text-xs text-foreground">pnpm db:seed</code>.
+        </EmptyState>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {catalog.items.map((product) => (
@@ -70,7 +95,7 @@ export default async function MarketPage({
       )}
 
       {catalog.pageCount > 1 ? (
-        <nav className="flex items-center justify-between text-sm" aria-label="Pagination">
+        <nav className="flex items-center justify-between gap-3 text-sm" aria-label="Pagination">
           {query.page > 1 ? (
             <Link
               href={pageHref(params, query.page - 1)}

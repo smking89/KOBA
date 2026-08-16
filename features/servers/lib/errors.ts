@@ -2,12 +2,7 @@ export class ServerError extends Error {
   constructor(
     message: string,
     readonly code:
-      | "NOT_FOUND"
-      | "FORBIDDEN"
-      | "CONFLICT"
-      | "INVALID"
-      | "UNSUPPORTED"
-      | "UNAUTHORIZED_ROLE",
+      "NOT_FOUND" | "FORBIDDEN" | "CONFLICT" | "INVALID" | "UNSUPPORTED" | "UNAUTHORIZED_ROLE",
   ) {
     super(message);
     this.name = "ServerError";

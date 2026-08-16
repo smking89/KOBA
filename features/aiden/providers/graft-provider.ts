@@ -1,4 +1,7 @@
-import { generateImage, isReplicateConfigured } from "@/features/aiden/providers/replicate-provider";
+import {
+  generateImage,
+  isReplicateConfigured,
+} from "@/features/aiden/providers/replicate-provider";
 import { generate3D, isTripoConfigured } from "@/features/aiden/providers/tripo-provider";
 import {
   AidenProviderNotConfiguredError,

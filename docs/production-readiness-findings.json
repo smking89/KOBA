@@ -1,0 +1,527 @@
+{
+  "auditId": "KOBA-15A-2026-08-15",
+  "phase": "15A",
+  "date": "2026-08-15",
+  "branch": "docs/production-readiness-audit",
+  "head": "010495fbc6cbfce380f2c4b9bc340275945d2369",
+  "originMain": "86f6b7748e02166f2f6a924a0261c270abdc6b58",
+  "commitsAheadOfOriginMain": 83,
+  "phase14I": {
+    "completed": true,
+    "commit": "010495f",
+    "message": "feat(promotions): add influencer referrals and sponsored campaigns"
+  },
+  "license": "All Rights Reserved (unaltered)",
+  "readiness": {
+    "internalDevelopment": "READY WITH CONDITIONS",
+    "staging": "READY WITH CONDITIONS",
+    "closedBeta": "NOT READY",
+    "publicLaunch": "NOT READY",
+    "realMoney": "NOT READY"
+  },
+  "nextPhase": "15B",
+  "severityCounts": {
+    "CRITICAL": 0,
+    "HIGH": 14,
+    "MEDIUM": 23,
+    "LOW": 2,
+    "INFORMATIONAL": 8
+  },
+  "commands": [
+    {
+      "command": "pnpm format:check",
+      "result": "fail",
+      "detail": "Prettier issues in 151 files (CRLF/style)",
+      "predatesAudit": true,
+      "launchImpact": "pnpm ci and GitHub feat/** CI fail until format is normalized"
+    },
+    {
+      "command": "pnpm lint",
+      "result": "pass",
+      "detail": "eslint --max-warnings 0",
+      "predatesAudit": null,
+      "launchImpact": "none"
+    },
+    {
+      "command": "pnpm typecheck",
+      "result": "pass",
+      "detail": "tsc --noEmit",
+      "predatesAudit": null,
+      "launchImpact": "none"
+    },
+    {
+      "command": "pnpm test",
+      "result": "pass",
+      "detail": "301 passed, 18 skipped, 45 files passed, 4 skipped",
+      "predatesAudit": null,
+      "launchImpact": "skipped integration tests are not concurrency proof"
+    },
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "detail": "Next.js 15.5.23 production build; ~104kB first-load JS shared",
+      "predatesAudit": null,
+      "launchImpact": "none"
+    },
+    {
+      "command": "pnpm audit",
+      "result": "fail",
+      "detail": "5 advisories (3 high, 2 moderate); nested sharp@0.34.5 and postcss@8.4.31 via next@15.5.23",
+      "predatesAudit": null,
+      "launchImpact": "KOBA-DEP-001 public-launch blocker"
+    },
+    {
+      "command": "pnpm prisma validate",
+      "result": "pass",
+      "detail": "schema valid",
+      "predatesAudit": null,
+      "launchImpact": "none"
+    },
+    {
+      "command": "pnpm prisma generate",
+      "result": "pass",
+      "detail": "Prisma Client 7.9.1",
+      "predatesAudit": null,
+      "launchImpact": "none"
+    },
+    {
+      "command": "pnpm test:e2e",
+      "result": "fail",
+      "detail": "2 failed; reused non-KOBA process on port 3000; home.spec still mentions Phase 1",
+      "predatesAudit": true,
+      "launchImpact": "e2e not in CI; not a KOBA UI regression proof"
+    },
+    {
+      "command": "lighthouse",
+      "result": "not verified",
+      "detail": "not run; no trustworthy KOBA origin on :3000",
+      "predatesAudit": null,
+      "launchImpact": "performance scores not claimed"
+    }
+  ],
+  "launchBlockers": [
+    "KOBA-SEC-001",
+    "KOBA-SEC-002",
+    "KOBA-SEC-003",
+    "KOBA-SEC-004",
+    "KOBA-SEC-005",
+    "KOBA-MED-001",
+    "KOBA-PWA-001",
+    "KOBA-PWA-002",
+    "KOBA-OPS-001",
+    "KOBA-OPS-003",
+    "KOBA-LEG-001",
+    "KOBA-SEC-012",
+    "KOBA-DEP-001",
+    "KOBA-GIT-001"
+  ],
+  "findings": [
+    {
+      "id": "KOBA-SEC-001",
+      "title": "Seeded SUPERADMIN password is documented and reset on every seed",
+      "category": "secrets",
+      "severity": "HIGH",
+      "confidence": "high",
+      "component": "prisma/seed.ts",
+      "launchBlocking": true,
+      "evidence": "staff@koba.local password upserted; coin grants guarded by NODE_ENV, staff user is not"
+    },
+    {
+      "id": "KOBA-SEC-002",
+      "title": "Open redirect after login via callbackUrl",
+      "category": "unsafe-redirect",
+      "severity": "HIGH",
+      "confidence": "high",
+      "component": "features/auth/components/login-form.tsx",
+      "launchBlocking": true,
+      "evidence": "router.push(callbackUrl) with no allowlist"
+    },
+    {
+      "id": "KOBA-SEC-003",
+      "title": "No MFA on staff or other privileged workflows",
+      "category": "authentication",
+      "severity": "HIGH",
+      "confidence": "high",
+      "component": "auth/admin",
+      "launchBlocking": false,
+      "evidence": "Phase 15C: mandatory TOTP + AAL2 elevation; see docs/staff-mfa.md"
+    },
+    {
+      "id": "KOBA-SEC-004",
+      "title": "Client can write accountType into the JWT",
+      "category": "broken-access-control",
+      "severity": "HIGH",
+      "confidence": "high",
+      "component": "lib/auth/edge.config.ts",
+      "launchBlocking": true,
+      "evidence": "jwt update callback copies session.accountType from client"
+    },
+    {
+      "id": "KOBA-SEC-005",
+      "title": "Login authorize path is not rate-limited",
+      "category": "brute-force",
+      "severity": "HIGH",
+      "confidence": "high",
+      "component": "lib/auth/credentials-provider.ts",
+      "launchBlocking": true,
+      "evidence": "register/reset/verify are limited; authorize is not"
+    },
+    {
+      "id": "KOBA-MED-001",
+      "title": "Malware scanning is a dead hook; zip/tar artifacts allowed",
+      "category": "insecure-upload",
+      "severity": "HIGH",
+      "confidence": "high",
+      "component": "features/aiden/lib/malware-scan.ts",
+      "launchBlocking": true,
+      "evidence": "malwareScanningActive() always false; DEV_ALLOWED_ARTIFACT_EXT includes zip/tar"
+    },
+    {
+      "id": "KOBA-PWA-001",
+      "title": "Authenticated navigations use NetworkFirst page cache",
+      "category": "pwa-cache",
+      "severity": "HIGH",
+      "confidence": "high",
+      "component": "app/sw.ts",
+      "launchBlocking": true,
+      "evidence": "navigationHandler NetworkFirst for all documents; APIs NetworkOnly"
+    },
+    {
+      "id": "KOBA-PWA-002",
+      "title": "Logout does not clear service-worker caches",
+      "category": "pwa-cache",
+      "severity": "HIGH",
+      "confidence": "high",
+      "component": "components/koba/app-header.tsx",
+      "launchBlocking": true,
+      "evidence": "signOut without caches.delete; dev-only SW unregister"
+    },
+    {
+      "id": "KOBA-OPS-001",
+      "title": "No production backup or restore drill",
+      "category": "disaster-recovery",
+      "severity": "HIGH",
+      "confidence": "high",
+      "component": "docs/infra",
+      "launchBlocking": true,
+      "evidence": "no backup/restore runbook; compose volume is local only"
+    },
+    {
+      "id": "KOBA-OPS-003",
+      "title": "No error monitoring or financial alerting",
+      "category": "observability",
+      "severity": "HIGH",
+      "confidence": "high",
+      "component": "application",
+      "launchBlocking": true,
+      "evidence": "Sentry SDK wired but disabled without DSN; no owner-created Sentry project; external alerting NOT VERIFIED"
+    },
+    {
+      "id": "KOBA-LEG-001",
+      "title": "No customer-facing operational policies",
+      "category": "legal",
+      "severity": "HIGH",
+      "confidence": "high",
+      "component": "app/",
+      "launchBlocking": true,
+      "evidence": "no ToS/privacy/refund/AUP routes; legal-tos-review.md is publisher research only"
+    },
+    {
+      "id": "KOBA-SEC-012",
+      "title": "No account deletion, privacy request, or user-level suspend",
+      "category": "privacy",
+      "severity": "HIGH",
+      "confidence": "high",
+      "component": "prisma User / settings",
+      "launchBlocking": true,
+      "evidence": "no deleteAccount/gdpr code; User has no suspendedAt"
+    },
+    {
+      "id": "KOBA-DEP-001",
+      "title": "Next.js nests sharp@0.34.5 with HIGH libvips advisories",
+      "category": "vulnerable-dependency",
+      "severity": "HIGH",
+      "confidence": "high",
+      "component": "pnpm-lock.yaml",
+      "launchBlocking": true,
+      "evidence": "GHSA-f88m-g3jw-g9cj; direct sharp is 0.35.3; GIF uploads allowed"
+    },
+    {
+      "id": "KOBA-GIT-001",
+      "title": "Product is 83 commits ahead of origin/main",
+      "category": "release-integrity",
+      "severity": "HIGH",
+      "confidence": "high",
+      "component": "git",
+      "launchBlocking": true,
+      "evidence": "Phases 14B-14I exist only on local stacked history"
+    }
+  ],
+  "secretsScan": {
+    "committedEnvFiles": [".env.example"],
+    "gitignoredEnv": [".env"],
+    "localEnvKeysObserved": ["DATABASE_URL"],
+    "localEnvClassification": "database connection string; not printed; appears local/misconfigured vs docker-compose koba user; not a committed production secret",
+    "trackedPemOrKeys": []
+  },
+  "malwareScanning": "hook-only-inactive; 15B added magic-byte validation and forced attachment downloads, scanner still not wired",
+  "stripeLive": "blocked",
+  "recommendedCommitMessage": "docs(security): add production-readiness audit",
+  "recommendedPullRequestTitle": "docs: audit KOBA production readiness and launch risks",
+  "phase15B": {
+    "date": "2026-08-15",
+    "branch": "fix/critical-security-hardening",
+    "scope": "HIGH launch blockers plus SEC-006/SEC-010 (assigned to 15B by the 15A roadmap) and DEP-002 (same lockfile pass as DEP-001)",
+    "prismaMigrations": "none required",
+    "remediation": [
+      {
+        "id": "KOBA-SEC-001",
+        "status": "resolved",
+        "fix": "lib/security/seed-guard.ts aborts seed when NODE_ENV=production; seed never resets or hardcodes the staff password; random one-time password printed on first seed",
+        "files": ["lib/security/seed-guard.ts", "prisma/seed.ts", "README.md"],
+        "tests": ["tests/unit/security-hardening.test.ts (seed guard)"],
+        "residualRisk": "databases seeded before this fix still hold the old password; rotate locally",
+        "launchBlocking": false
+      },
+      {
+        "id": "KOBA-SEC-002",
+        "status": "resolved",
+        "fix": "safeInternalPath allowlist for callbackUrl (relative single-slash paths only; no backslashes or control chars)",
+        "files": ["lib/security/safe-redirect.ts", "features/auth/components/login-form.tsx"],
+        "tests": ["tests/unit/security-hardening.test.ts (safe redirect)"],
+        "residualRisk": "none identified",
+        "launchBlocking": false
+      },
+      {
+        "id": "KOBA-SEC-004",
+        "status": "resolved",
+        "fix": "edge JWT callback ignores client update() payloads; node auth re-derives kobaId/accountType/kobaIdRevealed from getAccountSnapshot (DB) on the update trigger",
+        "files": ["lib/auth/edge.config.ts", "lib/auth/index.ts"],
+        "tests": ["tests/unit/security-hardening.test.ts (JWT claims)"],
+        "residualRisk": "JWT lifetime/rotation remains KOBA-SEC-008 (15C)",
+        "launchBlocking": false
+      },
+      {
+        "id": "KOBA-SEC-005",
+        "status": "resolved",
+        "fix": "credentials authorize throttled per IP (20/15min) and per email (10/15min) before any DB read; throttled attempts indistinguishable from bad credentials",
+        "files": ["features/auth/lib/login-throttle.ts", "lib/auth/credentials-provider.ts"],
+        "tests": ["tests/unit/security-hardening.test.ts (login throttling)"],
+        "residualRisk": "per-process limiter without Upstash (KOBA-SEC-009 staging condition)",
+        "launchBlocking": false
+      },
+      {
+        "id": "KOBA-MED-001",
+        "status": "partially-mitigated",
+        "fix": "magic-byte validation for artifacts (zip/gzip/tar signatures; PE/ELF/Mach-O rejected; text must be NUL-free); signed downloads forced to Content-Disposition attachment + octet-stream; quarantine unchanged",
+        "files": [
+          "features/developers/lib/artifacts.ts",
+          "features/developers/lib/storage.ts",
+          "features/developers/services/developer.service.ts"
+        ],
+        "tests": ["tests/unit/security-hardening.test.ts (artifact content)"],
+        "residualRisk": "no real malware scanner; archive contents not inspected",
+        "launchBlocking": true
+      },
+      {
+        "id": "KOBA-PWA-001",
+        "status": "resolved",
+        "fix": "sensitive documents served NetworkOnly (offline fallback kept); page cache versioned to koba-pages-v2; legacy cache deleted on activate",
+        "files": ["lib/pwa/sensitive-routes.ts", "app/sw.ts"],
+        "tests": ["tests/unit/security-hardening.test.ts (sensitive document caching)"],
+        "residualRisk": "none identified",
+        "launchBlocking": false
+      },
+      {
+        "id": "KOBA-PWA-002",
+        "status": "resolved",
+        "fix": "sign-out clears page caches from the window and messages the SW (CLEAR_PAGE_CACHES) before signOut",
+        "files": ["lib/pwa/clear-caches.ts", "components/koba/app-header.tsx", "app/sw.ts"],
+        "tests": ["cache versioning assertions; manual checklist for browser cache APIs"],
+        "residualRisk": "browser-API path verified manually",
+        "launchBlocking": false
+      },
+      {
+        "id": "KOBA-DEP-001",
+        "status": "resolved",
+        "fix": "pnpm override sharp>=0.35.3; lockfile updated; pnpm audit clean",
+        "files": ["package.json", "pnpm-lock.yaml"],
+        "tests": ["pnpm audit; full pnpm test; production pnpm build"],
+        "residualRisk": "Next pins sharp 0.34.5 internally; spot-check image optimization in staging",
+        "launchBlocking": false
+      },
+      {
+        "id": "KOBA-DEP-002",
+        "status": "resolved",
+        "fix": "pnpm override postcss>=8.5.23 in the same lockfile pass",
+        "files": ["package.json", "pnpm-lock.yaml"],
+        "tests": ["pnpm audit"],
+        "residualRisk": "same as KOBA-DEP-001",
+        "launchBlocking": false
+      },
+      {
+        "id": "KOBA-SEC-006",
+        "status": "resolved-with-exception",
+        "fix": "CSP, HSTS (non-dev), nosniff, Referrer-Policy, Permissions-Policy, frame denial on all routes; unsafe-eval and websockets dev-only",
+        "files": ["next.config.ts"],
+        "tests": ["production build"],
+        "residualRisk": "script/style unsafe-inline retained for Next App Router; nonce CSP deferred and documented",
+        "launchBlocking": false
+      },
+      {
+        "id": "KOBA-SEC-010",
+        "status": "resolved",
+        "fix": "resolveAuthSecret throws at production runtime without AUTH_SECRET; build-phase placeholder only during next build",
+        "files": ["lib/auth/secret.ts"],
+        "tests": ["tests/unit/security-hardening.test.ts (auth secret)"],
+        "residualRisk": "operators must set AUTH_SECRET or production will not boot (intended)",
+        "launchBlocking": false
+      }
+    ],
+    "stillOpenBlockers": [
+      "KOBA-MED-001",
+      "KOBA-OPS-001",
+      "KOBA-OPS-003",
+      "KOBA-LEG-001",
+      "KOBA-SEC-012",
+      "KOBA-GIT-001"
+    ],
+    "manualActions": [
+      "rotate staff@koba.local password in databases seeded before this fix",
+      "set a >=32-char AUTH_SECRET wherever NODE_ENV=production runs",
+      "pnpm install on other machines to apply dependency overrides",
+      "set KOBA_STAFF_MFA_ENCRYPTION_KEY (openssl rand -base64 32); never reuse the RCON key",
+      "enable NTP on the VPS",
+      "apply prisma migration 20260815160000_staff_mfa_sessions",
+      "enroll seed staff at /settings/security/mfa (no TOTP is seeded)"
+    ],
+    "readiness": {
+      "internalDevelopment": "READY WITH CONDITIONS",
+      "staging": "READY WITH CONDITIONS",
+      "closedBeta": "NOT READY",
+      "publicLaunch": "NOT READY",
+      "realMoney": "NOT READY"
+    },
+    "recommendedCommitMessage": "fix(security): resolve critical production launch blockers",
+    "recommendedPullRequestTitle": "fix: harden KOBA authorization and critical security controls"
+  },
+  "phase15C": {
+    "date": "2026-08-15",
+    "branch": "feat/staff-mfa",
+    "scope": "Mandatory staff TOTP MFA, AAL2 privileged sessions, recovery codes, step-up, session revocation",
+    "prismaMigrations": ["20260815160000_staff_mfa_sessions"],
+    "remediation": [
+      {
+        "id": "KOBA-SEC-003",
+        "status": "resolved",
+        "fix": "Mandatory TOTP for SUPERADMIN/ADMIN/MODERATOR; AAL1 cannot access staff routes; AES-256-GCM secrets; hashed recovery codes; step-up; admin reset; session listing/revocation",
+        "files": [
+          "features/staff-mfa/",
+          "lib/crypto/totp.ts",
+          "lib/crypto/staff-mfa-box.ts",
+          "prisma/schema.prisma"
+        ],
+        "tests": ["tests/unit/staff-mfa.test.ts", "tests/unit/staff-mfa-flows.test.ts"],
+        "residualRisk": "WebAuthn not implemented; platform user suspend is still KOBA-SEC-012",
+        "launchBlocking": false
+      },
+      {
+        "id": "KOBA-SEC-008",
+        "status": "partially-mitigated",
+        "fix": "Staff AAL2 sessions hashed, idle/absolute timeout, listed, revocable on password/MFA/role events",
+        "files": ["features/staff-mfa/services/staff-session.service.ts"],
+        "tests": ["tests/unit/staff-mfa.test.ts (session policy)"],
+        "residualRisk": "public Auth.js JWT remains 30 days",
+        "launchBlocking": false
+      }
+    ],
+    "stillOpenBlockers": [
+      "KOBA-MED-001",
+      "KOBA-OPS-001",
+      "KOBA-OPS-003",
+      "KOBA-LEG-001",
+      "KOBA-SEC-012",
+      "KOBA-GIT-001"
+    ],
+    "readiness": {
+      "internalDevelopment": "READY WITH CONDITIONS",
+      "staging": "READY WITH CONDITIONS",
+      "closedBeta": "NOT READY",
+      "publicLaunch": "NOT READY",
+      "realMoney": "NOT READY"
+    }
+  },
+  "phase15D": {
+    "date": "2026-08-15",
+    "branch": "feat/observability-sentry",
+    "baseCommit": "2762ddc",
+    "scope": "Sentry (disabled without DSN), structured logs, redaction, request/correlation IDs, /api/ready, worker instrumentation, named job/financial alerts",
+    "verified": false,
+    "externalSentry": "NOT VERIFIED",
+    "adminOperationsView": "deferred",
+    "remediation": [
+      {
+        "id": "KOBA-OPS-003",
+        "status": "code-complete-external-not-verified",
+        "fix": "Official @sentry/nextjs integration with disabled mode, beforeSend redaction, structured logger, /api/ready, worker runWorkerMain, named alerts including financial events",
+        "files": [
+          "lib/observability/",
+          "sentry.server.config.ts",
+          "instrumentation.ts",
+          "docs/operations/"
+        ],
+        "tests": ["tests/unit/observability.test.ts"],
+        "residualRisk": "No Sentry project or alert rules exist yet; backup alerts are placeholders until 15E",
+        "launchBlocking": true
+      },
+      {
+        "id": "KOBA-FIN-002",
+        "status": "code-complete-external-not-verified",
+        "fix": "Stripe signature/handler alerts, refund_failure, Plus reconcile mismatch, ledger_invariant_failure",
+        "files": ["app/api/stripe/webhook/route.ts", "lib/observability/alerts.ts"],
+        "tests": ["tests/unit/observability.test.ts"],
+        "residualRisk": "External paging still requires owner Sentry rules",
+        "launchBlocking": true
+      },
+      {
+        "id": "KOBA-OPS-010",
+        "status": "resolved",
+        "fix": "Validated x-request-id, correlation IDs into workers and webhook deliveries",
+        "files": ["middleware.ts", "lib/observability/request-id.ts"],
+        "tests": ["tests/unit/observability.test.ts"],
+        "residualRisk": "none identified for HTTP header injection",
+        "launchBlocking": false
+      },
+      {
+        "id": "KOBA-E2E-001",
+        "status": "harness-repaired",
+        "fix": "Playwright port 3015, reuseExistingServer false, health wait, current Plus/home copy",
+        "files": ["playwright.config.ts", "tests/e2e/home.spec.ts", "tests/e2e/plus.spec.ts"],
+        "tests": ["pnpm test:e2e"],
+        "residualRisk": "e2e still not in CI",
+        "launchBlocking": false
+      }
+    ],
+    "stillOpenBlockers": [
+      "KOBA-MED-001",
+      "KOBA-OPS-001",
+      "KOBA-OPS-003",
+      "KOBA-LEG-001",
+      "KOBA-SEC-012",
+      "KOBA-GIT-001"
+    ],
+    "manualActions": [
+      "create a Sentry project (or equivalent) for this Next.js 15 app",
+      "set SENTRY_DSN and NEXT_PUBLIC_SENTRY_DSN; never commit real values",
+      "set SENTRY_AUTH_TOKEN only on CI/VPS for source maps",
+      "configure alert rules for events in docs/operations/observability.md"
+    ],
+    "readiness": {
+      "internalDevelopment": "READY WITH CONDITIONS",
+      "staging": "READY WITH CONDITIONS",
+      "closedBeta": "NOT READY",
+      "publicLaunch": "NOT READY",
+      "realMoney": "NOT READY"
+    }
+  }
+}

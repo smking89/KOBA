@@ -46,6 +46,7 @@ export const feedQuerySchema = z.object({
   cursor: z.string().trim().max(512).optional(),
   pageSize: z.coerce.number().int().min(1).max(MAX_PAGE_SIZE).default(PAGE_SIZE),
   group: z.string().trim().max(64).optional(),
+  handle: z.string().trim().min(1).max(64).optional(),
 });
 
 export function parseFeedQuery(input: Record<string, string | string[] | undefined>) {
@@ -55,6 +56,7 @@ export function parseFeedQuery(input: Record<string, string | string[] | undefin
     cursor: scalar(input.cursor) || undefined,
     pageSize: scalar(input.pageSize) || PAGE_SIZE,
     group: scalar(input.group) || undefined,
+    handle: scalar(input.handle) || undefined,
   });
   return parsed.success ? parsed.data : { pageSize: PAGE_SIZE };
 }

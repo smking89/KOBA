@@ -117,7 +117,9 @@ export function BoostWalletPanel({ initialBoosts }: { initialBoosts: BoostRow[] 
                     : boost.status}
                 </span>
                 {boost.targetType ? ` · ${boost.targetType} ${boost.targetId}` : ""}
-                {boost.expiresAt ? ` · expires ${new Date(boost.expiresAt).toLocaleTimeString()}` : ""}
+                {boost.expiresAt
+                  ? ` · expires ${new Date(boost.expiresAt).toLocaleTimeString()}`
+                  : ""}
               </p>
               {boost.status === "UNUSED" ? (
                 <div className="flex flex-wrap items-center gap-2">

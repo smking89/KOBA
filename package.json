@@ -16,6 +16,13 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "icons:generate": "node scripts/generate-pwa-icons.mjs",
+    "servers:poll": "node scripts/poll-servers.mjs",
+    "servers:integrations": "node scripts/poll-rust-integrations.mjs",
+    "plus:reconcile": "node scripts/reconcile-plus.mjs",
+    "aiden:worker": "node scripts/run-aiden-worker.mjs",
+    "developers:webhooks": "node scripts/run-developer-webhooks.mjs",
+    "influencer:payouts": "node scripts/run-influencer-payouts.mjs",
+    "promotions:worker": "node scripts/run-promotions-worker.mjs",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",
@@ -29,7 +36,9 @@
   },
   "pnpm": {
     "overrides": {
-      "undici": ">=7.28.0 <8"
+      "undici": ">=7.28.0 <8",
+      "sharp": ">=0.35.3",
+      "postcss": ">=8.5.23"
     }
   },
   "dependencies": {
@@ -39,6 +48,7 @@
     "@hookform/resolvers": "^5.8.0",
     "@prisma/adapter-pg": "^7.9.1",
     "@prisma/client": "^7.9.1",
+    "@sentry/nextjs": "10.70.0",
     "@serwist/next": "^9.5.12",
     "@tanstack/react-query": "^5.101.4",
     "bcryptjs": "^3.0.3",
@@ -48,6 +58,7 @@
     "next": "15",
     "next-auth": "5.0.0-beta.32",
     "pg": "^8.23.0",
+    "qrcode": "^1.5.4",
     "react": "19",
     "react-dom": "19",
     "react-hook-form": "^7.85.0",
@@ -67,6 +78,7 @@
     "@testing-library/user-event": "^14.6.4",
     "@types/node": "^26.2.0",
     "@types/pg": "^8.21.0",
+    "@types/qrcode": "^1.5.6",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
     "@vitejs/plugin-react": "^6.0.5",

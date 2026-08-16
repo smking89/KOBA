@@ -1,12 +1,6 @@
 import type { NextAuthConfig } from "next-auth";
 import type { KobaAccountType } from "@/features/koba-id/lib/format";
 
-type SessionUpdate = {
-  kobaId?: string | null;
-  accountType?: KobaAccountType | null;
-  kobaIdRevealed?: boolean;
-};
-
 /** Shared Auth.js config safe for middleware (no database imports). */
 export const edgeAuthConfig = {
   pages: {
@@ -14,7 +8,7 @@ export const edgeAuthConfig = {
   },
   providers: [],
   callbacks: {
-    jwt({ token, user, trigger, session }) {
+    jwt({ token, user }) {
       if (user?.id) {
         token.sub = user.id;
         token.kobaId = typeof user.kobaId === "string" ? user.kobaId : null;
@@ -22,19 +16,9 @@ export const edgeAuthConfig = {
         token.kobaIdRevealed = user.kobaIdRevealed === true;
       }
 
-      if (trigger === "update" && session && typeof session === "object") {
-        const update = session as SessionUpdate;
-        if ("kobaId" in update) {
-          token.kobaId = update.kobaId ?? null;
-        }
-        if ("accountType" in update) {
-          token.accountType = update.accountType ?? null;
-        }
-        if ("kobaIdRevealed" in update) {
-          token.kobaIdRevealed = update.kobaIdRevealed ?? false;
-        }
-      }
-
+      // KOBA-SEC-004: `update()` payloads arrive from the browser and are
+      // NEVER trusted here. The node auth instance (lib/auth/index.ts)
+      // re-derives claims from the database on the "update" trigger.
       return token;
     },
     session({ session, token }) {

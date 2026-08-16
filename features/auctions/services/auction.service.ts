@@ -2,6 +2,8 @@ import { Prisma } from "@/lib/generated/prisma/client";
 import { AuditAction } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/db";
 import { writeAuditLog } from "@/features/auth/services/audit-log.service";
+import { emitAlert } from "@/lib/observability/alerts";
+import { logger } from "@/lib/observability/logger";
 import { publishAuction } from "@/features/auctions/lib/events";
 import {
   DEFAULT_DURATION_HOURS,
@@ -227,7 +229,22 @@ export async function settleExpiredAuctions(productIds?: string[]) {
     take: 25,
   });
   for (const row of expired) {
-    await settleAuction(row.id);
+    const started = Date.now();
+    try {
+      await settleAuction(row.id);
+      logger.info("Auction settled", {
+        event: "job_success",
+        operation: "auction_settle",
+        jobId: row.id,
+        durationMs: Date.now() - started,
+        outcome: "success",
+      });
+    } catch (error) {
+      await emitAlert("job_terminal_failure", "Auction settlement failed", {
+        labels: { operation: "auction_settle", errorClass: "worker" },
+        error,
+      });
+    }
   }
 }
 

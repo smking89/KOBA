@@ -2,15 +2,33 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { Card, CardDescription, CardTitle } from "@/components/ui/card";
+import { EmptyState } from "@/components/koba/empty-state";
+import { PageHeader } from "@/components/koba/page-header";
 import { StatusPill } from "@/components/koba/status-pill";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { NativeSelect } from "@/components/ui/native-select";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import {
   hasCapability,
+  metricStateLabel,
   visibleMap,
   visiblePlayerCount,
   visibleQueue,
   type GameServerView,
 } from "@/features/servers/lib/types";
+
+function freshnessLabel(server: GameServerView): string {
+  if (!server.freshness.lastSuccessfulAt) return "Never updated";
+  if (server.freshness.isStale) return "Stale data";
+  return "Fresh";
+}
+
+function hostInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).slice(0, 2);
+  return parts.map((part) => part[0]?.toUpperCase() ?? "").join("") || "S";
+}
 
 export function ServerDirectory({ initialServers = [] }: { initialServers?: GameServerView[] }) {
   const [query, setQuery] = useState("");
@@ -24,7 +42,7 @@ export function ServerDirectory({ initialServers = [] }: { initialServers?: Game
         server.name.toLowerCase().includes(q) ||
         server.region.toLowerCase().includes(q) ||
         server.tags.some((tag) => tag.includes(q));
-      const matchesGame = game === "ALL" || server.game === game;
+      const matchesGame = game === "ALL" || server.game === game || server.gameSlug === game;
       return matchesQuery && matchesGame;
     });
   }, [query, game, initialServers]);
@@ -32,115 +50,136 @@ export function ServerDirectory({ initialServers = [] }: { initialServers?: Game
   const games = [...new Set(initialServers.map((server) => server.game))];
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight">Game servers</h1>
-          <p className="mt-2 max-w-2xl text-sm text-muted">
-            Directory of community servers. Metrics only appear when the linked connection reports
-            that capability — KOBA never invents player counts or map data.
-          </p>
-        </div>
-        <Link
-          href="/servers/connect"
-          className="inline-flex h-10 items-center justify-center rounded-md bg-brand-gradient px-4 text-sm font-semibold text-background"
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow="Directory"
+        title="Game servers"
+        description="Verified community hosts. Metrics only appear when a capability reports them — KOBA never invents player counts or map data."
+        actions={
+          <>
+            <Link href="/servers/manage" className={cn(buttonVariants({ variant: "secondary" }))}>
+              Manage
+            </Link>
+            <Link href="/servers/connect" className={cn(buttonVariants())}>
+              Connect host
+            </Link>
+          </>
+        }
+      />
+
+      <div className="flex flex-col gap-2 rounded-lg bg-surface-3 p-3 sm:flex-row">
+        <Input
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Search hosts, region, tags"
+          className="flex-1"
+          aria-label="Search servers"
+        />
+        <NativeSelect
+          value={game}
+          onChange={(event) => setGame(event.target.value)}
+          className="sm:w-48"
+          aria-label="Filter by game"
         >
-          Connect server
-        </Link>
+          <option value="ALL">All games</option>
+          {games.map((name) => (
+            <option key={name} value={name}>
+              {name}
+            </option>
+          ))}
+        </NativeSelect>
       </div>
 
-      <Card>
-        <CardTitle>Filters</CardTitle>
-        <div className="mt-4 flex flex-col gap-3 sm:flex-row">
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search name, region, tags"
-            className="h-10 flex-1 rounded-md border border-border bg-background px-3 text-sm"
-            aria-label="Search servers"
-          />
-          <select
-            value={game}
-            onChange={(event) => setGame(event.target.value)}
-            className="h-10 rounded-md border border-border bg-background px-3 text-sm sm:w-48"
-            aria-label="Filter by game"
-          >
-            <option value="ALL">All games</option>
-            {games.map((name) => (
-              <option key={name} value={name}>
-                {name}
-              </option>
-            ))}
-          </select>
-        </div>
-      </Card>
-
-      <ul className="grid gap-4 md:grid-cols-2">
-        {servers.length === 0 ? (
-          <li className="text-sm text-muted">No servers in the directory yet.</li>
-        ) : null}
-        {servers.map((server) => {
-          const players = visiblePlayerCount(server);
-          const queue = visibleQueue(server);
-          const map = visibleMap(server);
-          return (
-            <li key={server.slug}>
-              <Card className="h-full">
-                <div className="flex items-start justify-between gap-2">
-                  <CardTitle>{server.name}</CardTitle>
-                  <StatusPill
-                    tone={
-                      server.status === "ONLINE"
-                        ? "success"
-                        : server.status === "OFFLINE"
-                          ? "danger"
-                          : "neutral"
-                    }
+      {servers.length === 0 ? (
+        <EmptyState>No verified servers in the directory yet.</EmptyState>
+      ) : (
+        <ul className="space-y-2">
+          {servers.map((server) => {
+            const players = visiblePlayerCount(server);
+            const queue = visibleQueue(server);
+            const map = visibleMap(server);
+            const online = server.status === "ONLINE";
+            return (
+              <li key={server.slug}>
+                <article className="flex items-center gap-3 rounded-lg bg-surface-3 p-3 transition-colors hover:bg-white/6">
+                  <div
+                    className={cn(
+                      "relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-sm font-bold",
+                      online ? "bg-brand-gradient text-background" : "bg-surface-2 text-neon-lime",
+                    )}
+                    aria-hidden
                   >
-                    {hasCapability(server, "STATUS") ? (server.status ?? "UNKNOWN") : "No status"}
-                  </StatusPill>
-                </div>
-                <CardDescription>
-                  {server.game} · {server.platformFamily} · {server.region}
-                </CardDescription>
-                <dl className="mt-3 grid grid-cols-2 gap-2 text-xs text-muted">
-                  <div>
-                    <dt>Players</dt>
-                    <dd className="text-foreground">
-                      {players == null
-                        ? "—"
-                        : `${players}${server.maxPlayers != null ? ` / ${server.maxPlayers}` : ""}`}
-                    </dd>
+                    {hostInitials(server.name)}
+                    <span
+                      className={cn(
+                        "absolute -right-0.5 -bottom-0.5 h-3.5 w-3.5 rounded-full border-2 border-surface-3",
+                        online ? "bg-success" : "bg-muted",
+                      )}
+                    />
                   </div>
-                  <div>
-                    <dt>Queue</dt>
-                    <dd className="text-foreground">{queue == null ? "—" : queue}</dd>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h2 className="truncate text-sm font-semibold">{server.name}</h2>
+                      {server.verificationStatus === "VERIFIED" ? (
+                        <Badge tone="success">Verified</Badge>
+                      ) : (
+                        <Badge>{server.verificationStatus}</Badge>
+                      )}
+                    </div>
+                    <p className="mt-0.5 truncate text-xs text-muted">
+                      {server.game} · {server.platformFamily} · {server.region}
+                      {players != null
+                        ? ` · ${players}${server.maxPlayers != null ? `/${server.maxPlayers}` : ""} playing`
+                        : ""}
+                      {queue != null ? ` · queue ${queue}` : ""}
+                      {map?.name ? ` · ${map.name}` : ""}
+                    </p>
+                    <p className="mt-0.5 truncate font-mono text-[11px] text-muted">
+                      @{server.ownerHandle}
+                      {server.displayHost ? ` · ${server.displayHost}` : ""}
+                      {server.favouriteCount != null
+                        ? ` · ${server.favouriteCount} favourites`
+                        : ""}
+                      {" · "}
+                      {freshnessLabel(server)}
+                    </p>
                   </div>
-                  <div>
-                    <dt>Map</dt>
-                    <dd className="text-foreground">
-                      {map == null ? "—" : `${map.name ?? "—"}${map.size ? ` (${map.size})` : ""}`}
-                    </dd>
+                  <div className="hidden shrink-0 flex-col items-end gap-2 sm:flex">
+                    <StatusPill
+                      tone={
+                        online
+                          ? "success"
+                          : server.status === "OFFLINE" || server.status === "DEGRADED"
+                            ? "danger"
+                            : "neutral"
+                      }
+                    >
+                      {hasCapability(server, "STATUS")
+                        ? (server.status ?? metricStateLabel(server.statusState))
+                        : "No status"}
+                    </StatusPill>
+                    <Link
+                      href={`/servers/${server.slug}`}
+                      className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}
+                    >
+                      Open
+                    </Link>
                   </div>
-                  <div>
-                    <dt>Ping</dt>
-                    <dd className="text-foreground">
-                      {server.pingMs != null ? `${server.pingMs} ms` : "—"}
-                    </dd>
-                  </div>
-                </dl>
-                <p className="mt-3 text-xs text-muted">@{server.ownerHandle}</p>
-                <Link
-                  href={`/servers/${server.slug}`}
-                  className="mt-3 inline-block text-sm text-neon-mint hover:underline"
-                >
-                  Details
-                </Link>
-              </Card>
-            </li>
-          );
-        })}
-      </ul>
+                  <Link
+                    href={`/servers/${server.slug}`}
+                    className={cn(
+                      buttonVariants({ variant: "secondary", size: "sm" }),
+                      "sm:hidden",
+                    )}
+                  >
+                    Open
+                  </Link>
+                </article>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </div>
   );
 }

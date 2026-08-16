@@ -2,15 +2,24 @@ import { prisma } from "@/lib/db";
 import { SocialError } from "@/features/social/lib/errors";
 import { canFollowUser } from "@/features/social/lib/rules";
 import type { TagPrivacy } from "@/features/social/lib/rules";
+import { plusBadgeByIdentityIds } from "@/features/plus/services/plus.service";
 import { tenureBadgeLabel, tenureBadgeTier } from "@/features/plus/lib/tenure";
 
 const userPublic = {
   id: true,
   name: true,
+  image: true,
+  createdAt: true,
   profile: {
-    select: { handle: true, displayName: true, bio: true, tagPrivacy: true },
+    select: {
+      handle: true,
+      displayName: true,
+      bio: true,
+      tagPrivacy: true,
+      activeAccountType: true,
+    },
   },
-  kobaIdentities: { select: { code: true, accountType: true }, take: 4 },
+  kobaIdentities: { select: { id: true, code: true, accountType: true } },
 } as const;
 
 function displayName(user: {
@@ -41,7 +50,11 @@ export async function getProfileByHandle(handle: string, viewerUserId?: string |
     throw new SocialError("Profile not found.", "NOT_FOUND");
   }
   const userId = profile.userId;
-  const [followers, following, posts, viewerFollows, blocked, plusSubscription] =
+  const activeIdentity =
+    profile.user.kobaIdentities.find((row) => row.accountType === profile.activeAccountType) ??
+    profile.user.kobaIdentities[0] ??
+    null;
+  const [followers, following, posts, viewerFollows, blocked, plusSubscription, badges] =
     await Promise.all([
       prisma.userFollow.count({ where: { followingUserId: userId } }),
       prisma.userFollow.count({ where: { followerUserId: userId } }),
@@ -59,22 +72,33 @@ export async function getProfileByHandle(handle: string, viewerUserId?: string |
           })
         : null,
       viewerUserId ? isBlocked(viewerUserId, userId) : false,
-      prisma.plusSubscription.findUnique({
-        where: { userId },
-        select: { state: true, firstActivatedAt: true },
-      }),
+      activeIdentity
+        ? prisma.plusSubscription.findUnique({
+            where: { kobaIdentityId: activeIdentity.id },
+          })
+        : Promise.resolve(null),
+      plusBadgeByIdentityIds(activeIdentity ? [activeIdentity.id] : []),
     ]);
 
+  const plusTenure = plusSubscription as { state?: string; firstActivatedAt?: Date | null } | null;
   const plusBadgeLabel =
-    plusSubscription?.state === "ACTIVE" && plusSubscription.firstActivatedAt
-      ? tenureBadgeLabel(tenureBadgeTier(plusSubscription.firstActivatedAt))
+    plusTenure?.state === "ACTIVE" && plusTenure.firstActivatedAt
+      ? tenureBadgeLabel(tenureBadgeTier(plusTenure.firstActivatedAt))
       : null;
 
   return {
     handle: profile.handle,
     name: displayName(profile.user),
     bio: profile.bio,
-    kobaId: profile.user.kobaIdentities[0]?.code ?? null,
+    image: profile.user.image,
+    createdAt: profile.user.createdAt.toISOString(),
+    accountType: profile.activeAccountType,
+    identities: profile.user.kobaIdentities.map((row) => ({
+      accountType: row.accountType,
+      code: row.code,
+    })),
+    kobaId: activeIdentity?.code ?? null,
+    plusBadge: activeIdentity ? Boolean(badges.get(activeIdentity.id)) : false,
     tagPrivacy: profile.tagPrivacy,
     followers,
     following,

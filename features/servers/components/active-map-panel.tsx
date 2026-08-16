@@ -91,9 +91,7 @@ export function ActiveMapPanel({
             value={selected}
             onChange={(event) => setSelected(event.target.value)}
           >
-            <option value="">
-              {maps.length === 0 ? "No owned Maps" : "Choose a Map you own"}
-            </option>
+            <option value="">{maps.length === 0 ? "No owned Maps" : "Choose a Map you own"}</option>
             {maps.map((map) => (
               <option key={map.publicRef} value={map.publicRef}>
                 {map.title} ({map.rarity})
@@ -104,7 +102,13 @@ export function ActiveMapPanel({
             Set active
           </Button>
           {title ? (
-            <Button type="button" size="sm" variant="ghost" disabled={busy} onClick={() => void clear()}>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              disabled={busy}
+              onClick={() => void clear()}
+            >
               Clear
             </Button>
           ) : null}

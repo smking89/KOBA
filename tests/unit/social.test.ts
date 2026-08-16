@@ -111,6 +111,10 @@ describe("feed visibility", () => {
       cursor: "abc123",
       group: "rust-legacy-raiders",
     });
+    expect(parseFeedQuery({ cursor: "2", handle: "maxbuilds" })).toMatchObject({
+      cursor: "2",
+      handle: "maxbuilds",
+    });
   });
 
   it("requires https for media URLs", () => {

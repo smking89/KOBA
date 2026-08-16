@@ -62,21 +62,93 @@ enum AuditAction {
   TRADE_UPDATED
   SERVER_REGISTERED
   SERVER_RCON_UPDATED
+  SERVER_SUBMITTED
+  SERVER_VERIFIED
+  SERVER_REJECTED
+  SERVER_SUSPENDED
+  SERVER_RESTORED
+  SERVER_STATUS_POLL
+  SERVER_INTEGRATION_CONNECTED
+  SERVER_INTEGRATION_TESTED
+  SERVER_CREDENTIAL_ROTATED
+  SERVER_INTEGRATION_DISCONNECTED
+  SERVER_CAPABILITY_CHANGED
+  SERVER_CIRCUIT_OPENED
   PLUS_CHECKOUT_STARTED
   PLUS_CANCELLED
+  PLUS_ACTIVATED
+  PLUS_UPDATED
+  PLUS_PAYMENT_FAILED
+  PLUS_RECONCILED
+  PLUS_GRANT_ISSUED
   COIN_LEDGER_POSTED
   AIDEN_JOB_CREATED
   AIDEN_JOB_CANCELLED
   AIDEN_JOB_COMPLETED
-  AIDEN_JOB_FAILED
+  AIDEN_ASSET_REVIEW_SUBMITTED
+  AIDEN_ASSET_APPROVED
+  AIDEN_ASSET_REJECTED
   DEV_PRODUCT_SUBMITTED
+  DEV_PROFILE_CREATED
+  DEV_PROFILE_UPDATED
+  DEV_MEMBER_CHANGED
+  DEV_APP_CREATED
+  DEV_APP_SUSPENDED
+  DEV_KEY_CREATED
+  DEV_KEY_REVOKED
+  DEV_KEY_ROTATED
+  DEV_WEBHOOK_CREATED
+  DEV_WEBHOOK_ROTATED
+  DEV_PRODUCT_APPROVED
+  DEV_PRODUCT_REJECTED
+  DEV_PRODUCT_SUSPENDED
+  DEV_VERSION_APPROVED
+  DEV_PURCHASE_COMPLETED
+  DEV_PURCHASE_REFUNDED
+  DEV_PUBLISHER_VERIFIED
+  REFERRAL_CODE_CREATED
+  REFERRAL_CODE_REVOKED
+  REFERRAL_ATTRIBUTED
+  INFLUENCER_EARNING_ACCRUED
+  INFLUENCER_EARNING_PAID
+  INFLUENCER_EARNING_VOIDED
+  SHOP_PROMO_UPDATED
+  INFLUENCER_PAYOUT_ONBOARDED
+  INFLUENCER_PROFILE_UPDATED
+  INFLUENCER_VERIFIED
+  INFLUENCER_SUSPENDED
+  AFFILIATE_CAMPAIGN_CREATED
+  AFFILIATE_CAMPAIGN_SUBMITTED
+  AFFILIATE_CAMPAIGN_MODERATED
+  CAMPAIGN_PARTICIPATION_CHANGED
+  PROMO_CODE_CREATED
+  PROMO_CODE_SUSPENDED
+  PROMOTION_COMMISSION_CREATED
+  PROMOTION_COMMISSION_REVERSED
+  SPONSORED_CAMPAIGN_CREATED
+  SPONSORED_CAMPAIGN_MODERATED
+  STAFF_MFA_ENROLLMENT_STARTED
+  STAFF_MFA_ENROLLED
+  STAFF_MFA_CHALLENGE_SUCCEEDED
+  STAFF_MFA_CHALLENGE_FAILED
+  STAFF_MFA_RECOVERY_CODE_USED
+  STAFF_MFA_RECOVERY_CODES_REGENERATED
+  STAFF_MFA_DISABLED
+  STAFF_MFA_ADMIN_RESET
+  STAFF_STEP_UP_SUCCEEDED
+  STAFF_STEP_UP_FAILED
+  STAFF_SESSION_CREATED
+  STAFF_SESSION_REVOKED
+  STAFF_SESSIONS_REVOKED_ALL
+  STAFF_ROLE_CHANGED
+  STAFF_PASSWORD_CHANGED
+  AIDEN_JOB_FAILED
   PLATFORM_FUNCTION_ENABLED
   PLATFORM_FUNCTION_DISABLED
   BOOST_PURCHASED
   BOOST_GIFTED
   BOOST_APPLIED
   AIDEN_ASSET_PUBLISHED
-  PLUS_ACTIVATED
   SERVER_ACTIVE_MAP_SET
   FREEBIE_CLAIMED
   SERVER_KIT_DELIVERED
@@ -116,6 +188,9 @@ model User {
   profile        AccountProfile?
   kobaIdentities KobaIdentity[]
   auditLogs      AuditLog[]     @relation("AuditActor")
+  staffMfaFactor StaffMfaFactor?
+  staffMfaChallenges StaffMfaChallenge[]
+  staffSessions  StaffSession[]
   platformFunctionFlagUpdates PlatformFunctionFlag[] @relation("PlatformFunctionFlagUpdatedBy")
   boostsOwned    Boost[]        @relation("BoostOwner")
   boostsGifted   Boost[]        @relation("BoostGiftedFrom")
@@ -159,15 +234,36 @@ model User {
   inventoryItems  InventoryItem[]
   tradeEvents     TradeEvent[]
   ownedServers    GameServer[]
-  plusSubscription PlusSubscription?
+  serverFavourites ServerFavourite[]
+  serverNotices   ServerOwnerNotice[]
+  plusSubscriptions PlusSubscription[]
+  stripeCustomerId  String?            @unique
   serverBios       ServerBio[]
   freebieClaims    FreebieClaim[]
   coinWallet      CoinWallet?
   ledgerAccounts  LedgerAccount[]
   aidenJobs       AidenJob[]
   aidenAssets     AidenAsset[]
+  ownedDeveloperProfiles DeveloperProfile[] @relation("DeveloperProfileOwner")
+  developerMemberships DeveloperMember[]
   devProducts     DevProduct[]
   devInstalls     DevInstall[]
+  devPurchases    DevPurchase[]
+  devEntitlements DevEntitlement[]
+  devReviews      DevProductReview[]
+  developerApiKeys DeveloperApiKey[]
+  referralCodes           ReferralCode[]            @relation("ReferralInfluencer")
+  influencerEarnings      InfluencerEarning[]       @relation("InfluencerEarnings")
+  influencerPayoutAccount InfluencerPayoutAccount?
+  influencerProfile       InfluencerProfile?
+  affiliateCampaigns      AffiliateCampaign[]       @relation("CampaignSeller")
+  campaignParticipations  CampaignParticipation[]
+  promoCodesCreated       PromoCode[]               @relation("PromoCodeSeller")
+  promoRedemptions        PromoCodeRedemption[]
+  promotionCommissionsEarned PromotionCommission[]  @relation("CommissionInfluencer")
+  promotionCommissionsSold   PromotionCommission[]  @relation("CommissionSeller")
+  sponsoredCampaigns      SponsoredCampaign[]
+  promotionNotices        PromotionNotice[]
 }
 
 model Account {
@@ -233,6 +329,10 @@ model KobaIdentity {
   createdAt   DateTime        @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plusSubscription PlusSubscription?
+  plusGrants       PlusEntitlementGrant[]
+  aidenJobs        AidenJob[]
+  developerProfiles DeveloperProfile[]
 
   @@unique([userId, accountType])
   @@index([code])
@@ -471,11 +571,14 @@ model Product {
   variants  ProductVariant[]
   media     ProductMedia[]
   favorites ProductFavorite[]
-  orderItems OrderItem[]
-  auction    Auction?
-  aidenAsset AidenAsset?
-  freebieClaims FreebieClaim[]
-  comments      ProductComment[]
+  orderItems      OrderItem[]
+  auction         Auction?
+  referralCodes   ReferralCode[]
+  campaignProducts AffiliateCampaignProduct[]
+  promoCodeProducts PromoCodeProduct[]
+  aidenAsset      AidenAsset?
+  freebieClaims   FreebieClaim[]
+  comments        ProductComment[]
 
   @@index([moderationStatus, publishedAt])
   @@index([gameId])
@@ -598,15 +701,18 @@ model Shop {
   createdAt            DateTime               @default(now())
   updatedAt            DateTime               @updatedAt
 
-  owner       User             @relation("ShopOwner", fields: [ownerUserId], references: [id], onDelete: Cascade)
-  members     ShopMember[]
-  follows     ShopFollow[]
-  reviews     ShopReview[]
-  products    Product[]
-  orders      Order[]
-  servers     GameServer[]
-  cosmetics   Cosmetic[]
-  promoConfig ShopPromoConfig?
+  owner         User             @relation("ShopOwner", fields: [ownerUserId], references: [id], onDelete: Cascade)
+  members       ShopMember[]
+  follows       ShopFollow[]
+  reviews       ShopReview[]
+  products      Product[]
+  orders        Order[]
+  servers       GameServer[]
+  cosmetics     Cosmetic[]
+  promoConfig          ShopPromoConfig?
+  referralCodes        ReferralCode[]
+  affiliateCampaigns   AffiliateCampaign[]
+  promoCodes           PromoCode[]
 }
 
 model ShopMember {
@@ -690,24 +796,6 @@ model Cosmetic {
   @@index([rarity])
 }
 
-enum PromoPayoutType {
-  PERCENT
-  FIXED
-}
-
-/// Shop-side half of influencer eligibility/payout terms (ROADMAP.md Phase
-/// 4/10). payoutValue is basis points (0-10000) for PERCENT, cents for
-/// FIXED — see isValidPromoPayoutValue in features/shops/services/promo.service.ts.
-model ShopPromoConfig {
-  shopId             String           @id
-  influencerEligible Boolean          @default(false)
-  payoutType         PromoPayoutType  @default(PERCENT)
-  payoutValue        Int              @default(0)
-  updatedAt          DateTime         @updatedAt
-
-  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
-}
-
 enum OrderKind {
   FIXED
   AUCTION
@@ -723,6 +811,14 @@ model Order {
   totalCents              Int
   applicationFeeCents     Int         @default(0)
   sellerPayoutCents       Int
+  influencerShareCents    Int         @default(0)
+  originalSubtotalCents   Int         @default(0)
+  discountCents           Int         @default(0)
+  eligibleCommissionBaseCents Int     @default(0)
+  promoCodeId             String?
+  campaignId              String?
+  participationId         String?
+  attributionSource       AttributionSource?
   currency                String      @default("USD")
   stripeCheckoutSessionId String?     @unique
   stripePaymentIntentId   String?
@@ -733,15 +829,28 @@ model Order {
   createdAt               DateTime    @default(now())
   updatedAt               DateTime    @updatedAt
 
-  shop   Shop         @relation(fields: [shopId], references: [id], onDelete: Restrict)
-  buyer  User         @relation("OrderBuyer", fields: [buyerUserId], references: [id], onDelete: Restrict)
-  items  OrderItem[]
-  escrow OrderEscrow?
-  freebieClaim FreebieClaim?
+  referralCodeId String?
+
+  shop                 Shop                  @relation(fields: [shopId], references: [id], onDelete: Restrict)
+  buyer                User                  @relation("OrderBuyer", fields: [buyerUserId], references: [id], onDelete: Restrict)
+  items                OrderItem[]
+  referralCode         ReferralCode?         @relation(fields: [referralCodeId], references: [id], onDelete: SetNull)
+  referralAttribution     ReferralAttribution?
+  influencerEarning       InfluencerEarning?
+  promoCode               PromoCode?             @relation(fields: [promoCodeId], references: [id], onDelete: SetNull)
+  campaign                AffiliateCampaign?     @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  participation           CampaignParticipation? @relation(fields: [participationId], references: [id], onDelete: SetNull)
+  promotionCommission     PromotionCommission?
+  promoRedemption         PromoCodeRedemption?
+  escrow                  OrderEscrow?
+  freebieClaim            FreebieClaim?
 
   @@index([shopId, createdAt])
   @@index([buyerUserId])
   @@index([status])
+  @@index([referralCodeId])
+  @@index([promoCodeId])
+  @@index([campaignId])
 }
 
 enum EscrowStatus {
@@ -778,9 +887,10 @@ model OrderEscrow {
 }
 
 model ProcessedStripeEvent {
-  eventId   String   @id
-  type      String
-  createdAt DateTime @default(now())
+  eventId      String   @id
+  type         String
+  eventCreated Int?
+  createdAt    DateTime @default(now())
 }
 
 model OrderItem {
@@ -796,6 +906,476 @@ model OrderItem {
 
   @@index([orderId])
   @@index([productId])
+}
+
+enum PromoPayoutType {
+  PERCENT_BPS
+  FIXED_CENTS
+}
+
+enum InfluencerEarningStatus {
+  ACCRUED
+  PAYABLE
+  PAID
+  VOID
+  HELD
+}
+
+model ShopPromoConfig {
+  shopId             String          @id
+  influencerEligible Boolean         @default(false)
+  payoutType         PromoPayoutType @default(PERCENT_BPS)
+  payoutValue        Int             @default(1000)
+  updatedAt          DateTime        @updatedAt
+
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+}
+
+model ReferralCode {
+  id               String    @id @default(cuid())
+  publicRef        String    @unique
+  code             String    @unique
+  influencerUserId String
+  productId        String
+  shopId           String
+  active           Boolean   @default(true)
+  clickCount       Int       @default(0)
+  createdAt        DateTime  @default(now())
+  revokedAt        DateTime?
+
+  influencer   User                   @relation("ReferralInfluencer", fields: [influencerUserId], references: [id], onDelete: Cascade)
+  product      Product                @relation(fields: [productId], references: [id], onDelete: Cascade)
+  shop         Shop                   @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  orders       Order[]
+  attributions ReferralAttribution[]
+  earnings     InfluencerEarning[]
+
+  @@unique([influencerUserId, productId])
+  @@index([shopId, active])
+  @@index([productId, active])
+}
+
+model ReferralAttribution {
+  id               String   @id @default(cuid())
+  orderId          String   @unique
+  referralCodeId   String
+  influencerUserId String
+  createdAt        DateTime @default(now())
+
+  order        Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  referralCode ReferralCode @relation(fields: [referralCodeId], references: [id], onDelete: Restrict)
+
+  @@index([referralCodeId])
+  @@index([influencerUserId])
+}
+
+model InfluencerEarning {
+  id               String                   @id @default(cuid())
+  publicRef        String                   @unique
+  influencerUserId String
+  referralCodeId   String
+  orderId          String                   @unique
+  amountCents      Int
+  currency         String                   @default("USD")
+  status           InfluencerEarningStatus  @default(ACCRUED)
+  stripeTransferId String?                  @unique
+  createdAt        DateTime                 @default(now())
+  paidAt           DateTime?
+  voidedAt         DateTime?
+
+  influencer   User         @relation("InfluencerEarnings", fields: [influencerUserId], references: [id], onDelete: Restrict)
+  referralCode ReferralCode @relation(fields: [referralCodeId], references: [id], onDelete: Restrict)
+  order        Order        @relation(fields: [orderId], references: [id], onDelete: Restrict)
+
+  @@index([influencerUserId, createdAt])
+  @@index([status])
+}
+
+model InfluencerPayoutAccount {
+  userId           String   @id
+  stripeAccountId  String?  @unique
+  payoutsEnabled   Boolean  @default(false)
+  detailsSubmitted Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum InfluencerVerificationStatus {
+  UNVERIFIED
+  PENDING
+  VERIFIED
+  REJECTED
+  SUSPENDED
+}
+
+enum AffiliateCampaignStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  ACTIVE
+  PAUSED
+  COMPLETED
+  REJECTED
+  SUSPENDED
+  CANCELLED
+}
+
+enum CampaignParticipationStatus {
+  INVITED
+  APPLIED
+  ACTIVE
+  REJECTED
+  PAUSED
+  REVOKED
+  COMPLETED
+}
+
+enum PromotionRateType {
+  FIXED
+  PERCENTAGE
+}
+
+enum AttributionSource {
+  CLICK
+  PROMO_CODE
+}
+
+enum PromotionCommissionStatus {
+  PENDING
+  QUALIFIED
+  AVAILABLE
+  REVERSED
+  PAID
+  CANCELLED
+  UNDER_REVIEW
+}
+
+enum SponsoredEntityType {
+  PRODUCT
+  SHOP
+  DEV_PRODUCT
+  GAME_SERVER
+}
+
+enum SponsoredPlacement {
+  MARKETPLACE
+  SHOP
+  APPS
+  SERVERS
+}
+
+enum SponsoredCampaignStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  ACTIVE
+  PAUSED
+  COMPLETED
+  REJECTED
+  SUSPENDED
+  CANCELLED
+}
+
+enum SponsoredEventType {
+  IMPRESSION
+  CLICK
+  SPEND
+  RELEASE
+}
+
+model InfluencerProfile {
+  id                    String                        @id @default(cuid())
+  userId                String                        @unique
+  slug                  String                        @unique
+  displayName           String
+  bio                   String                        @default("") @db.Text
+  avatarUrl             String?
+  bannerUrl             String?
+  socialLinksJson       String                        @default("[]")
+  games                 String[]
+  categories            String[]
+  audienceRegions       String[]
+  contactEmail          String?
+  verificationStatus    InfluencerVerificationStatus  @default(UNVERIFIED)
+  verificationNote      String?
+  suspendedAt           DateTime?
+  payoutEligible        Boolean                       @default(false)
+  disclosureAcceptedAt  DateTime?
+  createdAt             DateTime                      @default(now())
+  updatedAt             DateTime                      @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([verificationStatus])
+}
+
+model AffiliateCampaign {
+  id                      String                   @id @default(cuid())
+  publicRef               String                   @unique
+  shopId                  String
+  sellerUserId            String
+  name                    String
+  status                  AffiliateCampaignStatus  @default(DRAFT)
+  commissionType          PromotionRateType        @default(PERCENTAGE)
+  commissionValue         Int                      @default(1000)
+  discountType            PromotionRateType?
+  discountValue           Int?
+  attributionWindowHours  Int                      @default(168)
+  totalBudgetCents        Int                      @default(0)
+  remainingBudgetCents    Int                      @default(0)
+  perInfluencerLimitCents Int?
+  totalConversionLimit    Int?
+  conversionCount         Int                      @default(0)
+  targetGames             String[]
+  targetCategories        String[]
+  openApplications        Boolean                  @default(true)
+  terms                   String                   @default("") @db.Text
+  startsAt                DateTime?
+  endsAt                  DateTime?
+  moderationNote          String?
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+
+  shop           Shop                      @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  seller         User                      @relation("CampaignSeller", fields: [sellerUserId], references: [id], onDelete: Cascade)
+  products       AffiliateCampaignProduct[]
+  participations CampaignParticipation[]
+  promoCodes     PromoCode[]
+  commissions    PromotionCommission[]
+  orders         Order[]
+  clickEvents    ReferralClickEvent[]
+
+  @@index([shopId, status])
+  @@index([sellerUserId, status])
+}
+
+model AffiliateCampaignProduct {
+  campaignId String
+  productId  String
+
+  campaign AffiliateCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  product  Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@id([campaignId, productId])
+  @@index([productId])
+}
+
+model CampaignParticipation {
+  id               String                       @id @default(cuid())
+  publicRef        String                       @unique
+  campaignId       String
+  influencerUserId String
+  status           CampaignParticipationStatus  @default(APPLIED)
+  referralToken    String                       @unique
+  promoCodeId      String?
+  termsAcceptedAt  DateTime?
+  createdAt        DateTime                     @default(now())
+  updatedAt        DateTime                     @updatedAt
+
+  campaign     AffiliateCampaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  influencer   User                    @relation(fields: [influencerUserId], references: [id], onDelete: Cascade)
+  promoCode    PromoCode?              @relation(fields: [promoCodeId], references: [id], onDelete: SetNull)
+  clickEvents  ReferralClickEvent[]
+  commissions  PromotionCommission[]
+  orders       Order[]
+
+  @@unique([campaignId, influencerUserId])
+  @@index([influencerUserId, status])
+  @@index([referralToken])
+}
+
+model PromoCode {
+  id                   String             @id @default(cuid())
+  code                 String             @unique
+  sellerUserId         String
+  shopId               String
+  campaignId           String?
+  discountType         PromotionRateType
+  discountValue        Int
+  minOrderCents        Int                @default(0)
+  maxDiscountCents     Int?
+  usageLimit           Int?
+  usageCount           Int                @default(0)
+  perAccountLimit      Int                @default(1)
+  startsAt             DateTime?
+  endsAt               DateTime?
+  active               Boolean            @default(true)
+  applicableAccountTypes String[]
+  stackingAllowed      Boolean            @default(false)
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  seller         User                    @relation("PromoCodeSeller", fields: [sellerUserId], references: [id], onDelete: Cascade)
+  shop           Shop                    @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  campaign       AffiliateCampaign?      @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  products       PromoCodeProduct[]
+  redemptions    PromoCodeRedemption[]
+  participations CampaignParticipation[]
+  orders         Order[]
+
+  @@index([shopId, active])
+  @@index([campaignId])
+}
+
+model PromoCodeProduct {
+  promoCodeId String
+  productId   String
+
+  promoCode PromoCode @relation(fields: [promoCodeId], references: [id], onDelete: Cascade)
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@id([promoCodeId, productId])
+  @@index([productId])
+}
+
+model PromoCodeRedemption {
+  id          String   @id @default(cuid())
+  promoCodeId String
+  userId      String
+  orderId     String?  @unique
+  createdAt   DateTime @default(now())
+
+  promoCode PromoCode @relation(fields: [promoCodeId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  order     Order?    @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@index([promoCodeId, userId])
+}
+
+model ReferralClickEvent {
+  id               String   @id @default(cuid())
+  publicRef        String   @unique
+  participationId  String
+  campaignId       String
+  visitorHash      String?
+  destinationPath  String
+  idempotencyKey   String   @unique
+  suspicious       Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  expiresAt        DateTime
+
+  participation CampaignParticipation @relation(fields: [participationId], references: [id], onDelete: Cascade)
+  campaign      AffiliateCampaign     @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([participationId, createdAt])
+  @@index([expiresAt])
+}
+
+model PromotionCommission {
+  id               String                      @id @default(cuid())
+  publicRef        String                      @unique
+  campaignId       String
+  participationId  String
+  influencerUserId String
+  sellerUserId     String
+  orderId          String                      @unique
+  amountCents      Int
+  currency         String                      @default("USD")
+  status           PromotionCommissionStatus   @default(PENDING)
+  attributionSource AttributionSource
+  idempotencyKey   String                      @unique
+  qualifiedAt      DateTime?
+  availableAt      DateTime?
+  reversedAt       DateTime?
+  paidAt           DateTime?
+  reviewNote       String?
+  createdAt        DateTime                    @default(now())
+  updatedAt        DateTime                    @updatedAt
+
+  campaign      AffiliateCampaign     @relation(fields: [campaignId], references: [id], onDelete: Restrict)
+  participation CampaignParticipation @relation(fields: [participationId], references: [id], onDelete: Restrict)
+  influencer    User                  @relation("CommissionInfluencer", fields: [influencerUserId], references: [id], onDelete: Restrict)
+  seller        User                  @relation("CommissionSeller", fields: [sellerUserId], references: [id], onDelete: Restrict)
+  order         Order                 @relation(fields: [orderId], references: [id], onDelete: Restrict)
+
+  @@index([influencerUserId, status])
+  @@index([campaignId, status])
+}
+
+model SponsoredCampaign {
+  id                     String                   @id @default(cuid())
+  publicRef              String                   @unique
+  advertiserUserId       String
+  entityType             SponsoredEntityType
+  entityId               String
+  placement              SponsoredPlacement
+  targetGameId           String?
+  targetCategoryId       String?
+  targetPlatform         String?
+  targetRegion           String?
+  startsAt               DateTime?
+  endsAt                 DateTime?
+  totalBudgetCoins       BigInt
+  remainingBudgetCoins   BigInt
+  dailyBudgetCoins       BigInt
+  dailySpentCoins        BigInt                   @default(0)
+  dailySpentOn           DateTime?
+  cpcCoins               BigInt
+  frequencyCap           Int                      @default(6)
+  status                 SponsoredCampaignStatus  @default(DRAFT)
+  reservationPublicRef   String?
+  impressionCount        Int                      @default(0)
+  clickCount             Int                      @default(0)
+  spendCoins             BigInt                   @default(0)
+  lastShownAt            DateTime?
+  moderationNote         String?
+  createdAt              DateTime                 @default(now())
+  updatedAt              DateTime                 @updatedAt
+
+  advertiser User             @relation(fields: [advertiserUserId], references: [id], onDelete: Cascade)
+  events     SponsoredEvent[]
+
+  @@index([status, placement])
+  @@index([advertiserUserId, status])
+}
+
+model SponsoredEvent {
+  id             String             @id @default(cuid())
+  campaignId     String
+  type           SponsoredEventType
+  viewerUserId   String?
+  viewerHash     String?
+  amountCoins    BigInt             @default(0)
+  idempotencyKey String             @unique
+  suspicious     Boolean            @default(false)
+  createdAt      DateTime           @default(now())
+
+  campaign SponsoredCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId, type, createdAt])
+  @@index([viewerUserId, createdAt])
+}
+
+model PromotionNotice {
+  id        String    @id @default(cuid())
+  userId    String
+  type      String
+  title     String
+  message   String
+  href      String?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+model PromotionEvent {
+  id              String   @id @default(cuid())
+  type            String
+  campaignId      String?
+  participationId String?
+  orderId         String?
+  actorUserId     String?
+  payloadJson     String   @default("{}")
+  idempotencyKey  String   @unique
+  createdAt       DateTime @default(now())
+
+  @@index([type, createdAt])
+  @@index([campaignId, createdAt])
 }
 
 enum AuctionStatus {
@@ -1357,8 +1937,12 @@ enum ServerCapability {
   PLAYER_LIST
   QUEUE_COUNT
   MAP_INFO
+  MAP_SIZE
+  PING
+  PUBLIC_QUERY
   RCON_READ
   RCON_WRITE
+  JOIN_LINK
   PC
   CONSOLE
 }
@@ -1366,7 +1950,22 @@ enum ServerCapability {
 enum ServerOnlineStatus {
   ONLINE
   OFFLINE
+  DEGRADED
   UNKNOWN
+}
+
+enum ServerVerificationStatus {
+  UNVERIFIED
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum ServerPublicationStatus {
+  DRAFT
+  PUBLISHED
+  SUSPENDED
+  ARCHIVED
 }
 
 enum RconTestState {
@@ -1378,6 +1977,24 @@ enum RconTestState {
   UNSUPPORTED
 }
 
+enum ServerIntegrationProvider {
+  RUST_PC
+}
+
+enum ServerIntegrationMode {
+  PUBLIC_QUERY
+  RCON_READ
+}
+
+enum ServerIntegrationStatus {
+  PENDING
+  CONNECTED
+  DEGRADED
+  FAILED
+  REVOKED
+  DISCONNECTED
+}
+
 enum PlusPlanInterval {
   MONTHLY
   ANNUAL
@@ -1385,8 +2002,12 @@ enum PlusPlanInterval {
 
 enum PlusSubscriptionState {
   NONE
+  INCOMPLETE
+  TRIALING
   ACTIVE
   PAST_DUE
+  UNPAID
+  PAUSED
   CANCELLED
   EXPIRED
 }
@@ -1471,16 +2092,21 @@ enum AidenAssetType {
 }
 
 enum AidenTechnicalStatus {
+  CONCEPT
   CONCEPT_ONLY
   PREVIEW
   REQUIRES_CONVERSION
-  GAME_READY
   VALIDATION_FAILED
+  APPROVED_FOR_MARKETPLACE
+  GAME_READY
 }
 
 enum AidenJobState {
+  DRAFT
   QUEUED
   PROCESSING
+  MODERATING
+  SUCCEEDED
   COMPLETED
   FAILED
   CANCELLED
@@ -1494,14 +2120,49 @@ enum AidenModerationState {
   HIDDEN
 }
 
+enum AidenPromptModeration {
+  PENDING
+  ALLOWED
+  BLOCKED
+}
+
+enum AidenOutputModeration {
+  PENDING
+  CLEAR
+  FLAGGED
+  BLOCKED
+}
+
+enum AidenFailureClass {
+  PROVIDER
+  VALIDATION
+  MODERATION
+  STORAGE
+  COST
+  CANCELLED
+  INTERNAL
+}
+
 enum DevProductKind {
   APPLICATION
   PLUGIN
 }
 
+enum DevProductCategory {
+  DISCORD_BOT
+  GAME_SERVER_PLUGIN
+  SERVER_MANAGEMENT
+  INTEGRATION
+  DOWNLOADABLE_PACK
+  API_SERVICE
+  UTILITY
+  THEME
+}
+
 enum DevPricing {
   FREE
   PAID
+  COMING_SOON
 }
 
 enum DevReviewState {
@@ -1509,9 +2170,56 @@ enum DevReviewState {
   SUBMITTED
   IN_REVIEW
   SECURITY_REVIEW
+  CHANGES_REQUESTED
   APPROVED
   REJECTED
+  PUBLISHED
+  SUSPENDED
+  ARCHIVED
   REVOKED
+}
+
+enum DeveloperMemberRole {
+  OWNER
+  ADMIN
+  DEVELOPER
+  SUPPORT
+  ANALYST
+}
+
+enum DeveloperAppEnvironment {
+  SANDBOX
+  PRODUCTION
+}
+
+enum DeveloperAppStatus {
+  ACTIVE
+  SUSPENDED
+  REVOKED
+}
+
+enum DevReleaseChannel {
+  STABLE
+  BETA
+  ALPHA
+}
+
+enum DevArtifactStatus {
+  QUARANTINE
+  APPROVED
+  REJECTED
+}
+
+enum DevPurchaseStatus {
+  PAID
+  REFUNDED
+}
+
+enum DevWebhookDeliveryStatus {
+  PENDING
+  DELIVERED
+  FAILED
+  CANCELLED
 }
 
 model InventoryItem {
@@ -1614,29 +2322,52 @@ model TradeEvent {
 }
 
 model GameServer {
-  id              String                @id @default(cuid())
-  publicRef       String                @unique
-  slug            String                @unique
-  name            String
-  game            String
-  platformFamily  ServerPlatformFamily
-  region          String
-  tags            String[]
-  ownerUserId     String
-  shopId          String?
-  joinInfo        String?
-  lastRefreshAt   DateTime?
-  capabilities    ServerCapability[]
-  status          ServerOnlineStatus    @default(UNKNOWN)
-  livePlayers     Int?
-  maxPlayers      Int?
-  queue           Int?
-  mapName         String?
-  mapSize         String?
-  pingMs          Int?
-  host            String?
-  port            Int?
-  rconTestState   RconTestState         @default(IDLE)
+  id                 String                   @id @default(cuid())
+  publicRef          String                   @unique
+  slug               String                   @unique
+  name               String
+  description        String?                  @db.Text
+  game               String
+  platformFamily     ServerPlatformFamily
+  region             String
+  country            String?
+  timezone           String?
+  tags               String[]
+  ownerUserId        String
+  /// Active KOBA account type that owns this server (BUSINESS or INFLUENCER).
+  ownerAccountType   KobaAccountType
+  shopId             String?
+  joinInfo           String?
+  hostname           String?
+  host               String?
+  queryPort          Int?
+  gamePort           Int?
+  port               Int?
+  hideResolvedIp     Boolean                  @default(true)
+  adapterKey         String                   @default("manual")
+  capabilities       ServerCapability[]
+  verificationStatus ServerVerificationStatus @default(UNVERIFIED)
+  publicationStatus  ServerPublicationStatus  @default(DRAFT)
+  operationalStatus  ServerOnlineStatus       @default(UNKNOWN)
+  /// Prefer operationalStatus; kept for expansion UI compatibility.
+  status             ServerOnlineStatus       @default(UNKNOWN)
+  verificationToken  String?
+  verificationNote   String?
+  verifiedAt         DateTime?
+  submittedAt        DateTime?
+  suspendedAt        DateTime?
+  livePlayers        Int?
+  maxPlayers         Int?
+  queue              Int?
+  mapName            String?
+  mapSize            String?
+  pingMs             Int?
+  lastRefreshAt      DateTime?
+  lastSuccessfulAt   DateTime?
+  freshUntil         DateTime?
+  pollFailures       Int                      @default(0)
+  nextPollAt         DateTime?
+  rconTestState      RconTestState            @default(IDLE)
   /// "Rarity" for a server (client clarification, 2026-08-15): derived
   /// from a Map they own on this server, purchased on the KOBA
   /// marketplace — NOT a standalone server-level tier the owner just
@@ -1646,31 +2377,221 @@ model GameServer {
   /// enforces this — schema alone can't express "owned by the same
   /// user as ownerUserId").
   activeMapInventoryItemId String? @unique
-  createdAt       DateTime              @default(now())
-  updatedAt       DateTime              @updatedAt
+  createdAt          DateTime                 @default(now())
+  updatedAt          DateTime                 @updatedAt
 
-  owner            User             @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
-  shop             Shop?            @relation(fields: [shopId], references: [id], onDelete: SetNull)
-  credential       ServerCredential?
-  bios             ServerBio[]
+  owner        User                    @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+  shop         Shop?                   @relation(fields: [shopId], references: [id], onDelete: SetNull)
+  credential   ServerCredential?
+  favourites   ServerFavourite[]
+  snapshots    ServerStatusSnapshot[]
+  integrations ServerIntegration[]
+  attempts     IntegrationAttempt[]
+  jobs         ServerIntegrationJob[]
+  notices      ServerOwnerNotice[]
+  idempotency  IntegrationIdempotency[]
+  bios         ServerBio[]
   activeMapInventoryItem InventoryItem? @relation(fields: [activeMapInventoryItemId], references: [id], onDelete: SetNull)
 
   @@index([ownerUserId])
   @@index([game, region])
   @@index([platformFamily])
+  @@index([publicationStatus, verificationStatus])
+  @@index([operationalStatus, nextPollAt])
+  @@index([slug])
+}
+
+model ServerStatusSnapshot {
+  id               String             @id @default(cuid())
+  serverId         String
+  operationalState ServerOnlineStatus
+  livePlayers      Int?
+  maxPlayers       Int?
+  queue            Int?
+  mapName          String?
+  mapSize          String?
+  pingMs           Int?
+  adapterKey       String
+  checkedAt        DateTime           @default(now())
+  successfulAt     DateTime?
+  freshUntil       DateTime?
+  errorCategory    String?
+  createdAt        DateTime           @default(now())
+
+  server GameServer @relation(fields: [serverId], references: [id], onDelete: Cascade)
+
+  @@index([serverId, checkedAt])
+  @@index([checkedAt])
+}
+
+model ServerFavourite {
+  userId    String
+  serverId  String
+  createdAt DateTime @default(now())
+
+  user   User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  server GameServer @relation(fields: [serverId], references: [id], onDelete: Cascade)
+
+  @@id([userId, serverId])
+  @@index([serverId])
 }
 
 model ServerCredential {
-  id                 String   @id @default(cuid())
-  serverId           String   @unique
-  ciphertext         String   @db.Text
-  iv                 String
-  authTag            String
-  rotatedAt          DateTime @default(now())
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  id            String    @id @default(cuid())
+  serverId      String    @unique
+  integrationId String?   @unique
+  ciphertext    String    @db.Text
+  iv            String
+  authTag       String
+  keyVersion    Int       @default(1)
+  revokedAt     DateTime?
+  rotatedAt     DateTime  @default(now())
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  server      GameServer         @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  integration ServerIntegration? @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+}
+
+model ServerIntegration {
+  id                  String                    @id @default(cuid())
+  serverId            String
+  provider            ServerIntegrationProvider
+  adapterKey          String
+  mode                ServerIntegrationMode     @default(RCON_READ)
+  status              ServerIntegrationStatus   @default(PENDING)
+  hostname            String?
+  queryPort           Int?
+  rconPort            Int?
+  keyVersion          Int                       @default(1)
+  lastHealthJson      String?                   @db.Text
+  lastTestedAt        DateTime?
+  lastSuccessfulAt    DateTime?
+  lastFailureCategory String?
+  pollFailures        Int                       @default(0)
+  nextPollAt          DateTime?
+  circuitOpenedAt     DateTime?
+  revokedAt           DateTime?
+  disconnectedAt      DateTime?
+  createdAt           DateTime                  @default(now())
+  updatedAt           DateTime                  @updatedAt
+
+  server     GameServer             @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  credential ServerCredential?
+  attempts   IntegrationAttempt[]
+  jobs       ServerIntegrationJob[]
+
+  @@unique([serverId, provider])
+  @@index([status, nextPollAt])
+  @@index([serverId])
+}
+
+model IntegrationAttempt {
+  id             String   @id @default(cuid())
+  serverId       String
+  integrationId  String?
+  attemptType    String
+  success        Boolean
+  errorCategory  String?
+  durationMs     Int
+  correlationId  String
+  idempotencyKey String?
+  createdAt      DateTime @default(now())
+
+  server      GameServer         @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  integration ServerIntegration? @relation(fields: [integrationId], references: [id], onDelete: SetNull)
+
+  @@index([serverId, createdAt])
+  @@index([integrationId, createdAt])
+  @@index([correlationId])
+}
+
+model ServerIntegrationJob {
+  id                String    @id @default(cuid())
+  type              String
+  serverId          String
+  integrationId     String?
+  status            String    @default("PENDING")
+  runAfter          DateTime  @default(now())
+  attempts          Int       @default(0)
+  lastErrorCategory String?
+  correlationId     String
+  cancelledAt       DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  server      GameServer         @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  integration ServerIntegration? @relation(fields: [integrationId], references: [id], onDelete: SetNull)
+
+  @@index([status, runAfter])
+  @@index([serverId, status])
+}
+
+model ServerOwnerNotice {
+  id          String    @id @default(cuid())
+  serverId    String
+  ownerUserId String
+  type        String
+  message     String
+  readAt      DateTime?
+  createdAt   DateTime  @default(now())
 
   server GameServer @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  owner  User       @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+
+  @@index([ownerUserId, createdAt])
+  @@index([serverId, createdAt])
+}
+
+model IntegrationIdempotency {
+  id           String   @id @default(cuid())
+  userId       String
+  serverId     String
+  action       String
+  key          String
+  responseJson String   @db.Text
+  createdAt    DateTime @default(now())
+
+  server GameServer @relation(fields: [serverId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, serverId, action, key])
+  @@index([createdAt])
+}
+
+model SubscriptionPlan {
+  id                 String           @id @default(cuid())
+  code               String           @unique
+  displayName        String
+  interval           PlusPlanInterval
+  stripePriceId      String
+  currency           String           @default("usd")
+  displayAmountCents Int
+  active             Boolean          @default(true)
+  version            Int              @default(1)
+  sortOrder          Int              @default(0)
+  effectiveAt        DateTime         @default(now())
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  entitlements  PlanEntitlement[]
+  subscriptions PlusSubscription[]
+
+  @@index([active, sortOrder])
+}
+
+model PlanEntitlement {
+  id         String   @id @default(cuid())
+  planId     String
+  code       String
+  enabled    Boolean  @default(false)
+  limitValue String?
+  version    Int      @default(1)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  plan SubscriptionPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@unique([planId, code])
 }
 
 // A row exists per-user from their first visit to /plus (ensureSubscription
@@ -1681,20 +2602,56 @@ model ServerCredential {
 // features/plus/lib/tenure.ts for why that's the deliberate choice, not
 // an oversight).
 model PlusSubscription {
-  id                   String                @id @default(cuid())
-  userId               String                @unique
-  state                PlusSubscriptionState @default(NONE)
-  planId               String?
-  interval             PlusPlanInterval?
-  renewsAt             DateTime?
-  stripeCustomerId     String?
-  stripeSubscriptionId String?               @unique
-  cancelAtPeriodEnd    Boolean               @default(false)
-  firstActivatedAt     DateTime?
-  createdAt            DateTime              @default(now())
-  updatedAt            DateTime              @updatedAt
+  id                     String                @id @default(cuid())
+  publicRef              String                @unique
+  userId                 String
+  kobaIdentityId         String                @unique
+  accountType            KobaAccountType
+  planId                 String?
+  interval               PlusPlanInterval?
+  provider               String                @default("stripe")
+  stripeCustomerId       String?
+  stripeSubscriptionId   String?               @unique
+  stripeCheckoutSessionId String?              @unique
+  checkoutIdempotencyKey String?              @unique
+  state                  PlusSubscriptionState @default(NONE)
+  cancelAtPeriodEnd      Boolean               @default(false)
+  currentPeriodStart     DateTime?
+  currentPeriodEnd       DateTime?
+  cancelledAt            DateTime?
+  endedAt                DateTime?
+  trialEndsAt            DateTime?
+  lastStripeEventId      String?
+  lastStripeEventCreated Int?
+  version                Int                   @default(0)
+  firstActivatedAt       DateTime?
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user     User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  identity KobaIdentity      @relation(fields: [kobaIdentityId], references: [id], onDelete: Cascade)
+  plan     SubscriptionPlan? @relation(fields: [planId], references: [id], onDelete: SetNull)
+
+  @@index([userId, accountType])
+  @@index([state])
+  @@index([stripeCustomerId])
+}
+
+model PlusEntitlementGrant {
+  id             String    @id @default(cuid())
+  kobaIdentityId String
+  code           String
+  reason         String
+  actorUserId    String
+  expiresAt      DateTime?
+  revokedAt      DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  identity KobaIdentity @relation(fields: [kobaIdentityId], references: [id], onDelete: Cascade)
+
+  @@index([kobaIdentityId, code])
+  @@index([expiresAt])
 }
 
 // Plus perk: a bio that can differ per game-server community, distinct
@@ -1868,15 +2825,18 @@ model CoinPurchase {
 }
 
 model AidenJob {
-  id              String         @id @default(cuid())
-  publicRef       String         @unique
-  userId          String
-  prompt          String         @db.Text
-  game            String
-  platform        String
-  assetType       AidenAssetType
-  state           AidenJobState  @default(QUEUED)
-  coinCostPreview Int
+  id                     String                 @id @default(cuid())
+  publicRef              String                 @unique
+  userId                 String
+  kobaIdentityId         String?
+  prompt                 String                 @db.Text
+  promptHash             String?
+  game                   String
+  platform               String
+  assetType              AidenAssetType
+  settingsJson           String                 @default("{}")
+  state                  AidenJobState          @default(QUEUED)
+  coinCostPreview        Int
   /// Actual Coin-equivalent cost reported by the frontier-model provider's
   /// usage response, once real providers are wired (features/aiden/providers).
   /// Recorded for audit/margin analysis only in this phase — the reservation
@@ -1884,21 +2844,47 @@ model AidenJob {
   /// delta (releasing coinCostPreview - coinCostActual back to the wallet
   /// when the real cost is lower) is a deferred refinement, same pattern as
   /// this codebase's other "deferred: X" spots.
-  coinCostActual  Int?
+  coinCostActual         Int?
   /// Raw provider usage payload (tokens, compute units, whatever that
   /// provider's response shape is), stored as-is for audit. Null until a
   /// real (non-stub) provider is configured and actually called.
-  frontierModelUsageJson String?     @db.Text
-  reservationTxId String?
-  failureReason   String?
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  frontierModelUsageJson String?                @db.Text
+  estimatedCostCoins     BigInt                 @default(0)
+  actualCostCoins        BigInt?
+  reservationPublicRef   String?
+  reservationTxId        String?
+  provider               String                 @default("mock")
+  model                  String                 @default("aiden-mock-concept")
+  modelVersion           String                 @default("1")
+  providerRequestId      String?                @unique
+  idempotencyKey         String?                @unique
+  promptModeration       AidenPromptModeration  @default(PENDING)
+  outputModeration       AidenOutputModeration  @default(PENDING)
+  failureReason          String?
+  failureClass           AidenFailureClass?
+  attempts               Int                    @default(0)
+  maxAttempts            Int                    @default(3)
+  runAfter               DateTime               @default(now())
+  claimedAt              DateTime?
+  claimedBy              String?
+  version                Int                    @default(0)
+  outputStorageKey       String?
+  outputMime             String?
+  outputBytes            Bytes?
+  outputByteSize         Int?
+  outputWidth            Int?
+  outputHeight           Int?
+  cancelRequestedAt      DateTime?
+  createdAt              DateTime               @default(now())
+  updatedAt              DateTime               @updatedAt
 
-  user  User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  asset AidenAsset?
+  user     User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  identity KobaIdentity?  @relation(fields: [kobaIdentityId], references: [id], onDelete: SetNull)
+  asset    AidenAsset?
 
   @@index([userId, createdAt])
-  @@index([state, createdAt])
+  @@index([state, runAfter])
+  @@index([state, claimedAt])
 }
 
 model AidenAsset {
@@ -1912,6 +2898,15 @@ model AidenAsset {
   moderation       AidenModerationState  @default(PRIVATE)
   game             String
   previewLabel     String
+  storageKey       String?
+  mimeType         String?
+  byteSize         Int?
+  width            Int?
+  height           Int?
+  provider         String?
+  model            String?
+  modelVersion     String?
+  provenanceJson   String?
   /// Generated output location (image/model/map file URL). Null for
   /// CONCEPT_ONLY assets and anything created before real generation existed.
   assetUrl         String?
@@ -1934,38 +2929,392 @@ model AidenAsset {
   @@index([moderation])
 }
 
-model DevProduct {
-  id            String         @id @default(cuid())
-  publicRef     String         @unique
-  ownerUserId   String
-  kind          DevProductKind
-  name          String
-  pricing       DevPricing     @default(FREE)
-  priceCents    Int            @default(0)
-  version       String         @default("0.1.0")
-  compatibility String[]
-  scopes        String[]
-  reviewState   DevReviewState @default(DRAFT)
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+model DeveloperProfile {
+  id              String    @id @default(cuid())
+  slug            String    @unique
+  displayName     String
+  description     String    @default("") @db.Text
+  avatarUrl       String?
+  bannerUrl       String?
+  websiteUrl      String?
+  supportUrl      String?
+  privacyUrl      String?
+  termsUrl        String?
+  contactEmail    String
+  verified        Boolean   @default(false)
+  verifiedAt      DateTime?
+  suspendedAt     DateTime?
+  games           String[]
+  platforms       String[]
+  ownerUserId     String
+  kobaIdentityId  String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
-  owner    User         @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
-  installs DevInstall[]
+  owner        User                  @relation("DeveloperProfileOwner", fields: [ownerUserId], references: [id], onDelete: Cascade)
+  identity     KobaIdentity?         @relation(fields: [kobaIdentityId], references: [id], onDelete: SetNull)
+  members      DeveloperMember[]
+  applications DeveloperApplication[]
+  products     DevProduct[]
+  webhooks     DeveloperWebhookEndpoint[]
+
+  @@index([ownerUserId])
+  @@index([verified, suspendedAt])
+}
+
+model DeveloperMember {
+  id        String               @id @default(cuid())
+  profileId String
+  userId    String
+  role      DeveloperMemberRole
+  createdAt DateTime             @default(now())
+
+  profile DeveloperProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  user    User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, userId])
+  @@index([userId])
+}
+
+model DeveloperApplication {
+  id                    String                   @id @default(cuid())
+  publicRef             String                   @unique
+  profileId             String
+  name                  String
+  description           String                   @default("") @db.Text
+  logoUrl               String?
+  environment           DeveloperAppEnvironment  @default(SANDBOX)
+  status                DeveloperAppStatus       @default(ACTIVE)
+  scopes                String[]
+  redirectUris          String[]
+  productionApprovedAt  DateTime?
+  suspendedAt           DateTime?
+  createdAt             DateTime                 @default(now())
+  updatedAt             DateTime                 @updatedAt
+
+  profile DeveloperProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  apiKeys DeveloperApiKey[]
+  webhooks DeveloperWebhookEndpoint[]
+
+  @@index([profileId, environment])
+  @@index([status])
+}
+
+model DeveloperApiKey {
+  id            String                   @id @default(cuid())
+  applicationId String
+  userId        String
+  name          String
+  prefix        String                   @unique
+  secretHash    String
+  scopes        String[]
+  environment   DeveloperAppEnvironment
+  expiresAt     DateTime?
+  lastUsedAt    DateTime?
+  revokedAt     DateTime?
+  rateLimitRpm  Int                      @default(60)
+  createdAt     DateTime                 @default(now())
+
+  application DeveloperApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  user        User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId, revokedAt])
+  @@index([secretHash])
+}
+
+model DeveloperWebhookEndpoint {
+  id               String    @id @default(cuid())
+  publicRef        String    @unique
+  profileId        String
+  applicationId    String?
+  url              String
+  events           String[]
+  secretCiphertext String    @db.Text
+  secretIv         String
+  secretAuthTag    String
+  secretKeyVersion Int       @default(1)
+  secretPrefix     String
+  disabledAt       DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  profile     DeveloperProfile          @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  application DeveloperApplication?     @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+  deliveries  DeveloperWebhookDelivery[]
+
+  @@index([profileId, disabledAt])
+}
+
+model DeveloperWebhookDelivery {
+  id            String                    @id @default(cuid())
+  deliveryId    String                    @unique
+  endpointId    String
+  eventType     String
+  payloadJson   String                    @db.Text
+  payloadHash   String
+  timestamp     DateTime
+  status        DevWebhookDeliveryStatus  @default(PENDING)
+  attempts      Int                       @default(0)
+  maxAttempts   Int                       @default(6)
+  runAfter      DateTime                  @default(now())
+  lastError     String?
+  claimedAt     DateTime?
+  version       Int                       @default(0)
+  createdAt     DateTime                  @default(now())
+  updatedAt     DateTime                  @updatedAt
+
+  endpoint DeveloperWebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+
+  @@index([status, runAfter])
+}
+
+model DevProduct {
+  id                 String              @id @default(cuid())
+  publicRef          String              @unique
+  slug               String              @unique
+  ownerUserId        String
+  profileId          String?
+  kind               DevProductKind
+  category           DevProductCategory  @default(UTILITY)
+  name               String
+  shortDescription   String              @default("")
+  description        String              @default("") @db.Text
+  pricing            DevPricing          @default(FREE)
+  priceCents         Int                 @default(0)
+  priceCoins         BigInt              @default(0)
+  version            String              @default("0.1.0")
+  compatibility      String[]
+  scopes             String[]
+  games              String[]
+  operatingSystems   String[]
+  serverPlatforms    String[]
+  screenshotsJson    String              @default("[]")
+  iconUrl            String?
+  docsUrl            String?
+  supportUrl         String?
+  privacyUrl         String?
+  changelog          String              @default("") @db.Text
+  reviewState        DevReviewState      @default(DRAFT)
+  publishedAt        DateTime?
+  suspendedAt        DateTime?
+  kobaOfficial       Boolean             @default(false)
+  ratingSum          Int                 @default(0)
+  ratingCount        Int                 @default(0)
+  downloadCount      Int                 @default(0)
+  moderationNote     String?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  owner         User                 @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+  profile       DeveloperProfile?    @relation(fields: [profileId], references: [id], onDelete: SetNull)
+  installs      DevInstall[]
+  versions      DevProductVersion[]
+  entitlements  DevEntitlement[]
+  purchases     DevPurchase[]
+  reviews       DevProductReview[]
 
   @@index([ownerUserId])
   @@index([kind, reviewState])
+  @@index([profileId, reviewState])
+  @@index([category, reviewState])
+  @@index([slug])
 }
 
 model DevInstall {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   productId String
   userId    String
   revokedAt DateTime?
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
 
   product DevProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
   user    User       @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([productId, userId])
   @@index([userId])
+}
+
+model DevProductVersion {
+  id              String            @id @default(cuid())
+  publicRef       String            @unique
+  productId       String
+  semver          String
+  changelog       String            @default("") @db.Text
+  channel         DevReleaseChannel @default(STABLE)
+  gameVersions    String[]
+  platforms       String[]
+  requirements    String            @default("")
+  reviewState     DevReviewState    @default(DRAFT)
+  releasedAt      DateTime?
+  deprecatedAt    DateTime?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  product   DevProduct           @relation(fields: [productId], references: [id], onDelete: Cascade)
+  artifacts DevProductArtifact[]
+
+  @@unique([productId, semver])
+  @@index([productId, reviewState])
+}
+
+model DevProductArtifact {
+  id            String            @id @default(cuid())
+  versionId     String
+  storageKey    String
+  sha256        String
+  byteSize      Int
+  mimeType      String
+  filename      String
+  status        DevArtifactStatus @default(QUARANTINE)
+  bytes         Bytes?
+  createdAt     DateTime          @default(now())
+
+  version DevProductVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+
+  @@index([versionId, status])
+}
+
+model DevEntitlement {
+  id        String    @id @default(cuid())
+  userId    String
+  productId String
+  source    String
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  user    User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product DevProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@index([productId])
+}
+
+model DevPurchase {
+  id                     String            @id @default(cuid())
+  publicRef              String            @unique
+  idempotencyKey         String            @unique
+  buyerUserId            String
+  productId              String
+  priceCoins             BigInt
+  feeCoins               BigInt
+  sellerCoins            BigInt
+  commissionBps          Int
+  status                 DevPurchaseStatus @default(PAID)
+  captureTxRef           String?
+  sellerTxRef            String?
+  refundTxRef            String?
+  refundReason           String?
+  proceedsUnrecoverable  Boolean           @default(false)
+  createdAt              DateTime          @default(now())
+  updatedAt              DateTime          @updatedAt
+
+  buyer   User       @relation(fields: [buyerUserId], references: [id], onDelete: Cascade)
+  product DevProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([buyerUserId, createdAt])
+  @@index([productId, status])
+}
+
+model DevProductReview {
+  id        String   @id @default(cuid())
+  productId String
+  userId    String
+  rating    Int
+  body      String   @default("") @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  product DevProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user    User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, userId])
+  @@index([productId])
+}
+
+// ---------------------------------------------------------------------------
+// Staff MFA and privileged session security (Phase 15C)
+// ---------------------------------------------------------------------------
+
+enum StaffMfaFactorStatus {
+  PENDING
+  ACTIVE
+}
+
+/// One TOTP factor per staff user (MVP). The secret is stored with
+/// AES-256-GCM (purpose-separated staff MFA key) — never plaintext.
+model StaffMfaFactor {
+  id                  String               @id @default(cuid())
+  userId              String               @unique
+  status              StaffMfaFactorStatus @default(PENDING)
+  secretCiphertext    String
+  secretIv            String
+  secretAuthTag       String
+  keyVersion          Int
+  /// Highest TOTP time step already accepted — blocks code replay.
+  lastAcceptedStep    BigInt?
+  /// PENDING enrollments expire; abandoned secrets become unusable.
+  enrollmentExpiresAt DateTime?
+  confirmedAt         DateTime?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+
+  user          User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recoveryCodes StaffRecoveryCode[]
+
+  @@index([status])
+}
+
+/// One-time recovery codes. Only SHA-256 hashes are stored.
+model StaffRecoveryCode {
+  id        String    @id @default(cuid())
+  factorId  String
+  codeHash  String    @unique
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  factor StaffMfaFactor @relation(fields: [factorId], references: [id], onDelete: Cascade)
+
+  @@index([factorId])
+}
+
+/// Short-lived, single-use MFA-pending transaction issued after password
+/// authentication. Stores only a token hash; invalidated on repeated failures.
+model StaffMfaChallenge {
+  id         String    @id @default(cuid())
+  tokenHash  String    @unique
+  userId     String
+  purpose    String    @default("staff-login")
+  attempts   Int       @default(0)
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+/// AAL2 staff elevation record backing the HttpOnly elevation cookie.
+/// Stores only a token hash. Revocable, idle- and absolute-expiring.
+model StaffSession {
+  id            String    @id @default(cuid())
+  tokenHash     String    @unique
+  userId        String
+  createdAt     DateTime  @default(now())
+  lastSeenAt    DateTime  @default(now())
+  /// Most recent successful MFA verification — drives step-up freshness.
+  lastMfaAt     DateTime  @default(now())
+  expiresAt     DateTime
+  revokedAt     DateTime?
+  revokedReason String?   @db.VarChar(64)
+  /// Privacy: only a salted hash of the client IP is stored.
+  ipHash        String?   @db.VarChar(64)
+  /// Sanitized, truncated user-agent for the sessions dashboard.
+  userAgent     String?   @db.VarChar(160)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
 }

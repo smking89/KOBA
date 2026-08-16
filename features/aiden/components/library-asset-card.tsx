@@ -6,7 +6,11 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { StatusPill } from "@/components/koba/status-pill";
 import { cn } from "@/lib/utils";
-import { aidenAssetTypeLabel, aidenTechnicalLabel, type AidenAssetView } from "@/features/aiden/lib/types";
+import {
+  aidenAssetTypeLabel,
+  aidenTechnicalLabel,
+  type AidenAssetView,
+} from "@/features/aiden/lib/types";
 import { PublishAssetForm } from "@/features/aiden/components/publish-asset-form";
 
 type CatalogOption = { slug: string; name: string };
@@ -52,10 +56,7 @@ export function LibraryAssetCard({
           </Button>
         )}
         {publishedSlug ? (
-          <Link
-            href={`/market/${publishedSlug}`}
-            className={cn(buttonVariants({ size: "sm" }))}
-          >
+          <Link href={`/market/${publishedSlug}`} className={cn(buttonVariants({ size: "sm" }))}>
             View listing
           </Link>
         ) : (

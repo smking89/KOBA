@@ -92,7 +92,14 @@ async function runOfficialModel(
   // Prefer: wait can itself time out server-side and return a
   // still-processing prediction — poll the same id a bit longer before
   // giving up (bounded: ~30s more, 2s interval).
-  for (let attempt = 0; attempt < 15 && prediction.status !== "succeeded" && prediction.status !== "failed" && prediction.status !== "canceled"; attempt += 1) {
+  for (
+    let attempt = 0;
+    attempt < 15 &&
+    prediction.status !== "succeeded" &&
+    prediction.status !== "failed" &&
+    prediction.status !== "canceled";
+    attempt += 1
+  ) {
     await new Promise((resolve) => setTimeout(resolve, 2000));
     const pollResponse = await fetch(prediction.urls.get, {
       headers: { Authorization: `Bearer ${token}` },
@@ -105,7 +112,9 @@ async function runOfficialModel(
 
   if (prediction.status !== "succeeded") {
     throw new ReplicateGenerationError(
-      prediction.error ? `Replicate generation failed: ${prediction.error}` : "Replicate generation timed out.",
+      prediction.error
+        ? `Replicate generation failed: ${prediction.error}`
+        : "Replicate generation timed out.",
     );
   }
 
@@ -131,7 +140,8 @@ export async function generateImage(input: {
   }
 
   const modelId: ModelId = input.model ?? "SDXL_IMAGE";
-  const modelSlug = REPLICATE_MODEL_SLUG[modelId === "KANDINSKY_IMAGE" ? "KANDINSKY_IMAGE" : "SDXL_IMAGE"];
+  const modelSlug =
+    REPLICATE_MODEL_SLUG[modelId === "KANDINSKY_IMAGE" ? "KANDINSKY_IMAGE" : "SDXL_IMAGE"];
   const prediction = await runOfficialModel(modelSlug, { prompt: input.prompt });
 
   const assetUrl = firstOutputUrl(prediction.output);
@@ -141,9 +151,7 @@ export async function generateImage(input: {
 
   const predictTimeSeconds = prediction.metrics?.predict_time ?? null;
   const actualCostUsd =
-    predictTimeSeconds !== null
-      ? predictTimeSeconds * L40S_RATE_USD_PER_SECOND
-      : FALLBACK_COST_USD;
+    predictTimeSeconds !== null ? predictTimeSeconds * L40S_RATE_USD_PER_SECOND : FALLBACK_COST_USD;
 
   return {
     assetUrl,

@@ -6,8 +6,12 @@ export const DEV_REVIEW_STATES = [
   "SUBMITTED",
   "IN_REVIEW",
   "SECURITY_REVIEW",
+  "CHANGES_REQUESTED",
   "APPROVED",
   "REJECTED",
+  "PUBLISHED",
+  "SUSPENDED",
+  "ARCHIVED",
   "REVOKED",
 ] as const;
 
@@ -17,7 +21,7 @@ export type DevProductView = {
   publicRef: string;
   kind: DevProductKind;
   name: string;
-  pricing: "FREE" | "PAID";
+  pricing: "FREE" | "PAID" | "COMING_SOON";
   priceLabel: string;
   version: string;
   compatibility: string[];
@@ -81,6 +85,14 @@ export function devReviewLabel(state: DevReviewState): string {
       return "Rejected";
     case "REVOKED":
       return "Revoked";
+    case "CHANGES_REQUESTED":
+      return "Changes requested";
+    case "PUBLISHED":
+      return "Published";
+    case "SUSPENDED":
+      return "Suspended";
+    case "ARCHIVED":
+      return "Archived";
     default:
       return state;
   }

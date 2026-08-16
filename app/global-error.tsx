@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { Button } from "@/components/ui/button";
+import { isBrowserSentryEnabled } from "@/lib/observability/sentry-public";
 
 export default function GlobalError({
   error,
@@ -11,20 +11,21 @@ export default function GlobalError({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error(error);
+    if (!isBrowserSentryEnabled()) return;
+    void import("@sentry/nextjs").then((Sentry) => {
+      Sentry.captureException(error);
+    });
   }, [error]);
 
   return (
     <html lang="en">
-      <body className="bg-background text-foreground grid min-h-dvh place-items-center p-6">
-        <div className="max-w-md space-y-4 text-center">
-          <h1 className="text-2xl font-semibold">Something went wrong</h1>
-          <p className="text-sm text-muted">
-            An unexpected error occurred. You can try again. If this keeps happening, contact
-            support.
-          </p>
-          <Button onClick={reset}>Try again</Button>
-        </div>
+      <body>
+        <h1>Something went wrong</h1>
+        <p>An unexpected error occurred. Try again, or return home.</p>
+        {error.digest ? <p>Reference: {error.digest}</p> : null}
+        <button type="button" onClick={() => reset()}>
+          Try again
+        </button>
       </body>
     </html>
   );

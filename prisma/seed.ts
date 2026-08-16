@@ -5,6 +5,7 @@ import { Pool } from "pg";
 import { PrismaClient } from "../lib/generated/prisma/client";
 import { generateKobaIdCode } from "../features/koba-id/lib/format";
 import { RARITY_RANK } from "../features/marketplace/lib/catalog";
+import { assertSeedAllowed } from "../lib/security/seed-guard";
 
 const connectionString =
   process.env.DATABASE_URL ?? "postgresql://koba:koba@localhost:5432/koba?schema=public";
@@ -24,9 +25,24 @@ const games = [
     policyNote:
       'Facepunch\'s own legal docs: "Can I sell a Mod I own? Yes" — server cosmetics explicitly permitted too.',
   },
+  { slug: "sbox", name: "S&Box", contentPolicy: "FULL" as const, policyNote: null },
   {
     slug: "minecraft",
     name: "Minecraft",
+    contentPolicy: "SKINS_ONLY" as const,
+    policyNote:
+      "EULA bans currency-for-cash/pay-to-win; cosmetics/social perks are the sanctioned path.",
+  },
+  {
+    slug: "minecraft-java",
+    name: "Minecraft Java",
+    contentPolicy: "SKINS_ONLY" as const,
+    policyNote:
+      "EULA bans currency-for-cash/pay-to-win; cosmetics/social perks are the sanctioned path.",
+  },
+  {
+    slug: "minecraft-bedrock",
+    name: "Minecraft Bedrock",
     contentPolicy: "SKINS_ONLY" as const,
     policyNote:
       "EULA bans currency-for-cash/pay-to-win; cosmetics/social perks are the sanctioned path.",
@@ -46,8 +62,29 @@ const games = [
       "Wildcard's own CurseForge moderation guidelines mandate Tebex-wallet-only payout for monetized mods — conflicts with KOBA's Stripe Connect architecture; no compliant path found.",
   },
   {
+    slug: "ark-survival-evolved",
+    name: "ARK: Survival Evolved",
+    contentPolicy: "EXCLUDED" as const,
+    policyNote:
+      "Wildcard's own CurseForge moderation guidelines mandate Tebex-wallet-only payout for monetized mods — conflicts with KOBA's Stripe Connect architecture; no compliant path found.",
+  },
+  {
+    slug: "ark-console",
+    name: "ARK Console Editions",
+    contentPolicy: "EXCLUDED" as const,
+    policyNote:
+      "Wildcard's own CurseForge moderation guidelines mandate Tebex-wallet-only payout for monetized mods — conflicts with KOBA's Stripe Connect architecture; no compliant path found.",
+  },
+  {
     slug: "conan-exiles",
     name: "Conan Exiles",
+    contentPolicy: "EXCLUDED" as const,
+    policyNote:
+      "Funcom EULA explicitly bans selling Virtual Goods/Game Currency and secondary markets; no cosmetics carve-out found.",
+  },
+  {
+    slug: "conan-exiles-console",
+    name: "Conan Exiles Console",
     contentPolicy: "EXCLUDED" as const,
     policyNote:
       "Funcom EULA explicitly bans selling Virtual Goods/Game Currency and secondary markets; no cosmetics carve-out found.",
@@ -58,6 +95,34 @@ const games = [
     contentPolicy: "EXCLUDED" as const,
     policyNote:
       "Official Iron Gate developer statement directly opposes paid mods; no server-cosmetics system exists as a fallback.",
+  },
+  {
+    slug: "7-days-to-die",
+    name: "7 Days to Die",
+    contentPolicy: "FULL" as const,
+    policyNote: null,
+  },
+  {
+    slug: "7-days-to-die-console",
+    name: "7 Days to Die Console",
+    contentPolicy: "FULL" as const,
+    policyNote: null,
+  },
+  { slug: "unturned", name: "Unturned", contentPolicy: "FULL" as const, policyNote: null },
+  {
+    slug: "project-zomboid",
+    name: "Project Zomboid",
+    contentPolicy: "FULL" as const,
+    policyNote: null,
+  },
+  { slug: "eco", name: "Eco", contentPolicy: "FULL" as const, policyNote: null },
+  { slug: "terraria", name: "Terraria", contentPolicy: "FULL" as const, policyNote: null },
+  { slug: "starbound", name: "Starbound", contentPolicy: "FULL" as const, policyNote: null },
+  {
+    slug: "rust-console",
+    name: "Rust Console Edition",
+    contentPolicy: "FULL" as const,
+    policyNote: null,
   },
 ] as const;
 
@@ -71,6 +136,10 @@ const categories = [
 ] as const;
 
 async function main() {
+  // KOBA-SEC-001: seeding plants development fixtures (including a local
+  // staff login) and must never run against production data.
+  assertSeedAllowed();
+
   for (const game of games) {
     await prisma.game.upsert({
       where: { slug: game.slug },
@@ -574,11 +643,22 @@ async function main() {
     },
   });
 
-  const staffPasswordHash = await bcrypt.hash("KobaStaff1!", 12);
+  // KOBA-SEC-001: never reseed a known constant password and never reset an
+  // existing staff password. New local installs get SEED_STAFF_PASSWORD or a
+  // random password that is printed exactly once below.
+  // No StaffMfaFactor / recovery codes are seeded. First privileged login
+  // requires authenticator enrollment at /settings/security/mfa.
+  const existingStaff = await prisma.user.findUnique({
+    where: { email: "staff@koba.local" },
+    select: { id: true },
+  });
+  const staffPassword = existingStaff
+    ? null
+    : (process.env.SEED_STAFF_PASSWORD?.trim() ?? "") || randomBytes(12).toString("base64url");
+  const staffPasswordHash = staffPassword ? await bcrypt.hash(staffPassword, 12) : null;
   const staff = await prisma.user.upsert({
     where: { email: "staff@koba.local" },
     update: {
-      passwordHash: staffPasswordHash,
       emailVerified: new Date(),
     },
     create: {
@@ -828,7 +908,16 @@ async function main() {
   console.info(
     "KOBA shops, catalog, auctions, groups, LFG, social, messages, and staff queues seeded.",
   );
-  console.info("Local staff login: staff@koba.local / KobaStaff1!");
+  if (staffPassword) {
+    console.info(
+      `Local staff login: staff@koba.local / ${staffPassword} (printed once — save it now)`,
+    );
+    console.info(
+      "Staff MFA is not seeded. After password login, enroll an authenticator at /settings/security/mfa.",
+    );
+  } else {
+    console.info("Local staff login: staff@koba.local (existing password left untouched)");
+  }
 
   // Development-only Coin wallets (ledger-compatible, idempotent)
   if (process.env.NODE_ENV !== "production") {

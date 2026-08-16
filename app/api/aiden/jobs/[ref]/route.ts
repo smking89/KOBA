@@ -1,39 +1,51 @@
-import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { clientIp } from "@/lib/http/client-ip";
 import { rateLimit } from "@/lib/security/rate-limit";
-import { jsonAidenError } from "@/features/aiden/lib/http";
-import { assertAidenBusinessAccess } from "@/features/aiden/lib/require-business";
+import { jsonAiden, jsonAidenError } from "@/features/aiden/lib/http";
 import { aidenJobActionSchema } from "@/features/aiden/schemas/aiden.schemas";
-import { cancelJob } from "@/features/aiden/services/aiden.service";
+import { cancelJob, getJob } from "@/features/aiden/services/aiden.service";
+
+export const dynamic = "force-dynamic";
+
+export async function GET(_request: Request, context: { params: Promise<{ ref: string }> }) {
+  const session = await auth();
+  if (!session?.user.id) {
+    return jsonAiden({ error: "Unauthorized." }, 401);
+  }
+  const { ref } = await context.params;
+  try {
+    return jsonAiden(await getJob(session.user.id, ref));
+  } catch (error) {
+    return jsonAidenError(error, "Could not load Aiden job.");
+  }
+}
 
 export async function PATCH(request: Request, context: { params: Promise<{ ref: string }> }) {
   const session = await auth();
   if (!session?.user.id) {
-    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    return jsonAiden({ error: "Unauthorized." }, 401);
   }
   const limited = await rateLimit(`aiden-cancel:${session.user.id}`, 20, 15 * 60 * 1000);
   if (!limited.success) {
-    return NextResponse.json({ error: "Too many cancel attempts." }, { status: 429 });
+    return jsonAiden({ error: "Too many cancel attempts." }, 429);
   }
   let body: unknown;
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
+    return jsonAiden({ error: "Invalid JSON body." }, 400);
   }
   const parsed = aidenJobActionSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid job action." }, { status: 400 });
+    return jsonAiden({ error: "Invalid job action." }, 400);
   }
   const { ref } = await context.params;
   try {
-    await assertAidenBusinessAccess(session.user.id);
     if (parsed.data.action === "cancel") {
       const job = await cancelJob(session.user.id, ref, clientIp(request));
-      return NextResponse.json(job);
+      return jsonAiden(job);
     }
-    return NextResponse.json({ error: "Unsupported action." }, { status: 400 });
+    return jsonAiden({ error: "Unsupported action." }, 400);
   } catch (error) {
     return jsonAidenError(error, "Could not update Aiden job.");
   }

@@ -5,15 +5,15 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import type { ShopPromoConfig } from "@/lib/generated/prisma/client";
+import type { PromoPayoutType, ShopPromoConfig } from "@/lib/generated/prisma/client";
 
 export function ShopPromoForm({ promoConfig }: { promoConfig: ShopPromoConfig | null }) {
   const router = useRouter();
   const [influencerEligible, setInfluencerEligible] = useState(
     promoConfig?.influencerEligible ?? false,
   );
-  const [payoutType, setPayoutType] = useState<"PERCENT" | "FIXED">(
-    promoConfig?.payoutType ?? "PERCENT",
+  const [payoutType, setPayoutType] = useState<PromoPayoutType>(
+    promoConfig?.payoutType ?? "PERCENT_BPS",
   );
   const [payoutValue, setPayoutValue] = useState(String(promoConfig?.payoutValue ?? 0));
   const [busy, setBusy] = useState(false);
@@ -66,12 +66,12 @@ export function ShopPromoForm({ promoConfig }: { promoConfig: ShopPromoConfig | 
         <div className="flex flex-wrap items-center gap-2">
           <select
             value={payoutType}
-            onChange={(event) => setPayoutType(event.target.value as "PERCENT" | "FIXED")}
+            onChange={(event) => setPayoutType(event.target.value as PromoPayoutType)}
             aria-label="Payout type"
             className="h-10 rounded-md border border-border bg-surface-2 px-3 text-sm"
           >
-            <option value="PERCENT">Percent (basis points)</option>
-            <option value="FIXED">Fixed (cents)</option>
+            <option value="PERCENT_BPS">Percent (basis points)</option>
+            <option value="FIXED_CENTS">Fixed (cents)</option>
           </select>
           <Input
             value={payoutValue}
@@ -82,7 +82,7 @@ export function ShopPromoForm({ promoConfig }: { promoConfig: ShopPromoConfig | 
             className="w-40"
           />
           <span className="text-xs text-muted">
-            {payoutType === "PERCENT" ? "0–10000 = 0%–100%" : "cents"}
+            {payoutType === "PERCENT_BPS" ? "0–10000 = 0%–100%" : "cents"}
           </span>
         </div>
         <div className="flex items-center gap-3">

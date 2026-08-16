@@ -1,7 +1,10 @@
 import { AuditAction, type PlatformFunctionKey } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/db";
 import { writeAuditLog } from "@/features/auth/services/audit-log.service";
-import { canManagePlatformFunctions, PLATFORM_FUNCTIONS } from "@/features/platform-control/lib/functions";
+import {
+  canManagePlatformFunctions,
+  PLATFORM_FUNCTIONS,
+} from "@/features/platform-control/lib/functions";
 
 export class PlatformControlError extends Error {
   constructor(
@@ -78,7 +81,10 @@ export async function setPlatformFunctionEnabled(
 ): Promise<PlatformFunctionState> {
   const actorTypes = await loadActorTypes(actorUserId);
   if (!canManagePlatformFunctions(actorTypes)) {
-    throw new PlatformControlError("Only KOBA Superadmin can control platform functions.", "FORBIDDEN");
+    throw new PlatformControlError(
+      "Only KOBA Superadmin can control platform functions.",
+      "FORBIDDEN",
+    );
   }
 
   const descriptor = PLATFORM_FUNCTIONS.find((fn) => fn.key === key);
@@ -94,7 +100,9 @@ export async function setPlatformFunctionEnabled(
 
   await writeAuditLog({
     actorUserId,
-    action: enabled ? AuditAction.PLATFORM_FUNCTION_ENABLED : AuditAction.PLATFORM_FUNCTION_DISABLED,
+    action: enabled
+      ? AuditAction.PLATFORM_FUNCTION_ENABLED
+      : AuditAction.PLATFORM_FUNCTION_DISABLED,
     targetType: "PlatformFunctionFlag",
     targetId: key,
     metadata: { key, enabled, note: note ?? null },

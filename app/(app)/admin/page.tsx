@@ -3,32 +3,50 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { DisputedOrdersPanel } from "@/features/admin/components/disputed-orders-panel";
 import { IssueStaffForm } from "@/features/admin/components/issue-staff-form";
+import { PendingAidenPanel } from "@/features/admin/components/pending-aiden-panel";
+import { PendingDeveloperProductsPanel } from "@/features/admin/components/pending-developer-products-panel";
+import { PendingPromotionsPanel } from "@/features/admin/components/pending-promotions-panel";
 import { PendingProductsPanel } from "@/features/admin/components/pending-products-panel";
+import { PendingServersPanel } from "@/features/admin/components/pending-servers-panel";
 import { PendingShopsPanel } from "@/features/admin/components/pending-shops-panel";
 import { ReportsPanel } from "@/features/admin/components/reports-panel";
 import { StaffRefundForm } from "@/features/admin/components/staff-refund-form";
+import { PlusSubscriptionsPanel } from "@/features/admin/components/plus-subscriptions-panel";
 import {
   canIssueStaffRole,
   canStaffApproveListing,
   canStaffModerateContent,
   canStaffRefund,
   canStaffVerifyShop,
+  isAnyStaff,
 } from "@/features/admin/lib/access";
 import {
   getAdminOverview,
   listDisputedOrders,
   listOpenReports,
+  listPendingAidenAssets,
   listPendingProducts,
+  listPendingServers,
   listPendingShops,
 } from "@/features/admin/services/admin.service";
+import { listPendingDeveloperProducts } from "@/features/developers/services/moderation.service";
+import { listStaffPromotionQueue } from "@/features/promotions/services/moderation.service";
 import { getAccountSnapshot } from "@/features/accounts/services/account.service";
 import { isStaffAccountType } from "@/features/koba-id/lib/format";
 import { canManagePlatformFunctions } from "@/features/platform-control/lib/functions";
 import { listPlatformFunctions } from "@/features/platform-control/services/platform-function.service";
 import { PlatformFunctionsPanel } from "@/features/platform-control/components/platform-functions-panel";
 import { auth } from "@/lib/auth";
+import {
+  challengePath,
+  enrollmentPath,
+  readElevationCookie,
+} from "@/features/staff-mfa/lib/assurance";
+import { userHasActiveStaffMfa } from "@/features/staff-mfa/lib/staff-user";
+import { getActiveElevation } from "@/features/staff-mfa/services/staff-session.service";
 
 export const metadata = { title: "Staff" };
+export const dynamic = "force-dynamic";
 
 export default async function AdminPage() {
   const session = await auth();
@@ -49,13 +67,47 @@ export default async function AdminPage() {
     redirect("/enter");
   }
 
+  const enrolled = await userHasActiveStaffMfa(session.user.id);
+  if (!enrolled) {
+    redirect(enrollmentPath());
+  }
+  const raw = await readElevationCookie();
+  const elevation = raw ? await getActiveElevation(session.user.id, raw) : null;
+  if (!elevation) {
+    redirect(challengePath("/admin"));
+  }
+
   const actorTypes = snapshot.identities.map((identity) => identity.accountType);
   const overview = await getAdminOverview(session.user.id);
 
-  const [products, shops, reports, disputedOrders] = await Promise.all([
+  const [
+    products,
+    shops,
+    reports,
+    pendingServers,
+    pendingAiden,
+    pendingDev,
+    promotions,
+    disputedOrders,
+  ] = await Promise.all([
     canStaffApproveListing(actorTypes) ? listPendingProducts(session.user.id) : Promise.resolve([]),
     canStaffVerifyShop(actorTypes) ? listPendingShops(session.user.id) : Promise.resolve([]),
     canStaffModerateContent(actorTypes) ? listOpenReports(session.user.id) : Promise.resolve([]),
+    isAnyStaff(actorTypes) ? listPendingServers(session.user.id) : Promise.resolve([]),
+    canStaffModerateContent(actorTypes)
+      ? listPendingAidenAssets(session.user.id)
+      : Promise.resolve([]),
+    canStaffApproveListing(actorTypes) || canStaffModerateContent(actorTypes)
+      ? listPendingDeveloperProducts(session.user.id).catch(() => [])
+      : Promise.resolve([]),
+    isAnyStaff(actorTypes)
+      ? listStaffPromotionQueue().catch(() => ({
+          campaigns: [],
+          ads: [],
+          influencers: [],
+          commissions: [],
+        }))
+      : Promise.resolve({ campaigns: [], ads: [], influencers: [], commissions: [] }),
     canStaffRefund(actorTypes) ? listDisputedOrders(session.user.id) : Promise.resolve([]),
   ]);
 
@@ -106,6 +158,18 @@ export default async function AdminPage() {
           </CardTitle>
           <CardDescription>Paid / fulfilled orders</CardDescription>
         </Card>
+        <Card>
+          <CardTitle className="text-2xl tabular-nums">
+            {overview.counts.pendingAidenAssets}
+          </CardTitle>
+          <CardDescription>Aiden review queue</CardDescription>
+        </Card>
+        <Card>
+          <CardTitle className="text-2xl tabular-nums">
+            {overview.counts.pendingDevProducts}
+          </CardTitle>
+          <CardDescription>Developer product queue</CardDescription>
+        </Card>
       </div>
 
       <Card>
@@ -132,6 +196,81 @@ export default async function AdminPage() {
             <PendingShopsPanel shops={shops} />
           ) : (
             <p className="text-sm text-muted">Moderators cannot verify shops.</p>
+          )}
+        </div>
+      </Card>
+
+      <Card>
+        <CardTitle>Server directory queue</CardTitle>
+        <CardDescription>
+          Approve or reject Business/Influencer server submissions (staff manual review).
+        </CardDescription>
+        <div className="mt-4">
+          {isAnyStaff(actorTypes) ? (
+            <PendingServersPanel servers={pendingServers} />
+          ) : (
+            <p className="text-sm text-muted">Staff only.</p>
+          )}
+        </div>
+      </Card>
+
+      <Card>
+        <CardTitle>Aiden review queue</CardTitle>
+        <CardDescription>
+          Owner-submitted concept assets. Approval never publishes a listing or marks output as
+          game-ready. Prompts stay private.
+        </CardDescription>
+        <div className="mt-4">
+          {canStaffModerateContent(actorTypes) ? (
+            <PendingAidenPanel assets={pendingAiden} />
+          ) : (
+            <p className="text-sm text-muted">Your staff role cannot moderate Aiden assets.</p>
+          )}
+        </div>
+      </Card>
+
+      <Card>
+        <CardTitle>Developer marketplace queue</CardTitle>
+        <CardDescription>
+          Review publisher submissions. Approval does not execute uploaded code. Users cannot
+          self-verify.
+        </CardDescription>
+        <div className="mt-4">
+          {canStaffApproveListing(actorTypes) || canStaffModerateContent(actorTypes) ? (
+            <PendingDeveloperProductsPanel
+              products={pendingDev.map((product) => ({
+                publicRef: product.publicRef,
+                slug: product.slug,
+                name: product.name,
+                reviewState: product.reviewState,
+                category: product.category,
+                publisher: product.profile?.displayName ?? null,
+                publisherSlug: product.profile?.slug ?? null,
+                versions: product.versions.map((version) => ({
+                  publicRef: version.publicRef,
+                  semver: version.semver,
+                  reviewState: version.reviewState,
+                  artifacts: version.artifacts,
+                })),
+              }))}
+            />
+          ) : (
+            <p className="text-sm text-muted">Your staff role cannot review developer products.</p>
+          )}
+        </div>
+      </Card>
+
+      <Card>
+        <CardTitle>Influencer promotions</CardTitle>
+        <CardDescription>
+          Verify creators, moderate affiliate campaigns and sponsored ads. Influencers cannot
+          self-verify. Ad targeting is contextual only.
+        </CardDescription>
+        <div className="mt-4">
+          {isAnyStaff(actorTypes) ? (
+            <PendingPromotionsPanel queue={promotions} />
+          ) : (
+            <p className="text-sm text-muted">Staff access required.</p>
           )}
         </div>
       </Card>
@@ -175,6 +314,19 @@ export default async function AdminPage() {
           </div>
         </Card>
       </div>
+
+      {isAnyStaff(actorTypes) ? (
+        <Card>
+          <CardTitle>KOBA Plus subscriptions</CardTitle>
+          <CardDescription>
+            Search and reconcile from Stripe. Promotional access is a separate audited grant — never
+            mark Active here.
+          </CardDescription>
+          <div className="mt-4">
+            <PlusSubscriptionsPanel />
+          </div>
+        </Card>
+      ) : null}
 
       {canManageFunctions ? (
         <Card>

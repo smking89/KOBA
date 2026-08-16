@@ -119,9 +119,7 @@ export function PublishAssetForm({
         <select
           className="h-9 rounded-md border border-border bg-surface px-2 text-sm"
           value={listingType}
-          onChange={(event) =>
-            setListingType(event.target.value as (typeof LISTING_TYPES)[number])
-          }
+          onChange={(event) => setListingType(event.target.value as (typeof LISTING_TYPES)[number])}
         >
           {LISTING_TYPES.map((type) => (
             <option key={type} value={type}>

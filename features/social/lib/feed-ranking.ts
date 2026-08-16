@@ -70,14 +70,21 @@ export function assertFeedRankingWeightsAreSane(): void {
 
 /** Exponential decay: 1.0 at age 0, 0.5 at exactly the configured
  * half-life, asymptotically approaching 0 for very old posts. */
-export function recencyScore(ageMs: number, halfLifeHours: number = FEED_RANKING_WEIGHTS.recencyHalfLifeHours): number {
+export function recencyScore(
+  ageMs: number,
+  halfLifeHours: number = FEED_RANKING_WEIGHTS.recencyHalfLifeHours,
+): number {
   const ageHours = Math.max(0, ageMs) / (60 * 60 * 1000);
   return Math.pow(0.5, ageHours / halfLifeHours);
 }
 
 /** log1p-scaled so a handful of reactions doesn't already saturate the
  * signal, but returns are diminishing rather than unbounded. */
-export function engagementScore(input: { reactions: number; comments: number; saves: number }): number {
+export function engagementScore(input: {
+  reactions: number;
+  comments: number;
+  saves: number;
+}): number {
   const w = FEED_RANKING_WEIGHTS;
   const weighted =
     Math.max(0, input.reactions) * w.reactionWeight +

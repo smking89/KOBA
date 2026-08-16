@@ -1,25 +1,23 @@
 /**
- * KOBA brand tokens — fire red/orange/gold gaming identity (rebrand,
- * 2026-08-16, replacing the earlier neon lime/mint identity). Names kept
- * as-is (neonLime/neonMint) to match app/globals.css's CSS variables of
- * the same name — only the values moved.
+ * KOBA brand tokens — neon lime on Discord-like layered charcoal.
  * Prefer these semantic names over raw hex in components.
  */
 export const kobaTokens = {
-  background: "#050505",
-  surface: "#0D0F0E",
-  surfaceSecondary: "#141816",
-  text: "#F5FFF8",
-  textMuted: "#98A69D",
-  neonLime: "#FF5A1F",
-  electricGreen: "#35FF52",
-  neonMint: "#FFB627",
-  border: "rgba(255, 90, 31, 0.18)",
-  error: "#FF4D5E",
-  warning: "#FFB020",
-  success: "#35FF52",
-  brandGradient: "linear-gradient(135deg, #F5341E 0%, #FF7A1A 50%, #FFC02E 100%)",
-  themeColor: "#FF5A1F",
+  background: "#0B0C0B",
+  surface: "#161916",
+  surfaceSecondary: "#1C201E",
+  surfaceTertiary: "#232826",
+  text: "#F2F7F3",
+  textMuted: "#8B958E",
+  neonLime: "#B8FF00",
+  electricGreen: "#3BA55D",
+  neonMint: "#00F5A0",
+  border: "rgba(255, 255, 255, 0.06)",
+  error: "#ED4245",
+  warning: "#FAA81A",
+  success: "#3BA55D",
+  brandGradient: "linear-gradient(135deg, #C6FF00 0%, #55FF35 48%, #00F5A0 100%)",
+  themeColor: "#B8FF00",
 } as const;
 
 export type KobaTokenKey = keyof typeof kobaTokens;

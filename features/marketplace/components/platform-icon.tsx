@@ -12,7 +12,13 @@ const BRAND_ICON: Partial<Record<GamePlatform, IconType>> = {
   PLAYSTATION: SiPlaystation,
 };
 
-export function PlatformIcon({ platform, className }: { platform: GamePlatform; className?: string }) {
+export function PlatformIcon({
+  platform,
+  className,
+}: {
+  platform: GamePlatform;
+  className?: string;
+}) {
   const Icon = BRAND_ICON[platform] ?? Gamepad2;
   return <Icon className={className} aria-label={PLATFORM_LABEL[platform]} />;
 }

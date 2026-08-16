@@ -1,11 +1,20 @@
+import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 const tones = {
-  neutral: "border-border text-muted",
-  success: "border-electric-green/40 text-electric-green",
-  warning: "border-warning/40 text-warning",
-  danger: "border-destructive/40 text-destructive",
-  accent: "border-neon-lime/40 text-neon-lime",
+  neutral: "border-white/10 bg-white/[0.06] text-muted",
+  success: "border-success/25 bg-success/[0.1] text-success",
+  warning: "border-warning/25 bg-warning/[0.1] text-warning",
+  danger: "border-destructive/25 bg-destructive/[0.1] text-destructive",
+  accent: "border-neon-lime/25 bg-neon-lime/[0.08] text-neon-lime",
+} as const;
+
+const dots = {
+  neutral: "bg-muted",
+  success: "bg-success shadow-[0_0_6px_var(--color-success)]",
+  warning: "bg-warning",
+  danger: "bg-destructive",
+  accent: "bg-neon-lime shadow-[0_0_6px_var(--color-neon-lime)]",
 } as const;
 
 export function StatusPill({
@@ -13,19 +22,20 @@ export function StatusPill({
   tone = "neutral",
   className,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
   tone?: keyof typeof tones;
   className?: string;
 }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-md border px-2 py-0.5 text-[0.65rem] font-semibold tracking-wide uppercase",
+        "inline-flex h-6 max-w-full items-center gap-1.5 rounded-full border px-2 text-[10px] font-semibold tracking-[0.08em] uppercase",
         tones[tone],
         className,
       )}
     >
-      {children}
+      <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", dots[tone])} aria-hidden />
+      <span className="truncate">{children}</span>
     </span>
   );
 }
