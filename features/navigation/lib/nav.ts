@@ -23,6 +23,7 @@ export const DESKTOP_MORE_LINKS: readonly NavLink[] = [
   { href: "/plus", label: "KOBA Plus" },
   { href: "/wallet", label: "Wallet" },
   { href: "/developers", label: "Developers" },
+  { href: "/enter", label: "Dashboard" },
 ] as const;
 
 /** Mobile bottom bar — keep lean; extras live under More. */
@@ -37,6 +38,8 @@ export const MOBILE_MORE_LINKS: readonly NavLink[] = [
   { href: "/plus", label: "KOBA Plus" },
   { href: "/wallet", label: "Wallet" },
   { href: "/developers", label: "Developers" },
+  { href: "/enter", label: "Dashboard" },
+  { href: "/orders", label: "Orders" },
   { href: "/settings", label: "You" },
 ] as const;
 

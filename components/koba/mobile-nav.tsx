@@ -4,15 +4,23 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useId, useState } from "react";
 import { Home, Store, Newspaper, MessageSquare, Ellipsis } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { isMoreSectionActive, isNavActive, MOBILE_MORE_LINKS } from "@/features/navigation/lib/nav";
+import {
+  isMoreSectionActive,
+  isNavActive,
+  MOBILE_MORE_LINKS,
+  MOBILE_PRIMARY_HREFS,
+} from "@/features/navigation/lib/nav";
 
-const primary = [
-  { href: "/", label: "Home", icon: Home },
-  { href: "/market", label: "Market", icon: Store },
-  { href: "/feed", label: "Feed", icon: Newspaper },
-  { href: "/messages", label: "Messages", icon: MessageSquare },
-] as const;
+const PRIMARY_META: Record<(typeof MOBILE_PRIMARY_HREFS)[number], { label: string; icon: LucideIcon }> = {
+  "/": { label: "Home", icon: Home },
+  "/market": { label: "Market", icon: Store },
+  "/feed": { label: "Feed", icon: Newspaper },
+  "/messages": { label: "Messages", icon: MessageSquare },
+};
+
+const primary = MOBILE_PRIMARY_HREFS.map((href) => ({ href, ...PRIMARY_META[href] }));
 
 export function MobileNav() {
   const pathname = usePathname();

@@ -5,18 +5,18 @@ import { cn } from "@/lib/utils";
 
 const pillars = [
   {
-    title: "Marketplace",
-    body: "Skins, maps, monuments, kits, cosmetics — browse what's out there, see what's rare, and grab what you want.",
+    title: "Market & Trade",
+    body: "List skins, maps, kits, and cosmetics with a real rarity tier — common through relic. Sell for KOBA Coins or trade rarity-matched, item for item.",
     href: "/market",
   },
   {
-    title: "Community",
-    body: "Find your people. Join a group, post an LFG, and squad up for whatever you're playing.",
+    title: "Groups, LFG & servers",
+    body: "Run a group, post an LFG, and check live player counts and maps on the server directory before you queue up.",
     href: "/groups",
   },
   {
-    title: "Identity",
-    body: "Your KOBAID is yours the moment you sign up — one per account type, and it never changes.",
+    title: "KOBAID",
+    body: "One identity per account role — Player, Business, or Influencer. Switch modes from Settings; your KOBAID stays yours.",
     href: "/settings",
   },
 ] as const;
@@ -26,11 +26,12 @@ export default function HomePage() {
     <div className="space-y-10">
       <section className="space-y-5">
         <h1 className="max-w-2xl text-4xl font-semibold tracking-tight text-balance md:text-5xl">
-          Trade what you build. <span className="text-brand-gradient">Play with your people.</span>
+          The marketplace and social layer <span className="text-brand-gradient">for your server.</span>
         </h1>
         <p className="max-w-xl text-base leading-relaxed text-muted md:text-lg">
-          KOBA is where your server&apos;s community buys, sells, and hangs out. Sign up, get your
-          KOBAID, and switch between Player, Business, and Influencer whenever you need to.
+          Trade skins, maps, and kits by rarity, find teammates on the LFG board, and track live
+          server stats over RCON — all under one KOBAID. Generate original cosmetics with Aiden,
+          or Boost a listing, shop, or server to push it up the feed.
         </p>
         <div className="flex flex-wrap gap-3">
           <Link href="/market" className={cn(buttonVariants({ variant: "primary" }))}>
