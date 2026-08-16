@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { auth } from "@/lib/auth";
+import { KobaBadgeArt } from "@/components/koba/koba-badge-art";
 import { PageHeader } from "@/components/koba/page-header";
 import { PlusMembershipPanel } from "@/features/plus/components/plus-membership-panel";
 import { MOCK_PLUS_SUBSCRIPTION } from "@/features/plus/lib/types";
@@ -31,7 +32,12 @@ export default async function PlusPage({
       <PageHeader
         eyebrow="KOBA Plus"
         eyebrowTone="success"
-        title="Optional membership"
+        title={
+          <span className="inline-flex items-center gap-3">
+            <KobaBadgeArt mark="plus" size={40} />
+            Optional membership
+          </span>
+        }
         description={
           <>
             KOBA Plus is optional and belongs to the active KOBA account. Security, moderation,

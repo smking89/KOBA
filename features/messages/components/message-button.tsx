@@ -41,7 +41,7 @@ export function MessageButton({
   }
 
   return (
-    <Button variant="secondary" onClick={() => void open()} disabled={busy}>
+    <Button size="sm" variant="secondary" onClick={() => void open()} disabled={busy}>
       Message
     </Button>
   );

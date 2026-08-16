@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { KobaBadgeArt } from "@/components/koba/koba-badge-art";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -31,9 +32,13 @@ export default function HomePage() {
   return (
     <div className="space-y-8">
       <section className="space-y-4">
-        <p className="text-[11px] font-semibold tracking-[0.16em] text-neon-lime uppercase">
-          Social marketplace
-        </p>
+        <div className="flex items-center gap-2">
+          <KobaBadgeArt mark="plus" size={28} />
+          <KobaBadgeArt mark="charge" size={28} />
+          <p className="text-[11px] font-semibold tracking-[0.16em] text-neon-lime uppercase">
+            Social marketplace
+          </p>
+        </div>
         <h1 className="max-w-2xl text-3xl font-semibold tracking-tight text-balance md:text-5xl">
           Trade what you build. <span className="text-brand-gradient">Play with your people.</span>
         </h1>

@@ -7,8 +7,10 @@ import { plusBadgeByIdentityIds } from "@/features/plus/services/plus.service";
 const userPublic = {
   id: true,
   name: true,
+  image: true,
+  createdAt: true,
   profile: {
-    select: { handle: true, displayName: true, bio: true, tagPrivacy: true },
+    select: { handle: true, displayName: true, bio: true, tagPrivacy: true, activeAccountType: true },
   },
   kobaIdentities: { select: { id: true, code: true, accountType: true } },
 } as const;
@@ -69,6 +71,13 @@ export async function getProfileByHandle(handle: string, viewerUserId?: string |
     handle: profile.handle,
     name: displayName(profile.user),
     bio: profile.bio,
+    image: profile.user.image,
+    createdAt: profile.user.createdAt.toISOString(),
+    accountType: profile.activeAccountType,
+    identities: profile.user.kobaIdentities.map((row) => ({
+      accountType: row.accountType,
+      code: row.code,
+    })),
     kobaId: activeIdentity?.code ?? null,
     plusBadge: activeIdentity ? Boolean(badges.get(activeIdentity.id)) : false,
     tagPrivacy: profile.tagPrivacy,

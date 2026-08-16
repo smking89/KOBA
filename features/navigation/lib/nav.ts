@@ -114,6 +114,10 @@ export function isMoreSectionActive(pathname: string): boolean {
 }
 
 export function navLabelForPath(pathname: string): string {
+  if (pathname.startsWith("/u/")) {
+    const handle = pathname.split("/")[2];
+    return handle ? `@${handle}` : "Profile";
+  }
   const match = TITLE_LINKS.filter((link) => isNavActive(pathname, link.href)).sort(
     (a, b) => b.href.length - a.href.length,
   )[0];
