@@ -10,10 +10,10 @@ describe("cn", () => {
 });
 
 describe("kobaTokens", () => {
-  it("exposes the fire red/orange/gold dark brand palette", () => {
-    expect(kobaTokens.background).toBe("#050505");
-    expect(kobaTokens.neonLime).toBe("#FF5A1F");
-    expect(kobaTokens.brandGradient).toContain("#F5341E");
+  it("exposes the neon dark brand palette", () => {
+    expect(kobaTokens.background).toBe("#0B0C0B");
+    expect(kobaTokens.neonLime).toBe("#B8FF00");
+    expect(kobaTokens.brandGradient).toContain("#C6FF00");
   });
 });
 

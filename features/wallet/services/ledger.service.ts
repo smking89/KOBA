@@ -22,6 +22,7 @@ import {
 } from "@/features/wallet/lib/amounts";
 import { WalletError } from "@/features/wallet/lib/errors";
 import { generateLedgerRef, generateReservationRef } from "@/features/wallet/lib/refs";
+import { emitAlert } from "@/lib/observability/alerts";
 import {
   allocateSpend,
   type Allocation,
@@ -192,6 +193,9 @@ async function postBalanced(
     else credit += entry.amount;
   }
   if (debit !== credit) {
+    void emitAlert("ledger_invariant_failure", "Ledger transaction is unbalanced", {
+      labels: { operation: "ledger_post", errorClass: "unexpected" },
+    });
     throw new WalletError("Ledger transaction is unbalanced.", "UNBALANCED");
   }
 
@@ -834,6 +838,219 @@ export async function captureReservation(input: {
     });
 
     return { publicRef: reservation.publicRef, status: "CAPTURED", txPublicRef: tx.publicRef };
+  });
+}
+
+export async function settleReservation(input: {
+  userId: string;
+  reservationPublicRef: string;
+  captureAmount: CoinAmount | number | string;
+  idempotencyKey: string;
+  actorUserId?: string | null;
+  ipAddress?: string | null;
+}) {
+  const captureAmount = parseCoinAmount(input.captureAmount);
+  const idempotencyKey = requireIdempotencyKey(input.idempotencyKey);
+
+  return prisma.$transaction(async (db) => {
+    const reservation = await db.coinReservation.findUnique({
+      where: { publicRef: input.reservationPublicRef },
+    });
+    if (!reservation) throw new WalletError("Reservation not found.", "NOT_FOUND");
+
+    const wallet = await lockWallet(
+      db,
+      (await db.coinWallet.findUniqueOrThrow({ where: { id: reservation.walletId } })).userId,
+    );
+    if (wallet.userId !== input.userId) {
+      throw new WalletError("Reservation does not belong to this wallet.", "FORBIDDEN");
+    }
+
+    if (reservation.status === "CAPTURED" && reservation.captureTxId) {
+      const prior = await db.ledgerTransaction.findUniqueOrThrow({
+        where: { id: reservation.captureTxId },
+      });
+      return {
+        publicRef: reservation.publicRef,
+        status: reservation.status,
+        captured: reservation.amount.toString(),
+        released: "0",
+        txPublicRef: prior.publicRef,
+      };
+    }
+    if (reservation.status !== "ACTIVE") {
+      throw new WalletError(
+        `Cannot settle reservation in status ${reservation.status}.`,
+        "CONFLICT",
+      );
+    }
+    if (captureAmount > reservation.amount) {
+      throw new WalletError("Capture exceeds the reserved amount.", "INVALID");
+    }
+
+    const remainder = reservation.amount - captureAmount;
+    const entries: PostEntryInput[] = [
+      {
+        accountCode: userBucketCode(input.userId, "RESERVED"),
+        side: "DEBIT",
+        amount: reservation.amount,
+        classification: "RESERVED",
+      },
+      { accountCode: SYSTEM.revenue, side: "CREDIT", amount: captureAmount },
+    ];
+
+    if (remainder > 0n) {
+      const allocations = parseAllocations(reservation.allocationsJson);
+      let left = remainder;
+      for (const allocation of [...allocations].reverse()) {
+        if (left <= 0n) break;
+        const take = allocation.amount < left ? allocation.amount : left;
+        if (take > 0n) {
+          entries.push({
+            accountCode: userBucketCode(input.userId, allocation.bucket),
+            side: "CREDIT",
+            amount: take,
+            classification: allocation.bucket,
+          });
+          left -= take;
+        }
+      }
+      if (left !== 0n) {
+        throw new WalletError("Could not allocate reservation remainder.", "UNBALANCED");
+      }
+    }
+
+    const tx = await postBalanced(db, {
+      category: "RESERVATION_CAPTURE",
+      memo: `Settle ${reservation.publicRef} capture=${captureAmount} release=${remainder}`,
+      idempotencyKey,
+      entries,
+      actorUserId: input.actorUserId ?? input.userId,
+      walletId: wallet.id,
+    });
+    await updateProjectionsFromEntries(db, wallet.id, entries, input.userId);
+
+    await db.coinReservation.update({
+      where: { id: reservation.id },
+      data: {
+        status: "CAPTURED",
+        captureTxId: tx.id,
+        capturedAt: new Date(),
+        releasedAt: remainder > 0n ? new Date() : null,
+      },
+    });
+
+    return {
+      publicRef: reservation.publicRef,
+      status: "CAPTURED" as const,
+      captured: captureAmount.toString(),
+      released: remainder.toString(),
+      txPublicRef: tx.publicRef,
+    };
+  });
+}
+
+export async function spendCoinsSplit(input: {
+  buyerUserId: string;
+  sellerUserId: string;
+  amount: CoinAmount | number | string;
+  feeAmount: CoinAmount | number | string;
+  sellerAmount: CoinAmount | number | string;
+  memo: string;
+  idempotencyKey: string;
+  actorUserId?: string | null;
+}) {
+  const amount = parseCoinAmount(input.amount);
+  const feeAmount =
+    input.feeAmount === 0 || input.feeAmount === "0" || input.feeAmount === 0n
+      ? 0n
+      : parseCoinAmount(input.feeAmount);
+  const sellerAmount =
+    input.sellerAmount === 0 || input.sellerAmount === "0" || input.sellerAmount === 0n
+      ? 0n
+      : parseCoinAmount(input.sellerAmount);
+  if (feeAmount + sellerAmount !== amount) {
+    throw new WalletError("Fee and seller amounts must equal the price.", "UNBALANCED");
+  }
+  const idempotencyKey = requireIdempotencyKey(input.idempotencyKey);
+
+  return prisma.$transaction(async (db) => {
+    const prior = await findPostedByIdempotency(db, idempotencyKey);
+    if (prior) {
+      return { publicRef: prior.publicRef, status: prior.status, duplicate: true as const };
+    }
+
+    await ensureSystemAccounts(db);
+    const [firstId, secondId] =
+      input.buyerUserId < input.sellerUserId
+        ? [input.buyerUserId, input.sellerUserId]
+        : [input.sellerUserId, input.buyerUserId];
+    await lockWallet(db, firstId);
+    if (secondId !== firstId) await lockWallet(db, secondId);
+
+    let buyerWallet = await db.coinWallet.findUnique({ where: { userId: input.buyerUserId } });
+    if (!buyerWallet)
+      buyerWallet = await db.coinWallet.create({ data: { userId: input.buyerUserId } });
+    await ensureUserBucketAccounts(input.buyerUserId, buyerWallet.id, db);
+    buyerWallet = await db.coinWallet.findUniqueOrThrow({ where: { userId: input.buyerUserId } });
+    if (buyerWallet.status !== "ACTIVE") {
+      throw new WalletError("Wallet is not active.", "FORBIDDEN");
+    }
+
+    let sellerWallet = await db.coinWallet.findUnique({ where: { userId: input.sellerUserId } });
+    if (!sellerWallet) {
+      sellerWallet = await db.coinWallet.create({ data: { userId: input.sellerUserId } });
+    }
+    await ensureUserBucketAccounts(input.sellerUserId, sellerWallet.id, db);
+
+    let allocations: Allocation[];
+    try {
+      allocations = allocateSpend(amount, {
+        PROMOTIONAL: buyerWallet.promotionalBalance,
+        PURCHASED: buyerWallet.purchasedBalance,
+        EARNED: buyerWallet.earnedBalance,
+      });
+    } catch {
+      throw new WalletError("Insufficient KOBA Coins available.", "INSUFFICIENT");
+    }
+
+    const entries: PostEntryInput[] = [];
+    for (const allocation of allocations) {
+      entries.push({
+        accountCode: userBucketCode(input.buyerUserId, allocation.bucket),
+        side: "DEBIT",
+        amount: allocation.amount,
+        classification: allocation.bucket,
+      });
+    }
+    if (sellerAmount > 0n) {
+      entries.push({
+        accountCode: userBucketCode(input.sellerUserId, "EARNED"),
+        side: "CREDIT",
+        amount: sellerAmount,
+        classification: "EARNED",
+      });
+    }
+    if (feeAmount > 0n) {
+      entries.push({ accountCode: SYSTEM.revenue, side: "CREDIT", amount: feeAmount });
+    }
+
+    const tx = await postBalanced(db, {
+      category: "MARKETPLACE_PURCHASE",
+      memo: input.memo,
+      idempotencyKey,
+      entries,
+      actorUserId: input.actorUserId ?? input.buyerUserId,
+      walletId: buyerWallet.id,
+    });
+    await updateProjectionsFromEntries(db, buyerWallet.id, entries, input.buyerUserId);
+    await updateProjectionsFromEntries(db, sellerWallet.id, entries, input.sellerUserId);
+    return {
+      publicRef: tx.publicRef,
+      status: tx.status,
+      allocations,
+      duplicate: false as const,
+    };
   });
 }
 

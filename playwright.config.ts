@@ -1,5 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
 
+const port = process.env.PLAYWRIGHT_PORT ?? "3015";
+const origin = `http://127.0.0.1:${port}`;
+
 const config = defineConfig({
   testDir: "./tests/e2e",
   fullyParallel: true,
@@ -8,7 +11,7 @@ const config = defineConfig({
   ...(process.env.CI ? { workers: 1 } : {}),
   reporter: "list",
   use: {
-    baseURL: "http://127.0.0.1:3000",
+    baseURL: origin,
     trace: "on-first-retry",
   },
   projects: [
@@ -18,9 +21,10 @@ const config = defineConfig({
     },
   ],
   webServer: {
-    command: "pnpm dev",
-    url: "http://127.0.0.1:3000",
-    reuseExistingServer: !process.env.CI,
+    command: `pnpm exec next dev --turbopack --hostname 127.0.0.1 --port ${port}`,
+    url: `${origin}/api/health`,
+    reuseExistingServer: false,
+    timeout: 120_000,
   },
 });
 

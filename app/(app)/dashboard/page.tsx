@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/koba/page-header";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { auth } from "@/lib/auth";
 import { getAccountSnapshot } from "@/features/accounts/services/account.service";
@@ -34,15 +34,15 @@ export default async function PlayerDashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <Badge tone="live">Player mode</Badge>
-        <h1 className="mt-3 text-3xl font-semibold tracking-tight">
-          Welcome back, {snapshot.displayName ?? "player"}
-        </h1>
-        <p className="mt-2 font-mono text-sm text-muted">
-          {snapshot.kobaId} · {ACCOUNT_TYPE_LABEL.PLAYER} mode
-        </p>
-      </div>
+      <PageHeader
+        eyebrow="Player mode"
+        title={`Welcome back, ${snapshot.displayName ?? "player"}`}
+        description={
+          <p className="font-mono text-sm">
+            {snapshot.kobaId} · {ACCOUNT_TYPE_LABEL.PLAYER} mode
+          </p>
+        }
+      />
 
       <div className="grid gap-4 md:grid-cols-3">
         <Card>

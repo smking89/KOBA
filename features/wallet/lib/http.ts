@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { WalletError, walletErrorStatus } from "@/features/wallet/lib/errors";
+import { unexpectedJsonError } from "@/lib/observability/http";
 
 export function jsonWalletError(error: unknown, fallback = "Could not complete wallet action.") {
   if (error instanceof WalletError) {
@@ -8,6 +9,5 @@ export function jsonWalletError(error: unknown, fallback = "Could not complete w
       { status: walletErrorStatus(error.code) },
     );
   }
-  console.error(error);
-  return NextResponse.json({ error: fallback }, { status: 500 });
+  return unexpectedJsonError(error, fallback);
 }

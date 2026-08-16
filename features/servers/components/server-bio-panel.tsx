@@ -49,7 +49,11 @@ export function ServerBioPanel({
     return (
       <div className="space-y-2">
         {error ? <p className="text-xs text-destructive">{error}</p> : null}
-        {bio ? <p className="text-sm">{bio}</p> : <p className="text-sm text-muted">No bio set for this server yet.</p>}
+        {bio ? (
+          <p className="text-sm">{bio}</p>
+        ) : (
+          <p className="text-sm text-muted">No bio set for this server yet.</p>
+        )}
         <Button size="sm" variant="secondary" onClick={() => setEditing(true)}>
           {bio ? "Edit" : "Set a bio"}
         </Button>

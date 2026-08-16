@@ -2,8 +2,11 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { PageHeader } from "@/components/koba/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { NativeSelect } from "@/components/ui/native-select";
 import { StatusPill } from "@/components/koba/status-pill";
 import type { InventoryItemPublicView } from "@/features/inventory/services/inventory.service";
 import { MOCK_TRADE_INVENTORY } from "@/features/trade/lib/catalog";
@@ -116,14 +119,17 @@ export function TradeHub({
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-semibold tracking-tight">Trade</h1>
-        <p className="mt-2 max-w-2xl text-sm text-muted">
-          Peer item swaps. Owner rule: only the same rarity tier may be traded. Ownership, rarity,
-          and locks are validated on the server before settle.
-        </p>
-        <p className="mt-2 max-w-2xl text-xs text-muted">{RARITY_VALUE_WARNING}</p>
-      </div>
+      <PageHeader
+        eyebrow="Peer swap"
+        title="Trade"
+        description={
+          <>
+            Peer item swaps. Owner rule: only the same rarity tier may be traded. Ownership, rarity,
+            and locks are validated on the server before settle.
+            <p className="mt-2 text-xs">{RARITY_VALUE_WARNING}</p>
+          </>
+        }
+      />
 
       <Card>
         <CardTitle>Discovery</CardTitle>
@@ -131,19 +137,18 @@ export function TradeHub({
         <div className="mt-4 flex flex-col gap-3 sm:flex-row">
           <label className="flex-1 text-sm">
             <span className="mb-1 block text-muted">Search</span>
-            <input
+            <Input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              className="h-10 w-full rounded-md border border-border bg-background px-3"
               placeholder="Title or game"
             />
           </label>
           <label className="text-sm sm:w-48">
             <span className="mb-1 block text-muted">Rarity</span>
-            <select
+            <NativeSelect
               value={rarity}
               onChange={(event) => setRarity(event.target.value)}
-              className="h-10 w-full rounded-md border border-border bg-background px-3"
+              className="w-full"
             >
               <option value="ALL">All</option>
               {Object.entries(RARITY_LABEL).map(([value, label]) => (
@@ -151,7 +156,7 @@ export function TradeHub({
                   {label}
                 </option>
               ))}
-            </select>
+            </NativeSelect>
           </label>
         </div>
         <ul className="mt-4 grid gap-3 sm:grid-cols-2">

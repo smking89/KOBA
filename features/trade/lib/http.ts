@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { TradeError, tradeErrorStatus } from "@/features/trade/lib/errors";
+import { unexpectedJsonError } from "@/lib/observability/http";
 
 export function jsonTradeError(error: unknown, fallback = "Could not complete trade action.") {
   if (error instanceof TradeError) {
@@ -8,6 +9,5 @@ export function jsonTradeError(error: unknown, fallback = "Could not complete tr
       { status: tradeErrorStatus(error.code) },
     );
   }
-  console.error(error);
-  return NextResponse.json({ error: fallback }, { status: 500 });
+  return unexpectedJsonError(error, fallback);
 }

@@ -1,4 +1,5 @@
 import { getPublicEnv } from "@/lib/env";
+import { logger } from "@/lib/observability/logger";
 
 export type MailPayload = {
   to: string;
@@ -63,7 +64,13 @@ async function deliver(payload: MailPayload): Promise<void> {
     );
   }
 
-  console.info(`[KOBA] Dev mail → ${payload.to}: ${payload.subject}\n${payload.text}`);
+  logger.info("Dev mail captured", {
+    event: "email_dev_capture",
+    operation: "email_deliver",
+    outcome: "success",
+    extra: { subject: payload.subject },
+  });
+  console.info(`[koba:mail] ${payload.subject}\n${payload.text}`);
 }
 
 export async function sendVerificationEmail(email: string, token: string): Promise<void> {
@@ -73,6 +80,25 @@ export async function sendVerificationEmail(email: string, token: string): Promi
     subject: "Verify your KOBA email",
     text: `Verify your KOBA account:\n${url}\n`,
     html: `<p>Verify your KOBA account:</p><p><a href="${url}">${url}</a></p>`,
+  });
+}
+
+/**
+ * Staff security notifications (Phase 15C). Best-effort by design: callers
+ * must treat delivery failure as non-fatal so an already-applied security
+ * action (revocation, reset) is never rolled back because email failed.
+ */
+export async function sendSecurityEmail(
+  email: string,
+  subject: string,
+  lines: string[],
+): Promise<void> {
+  const text = `${lines.join("\n")}\n\nIf this was not you, secure your account immediately.\n`;
+  await deliver({
+    to: email,
+    subject,
+    text,
+    html: `<p>${lines.map((line) => line.replace(/</g, "&lt;")).join("</p><p>")}</p><p>If this was not you, secure your account immediately.</p>`,
   });
 }
 

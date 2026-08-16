@@ -27,7 +27,10 @@ export function BrandMark({ href = "/", className, showWordmark = true }: BrandM
 
   if (href) {
     return (
-      <Link href={href} className="rounded-md focus-visible:outline-none">
+      <Link
+        href={href}
+        className="rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neon-lime focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      >
         {content}
       </Link>
     );

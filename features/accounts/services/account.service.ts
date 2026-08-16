@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { writeAuditLog } from "@/features/auth/services/audit-log.service";
 import { mintPublicKobaId, KobaIdError } from "@/features/koba-id/services/mint.service";
 import { isPublicAccountType } from "@/features/koba-id/lib/format";
+import { plusBadgeByIdentityIds } from "@/features/plus/services/plus.service";
 
 export type AccountSnapshot = {
   userId: string;
@@ -15,7 +16,8 @@ export type AccountSnapshot = {
   activeAccountType: KobaAccountType;
   kobaId: string | null;
   kobaIdRevealed: boolean;
-  identities: { accountType: KobaAccountType; code: string }[];
+  identities: { accountType: KobaAccountType; code: string; plusBadge: boolean }[];
+  plusBadge: boolean;
 };
 
 export async function getAccountSnapshot(userId: string): Promise<AccountSnapshot | null> {
@@ -24,7 +26,7 @@ export async function getAccountSnapshot(userId: string): Promise<AccountSnapsho
     include: {
       profile: true,
       kobaIdentities: {
-        select: { accountType: true, code: true },
+        select: { id: true, accountType: true, code: true },
         orderBy: { createdAt: "asc" },
       },
     },
@@ -39,6 +41,7 @@ export async function getAccountSnapshot(userId: string): Promise<AccountSnapsho
     user.kobaIdentities.find((identity) => identity.accountType === activeAccountType) ??
     user.kobaIdentities[0] ??
     null;
+  const badges = await plusBadgeByIdentityIds(user.kobaIdentities.map((identity) => identity.id));
 
   return {
     userId: user.id,
@@ -49,9 +52,11 @@ export async function getAccountSnapshot(userId: string): Promise<AccountSnapsho
     activeAccountType,
     kobaId: activeIdentity?.code ?? null,
     kobaIdRevealed: Boolean(user.profile?.kobaIdRevealedAt),
+    plusBadge: activeIdentity ? Boolean(badges.get(activeIdentity.id)) : false,
     identities: user.kobaIdentities.map((identity) => ({
       accountType: identity.accountType,
       code: identity.code,
+      plusBadge: Boolean(badges.get(identity.id)),
     })),
   };
 }

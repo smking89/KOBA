@@ -40,6 +40,7 @@ export function FollowButton({
 
   return (
     <Button
+      size="sm"
       variant={following ? "secondary" : "primary"}
       onClick={() => void toggle()}
       disabled={busy}

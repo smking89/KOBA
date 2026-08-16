@@ -19,15 +19,31 @@ describe("isSensitivePath", () => {
     expect(isSensitivePath("/api/groups/rust-legacy-raiders/join")).toBe(true);
     expect(isSensitivePath("/api/lfg/KOBA-LFG-CAFEBABE/join")).toBe(true);
     expect(isSensitivePath("/api/social/posts")).toBe(true);
+    expect(isSensitivePath("/api/servers")).toBe(true);
+    expect(isSensitivePath("/api/servers/abc/favourite")).toBe(true);
+    expect(isSensitivePath("/api/account/servers")).toBe(true);
+    expect(isSensitivePath("/api/plus")).toBe(true);
+    expect(isSensitivePath("/api/plus/checkout")).toBe(true);
+    expect(isSensitivePath("/api/admin/plus")).toBe(true);
+    expect(isSensitivePath("/api/aiden")).toBe(true);
+    expect(isSensitivePath("/api/aiden/jobs")).toBe(true);
+    expect(isSensitivePath("/api/influencer/codes")).toBe(true);
+    expect(isSensitivePath("/api/influencer/payouts")).toBe(true);
   });
 
   it("allows public routes", () => {
-    expect(isSensitivePath("/market")).toBe(false);
     expect(isSensitivePath("/api/health")).toBe(false);
+    expect(isSensitivePath("/api/ready")).toBe(false);
   });
 
   it("documents every denylist prefix", () => {
     expect(NEVER_CACHE_PATH_PREFIXES.length).toBeGreaterThan(0);
+    expect(isSensitivePath("/api/servers")).toBe(true);
+    expect(isSensitivePath("/api/servers/foo/status")).toBe(true);
+    expect(isSensitivePath("/api/servers/foo/integrations/rust")).toBe(true);
+    expect(isSensitivePath("/api/servers/foo/integrations/rust/connect")).toBe(true);
+    expect(isSensitivePath("/api/account/servers")).toBe(true);
+    expect(isSensitivePath("/api/admin/servers")).toBe(true);
   });
 });
 

@@ -71,7 +71,11 @@ export function DisputedOrdersPanel({
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button size="sm" disabled={pending} onClick={() => void resolve(order.publicRef, "RELEASE")}>
+              <Button
+                size="sm"
+                disabled={pending}
+                onClick={() => void resolve(order.publicRef, "RELEASE")}
+              >
                 Release to seller
               </Button>
               <Button

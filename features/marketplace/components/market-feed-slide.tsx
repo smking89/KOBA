@@ -95,7 +95,9 @@ export function MarketFeedSlide({
               @{product.seller.handle ?? product.seller.displayName}
             </Link>
           ) : (
-            <span className="font-semibold">@{product.seller.handle ?? product.seller.displayName}</span>
+            <span className="font-semibold">
+              @{product.seller.handle ?? product.seller.displayName}
+            </span>
           )}
           {product.seller.verified ? (
             <span
@@ -113,7 +115,10 @@ export function MarketFeedSlide({
           />
         </div>
 
-        <Link href={`/market/${product.slug}`} className="block text-lg font-bold hover:text-neon-lime">
+        <Link
+          href={`/market/${product.slug}`}
+          className="block text-lg font-bold hover:text-neon-lime"
+        >
           {product.title}
         </Link>
 
@@ -137,7 +142,9 @@ export function MarketFeedSlide({
 
         <div className="flex items-center justify-between gap-3 border-t border-border pt-3">
           <div>
-            <span className={cn("font-mono text-xl font-semibold", sold && "text-muted line-through")}>
+            <span
+              className={cn("font-mono text-xl font-semibold", sold && "text-muted line-through")}
+            >
               {formatPrice(displayCents, product.currency)}
             </span>
             {product.auction && product.listingType === "AUCTION" ? (

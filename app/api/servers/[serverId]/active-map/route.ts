@@ -58,7 +58,10 @@ export async function POST(request: Request, context: { params: Promise<{ server
   }
 }
 
-export async function DELETE(_request: Request, context: { params: Promise<{ serverId: string }> }) {
+export async function DELETE(
+  _request: Request,
+  context: { params: Promise<{ serverId: string }> },
+) {
   const session = await auth();
   if (!session?.user.id) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });

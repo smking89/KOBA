@@ -328,7 +328,7 @@ not a bigger constant.
 **Also discovered, not fixed here (separate, smaller, pre-existing bug):**
 `listProfilePosts` (a profile's own post history, Phase 6) still uses
 page-number pagination and its "Load more" posts back to
-`/api/social/feed` — the *global* ranked feed endpoint, not an
+`/api/social/feed` — the _global_ ranked feed endpoint, not an
 author-scoped one. That mismatch predates this phase; fixing it needs a
 dedicated author-scoped feed route, tracked as follow-up, not silently
 left unmentioned.
@@ -519,7 +519,7 @@ for the full architecture. What's real:
   (`features/aiden/lib/model-costs.ts`) gives the fixed, known Coin cost
   per model (Replicate/Tripo return no per-request USD figure to read
   back), and `features/aiden/lib/cost-preview.ts`'s `coinCostForAssetType`
-  — the reservation amount taken *before* generation runs — was
+  — the reservation amount taken _before_ generation runs — was
   corrected to match those real numbers (it previously held arbitrary
   40-120 coin placeholders that had nothing to do with actual model
   cost, a stale mismatch from before real vendors existed).
@@ -603,7 +603,7 @@ because the two halves have nothing in common technically:
   as one "stage set") plus a marketplace-side concept for a multi-stage
   `Product` (or a `Product` with N stage-tagged `ProductMedia` rows) that
   doesn't exist yet.
-- **Runtime half (fully blocked, not just unwired)**: actually *swapping*
+- **Runtime half (fully blocked, not just unwired)**: actually _swapping_
   the equipped stage live, in a running match, based on real kill/score
   telemetry, needs two things that are **0% built**:
   1. A way for a live match's performance to reach KOBA at all. Phase
@@ -622,7 +622,7 @@ because the two halves have nothing in common technically:
 
 **Not buildable today as a live, reactive feature** — the generation
 half can ship once the multi-stage grouping concept is designed; the
-runtime half is gated on Phase 21 existing as a real project *and* on
+runtime half is gated on Phase 21 existing as a real project _and_ on
 a per-game answer to "can this game's live match state even reach us."
 
 **Open questions for the client (do not guess these):**
@@ -631,7 +631,7 @@ a per-game answer to "can this game's live match state even reach us."
    something else? Does it vary per game?
 2. Stage count and thresholds — e.g. 3 fixed stages at kill counts
    0/5/10, or seller-configurable per listing?
-3. Scope for v1 — is a *static* multi-stage skin (buyer manually
+3. Scope for v1 — is a _static_ multi-stage skin (buyer manually
    switches stages, no live automation) an acceptable first cut while
    Phase 21 doesn't exist yet, or is "reactive" specifically the point
    and a non-live version isn't worth shipping?
@@ -707,7 +707,7 @@ for now. KOBAads stays planning-only until Phase 8 exists.
 
 Feed Engine (Phase 8) now exists for real (`features/social/lib/
 feed-ranking.ts`), so the piece that was actually missing before —
-somewhere to interleave ads *into* — is done. What's still missing is
+somewhere to interleave ads _into_ — is done. What's still missing is
 the `Ad`/`AdCampaign` data model itself (targeting/budget/creative), so
 this is a **ranking algorithm design**, grounded in how real ad auctions
 work (Google/Meta-style generalized second-price auctions with a quality
@@ -724,7 +724,7 @@ totalValue = bid × predictedCTR × qualityScore × boostMultiplier
   campaign creation — the one input this design doesn't get to invent,
   it's a real business/pricing decision (self-serve minimum bid, auction
   vs. fixed-price placement) for whoever specs the campaign model.
-- `predictedCTR` — reuses the *same* relevance signals
+- `predictedCTR` — reuses the _same_ relevance signals
   `computePostScore` already computes for organic ranking (following,
   group membership, shop-follow relevance), plus the ad's own
   historical CTR once it has impression data — cold-start ads (no
@@ -750,7 +750,7 @@ totalValue = bid × predictedCTR × qualityScore × boostMultiplier
 - **Frequency capping**: cap distinct impressions of the same ad to the
   same viewer per day (e.g. 3/day, matching common industry practice) —
   same Redis-with-in-memory-fallback shape as `features/social/lib/
-  feed-cache.ts` and `lib/security/rate-limit.ts` would work for this.
+feed-cache.ts` and `lib/security/rate-limit.ts` would work for this.
 - **Interleaving cadence**: one ad slot per N organic posts (never two
   ads adjacent) rather than a fixed position, so the feed doesn't feel
   ad-heavy regardless of scroll speed.
@@ -780,7 +780,7 @@ rewrite of Phase 8's ranking.
    and influencer profile (client clarification). KCU ad units
    themselves can't be a Boost target until Phase 15's `Ad`/`AdCampaign`
    model exists — same blocker as item 3.
-3. KOBAads campaign targeting/budget model — the *ranking algorithm* is
+3. KOBAads campaign targeting/budget model — the _ranking algorithm_ is
    now specified (see "KOBAads ranking algorithm" above); the data model
    itself (bid amount, targeting dimensions, self-serve vs. managed) is
    still fully open.
@@ -837,8 +837,8 @@ dropped:**
 unwired:**
 
 - **Animated avatar & profile banner** — there is no avatar/banner
-  upload feature for *any* account today (only `User.image`, a static
-  OAuth-provider URL, no banner field anywhere). Gating the *animated*
+  upload feature for _any_ account today (only `User.image`, a static
+  OAuth-provider URL, no banner field anywhere). Gating the _animated_
   variant of a feature that doesn't exist yet has nothing to attach to.
 - **Custom themes, app icons, notification sounds** — no theming system
   exists anywhere in this codebase.
@@ -864,7 +864,7 @@ unwired:**
 - Access to the four Cosmetic sub-types beyond what's purchasable
   standalone: nameplates, avatar decorations, profile effects, and
   profile frames (`Cosmetic` model, `features/marketplace/lib/
-  game-policy.ts` confirms these are never game-gated — see Phase 3).
+game-policy.ts` confirms these are never game-gated — see Phase 3).
 
 Cosmetics themselves are always purchasable with real money (USD) via the
 KOBA Shop independent of a Plus subscription (Phase 23) — Plus's cosmetic
@@ -950,7 +950,7 @@ a real connection — now real for every case below.
   messages (`{"Message", "Identifier"}` request /
   `{"Message", "Identifier", "Type", "stacktrace"}` response,
   `ws://host:port/password` — the password is the URL path, not a
-  separate auth step). This is Rust's *own* official second RCON
+  separate auth step). This is Rust's _own_ official second RCON
   transport (`github.com/Facepunch/webrcon`, open source) — and per
   **GPORTAL's own wiki** (not inferred, their documented instructions
   for RUST CE admins), it's also how Console Edition is RCON'd into.
@@ -970,7 +970,7 @@ a real connection — now real for every case below.
   failure in one doesn't block the other.
 - **Real A2S_INFO query client**
   (`features/servers/lib/rcon/source-query.ts`): UDP, PC Source-engine
-  servers only (Rust, Garry's Mod) — the *correct*, highest-confidence
+  servers only (Rust, Garry's Mod) — the _correct_, highest-confidence
   protocol for public live-stats reads on PC; RCON itself is for
   authenticated admin commands, a different concern. Implements the
   challenge/response round trip modern Source servers require. Tried
@@ -989,7 +989,7 @@ a real connection — now real for every case below.
 - **Real gap found and fixed while wiring rarity**: `fulfillOrder`
   (`features/payments/services/checkout.service.ts`) never actually
   created an `InventoryItem` for the buyer — `InventoryAcquisitionSource
-  .PURCHASE` existed in the schema clearly anticipating this, but
+.PURCHASE` existed in the schema clearly anticipating this, but
   nothing called it. Without this fix, Phase 19's "done" rarity-matched
   trading could only ever operate on seeded/admin-granted items, never
   anything a buyer actually bought — and server rarity would have had
@@ -1099,7 +1099,7 @@ each other (fairness constraint). Confirmed live in
 the trade offer/accept flow shipped with item trading.
 
 **Correction (2026-08-15, found while building Phase 17):** the trading
-*rule* was always real, but until Phase 17's `fulfillOrder` fix, nothing
+_rule_ was always real, but until Phase 17's `fulfillOrder` fix, nothing
 ever populated `InventoryItem` from an actual marketplace purchase —
 `InventoryAcquisitionSource.PURCHASE` existed in the schema but no code
 path used it. This phase's trading logic only ever had seeded/admin-
@@ -1256,7 +1256,7 @@ commands.
 **Architecturally, KOBA plays the role Tip4Serv plays for KAOSBOT/
 Ch33kys/Veretech** (client framing, 2026-08-16) — a webshop whose
 purchases trigger RCON-based item delivery — except KOBA is both the
-storefront *and* the delivery bot (KOBAbot), not a webshop handing off
+storefront _and_ the delivery bot (KOBAbot), not a webshop handing off
 to a separate third-party bot. Same delivery mechanism (RCON), no
 external dependency.
 
@@ -1355,7 +1355,7 @@ rather than guessing which parts matter for a v1:
   feed, raid alerts, a "command center" (players online, framerate,
   uptime, entity count).
 - **Player systems**: teleport/home commands, zone management, auto-kits
-  + automated kit distribution, custom command binds, spawn binds.
+  - automated kit distribution, custom command binds, spawn binds.
 - **Economy & rewards**: an in-Discord shop, its own economy/currency
   system, a battle pass, random item drops.
 - **Community**: clans, a bounty system, leaderboards/scoreboards, a
@@ -1374,8 +1374,8 @@ needs one of two things that don't exist yet:
 1. **Real, live RCON command execution against the player's actual
    server** — Phase 17 (this session) is building exactly this
    foundation (real Source RCON protocol client), so killfeed/teleport/
-   kits/zones/timed-commands/raid-protection all become buildable *once
-   Phase 17 ships*, not before. This is the single biggest unblock.
+   kits/zones/timed-commands/raid-protection all become buildable _once
+   Phase 17 ships_, not before. This is the single biggest unblock.
 2. **A second economy layer** (shop, currency, battle pass, drops,
    bounties) that is either a Discord-local currency distinct from KOBA
    Coins, or literally KOBA Coins spent via Discord — a real product
@@ -1438,7 +1438,7 @@ client direction (2026-08-15):
 - KOBA Shop-specific commission resolution at Cosmetic checkout — a flat
   2.5% seller-side fee, separate code path from
   `resolveCommissionBps`/`splitPayment` in `features/payments/lib/
-  money.ts` (those are `Product`-order-shaped and Blue-Badge-tiered; this
+money.ts` (those are `Product`-order-shaped and Blue-Badge-tiered; this
   is `Cosmetic`-shaped and approval-gated, not tier-gated).
 - Homepage hero section KOBA Shop entry point + a `/koba-shop` (or
   similar) full-catalog route, separate from the existing `/shops/[slug]`
@@ -1563,7 +1563,7 @@ Flagging rather than guessing on anything with real product/cost/legal consequen
 12. **Aiden frontier-model providers** (Phase 14) — Vest recommended (Tripo AI, pay-as-you-go). Graft and Terra vendors still open; blocks wiring the actual API calls (the reconciliation pipeline itself is built and vendor-agnostic).
 13. **KOBAads vs. Boost relationship** (Phase 15) — one product or two.
 14. **KOBA Plus perks** — shipped 2026-08-15 (see Phase 16): real Stripe Subscriptions, $4.99/mo single tier, tenure badges, per-server bio. Animated avatar/banner and themes/icons/sounds are blocked on prerequisite features that don't exist at all (no avatar/banner upload, no theming system) — not just unwired. KOBA Shop discount + Cosmetic access still blocked on Phase 23. Multiplier perk deliberately deferred. Still open: tenure badge threshold values (placeholder), lapse-reset behavior (shipped assuming persist).
-15. **Server "rarity" meaning** (Phase 17) — resolved 2026-08-15: derived from an owned, KOBA-marketplace-purchased Map set active on the server, shipped. Console RCON *and* live stats both resolved the same day (Rust Console Edition uses Facepunch's own WebRcon, confirmed via GPORTAL's official docs; live stats reached via WebRcon's `playerlist`/`status` commands rather than needing A2S at all — no gap remains here beyond the usual "extend the game list" follow-up.
+15. **Server "rarity" meaning** (Phase 17) — resolved 2026-08-15: derived from an owned, KOBA-marketplace-purchased Map set active on the server, shipped. Console RCON _and_ live stats both resolved the same day (Rust Console Edition uses Facepunch's own WebRcon, confirmed via GPORTAL's official docs; live stats reached via WebRcon's `playerlist`/`status` commands rather than needing A2S at all — no gap remains here beyond the usual "extend the game list" follow-up.
 16. **Subdomain deployment strategy** (Phase 20) — single-app rewrite vs. separate deployments, and who owns DNS/TLS for `koba.games`.
 17. **KOBA Shop details** (Phase 23) — cosmetic checkout model (reuse `Order` or a dedicated `CosmeticOrder`), application review workflow/SLA, hero section display logic, and how the Plus member discount interacts with the 2.5% seller fee.
 18. **User interests / tag taxonomy** (Phase 1 → Phase 8) — Phase 1's outline named a mandatory "minimum 4 hashtags/interest tags" registration step feeding Phase 8's ranking, but neither the capture step nor a tag taxonomy was ever built. Phase 8's feed ranking now ships with an `interestMatch` signal deliberately held at weight 0 pending this.

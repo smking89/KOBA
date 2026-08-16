@@ -2,22 +2,22 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
-import { HexAvatar } from "@/components/koba/hex-avatar";
 import { cn } from "@/lib/utils";
 import { CreateShopForm } from "@/features/shops/components/create-shop-form";
 import { RequestVerificationButton } from "@/features/shops/components/request-verification-button";
-import { ShopPromoForm } from "@/features/shops/components/shop-promo-form";
 import { ShopRarityDistributionCard } from "@/features/shops/components/shop-rarity-distribution-card";
 import { TaggingToggle } from "@/features/social/components/tagging-toggle";
 import { requireBusinessDashboard } from "@/features/shops/lib/require-business";
 import { getShopAnalytics } from "@/features/shops/services/shop.service";
-import { getPromoConfig } from "@/features/shops/services/promo.service";
+import { ShopPromoForm } from "@/features/influencer/components/shop-promo-form";
+import { getShopPromo } from "@/features/influencer/services/influencer.service";
 
 export const metadata = { title: "Business dashboard" };
 
 export default async function BusinessDashboardPage() {
   const { userId, snapshot } = await requireBusinessDashboard("/business");
   const data = await getShopAnalytics(userId);
+  const promo = data ? await getShopPromo(userId).catch(() => null) : null;
 
   if (!data) {
     return (
@@ -35,28 +35,22 @@ export default async function BusinessDashboardPage() {
 
   const shop = data.shop;
   const verified = shop.verificationStatus === "VERIFIED";
-  const promoConfig = await getPromoConfig(userId);
 
   return (
     <div className="space-y-6">
-      <div className="h-20 rounded-2xl bg-brand-gradient md:h-28" />
-
-      <div className="-mt-10 flex flex-wrap items-end justify-between gap-3 px-2 md:-mt-12">
-        <div className="flex items-end gap-4">
-          <HexAvatar name={shop.name} size="lg" />
-          <div className="pb-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-semibold tracking-tight">{shop.name}</h1>
-              {verified ? (
-                <Badge tone="live">Verified</Badge>
-              ) : (
-                <Badge>{shop.verificationStatus}</Badge>
-              )}
-            </div>
-            <p className="font-mono text-xs text-muted">{snapshot.kobaId}</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-3xl font-semibold tracking-tight">{shop.name}</h1>
+            {verified ? (
+              <Badge tone="live">Verified</Badge>
+            ) : (
+              <Badge>{shop.verificationStatus}</Badge>
+            )}
           </div>
+          <p className="mt-2 font-mono text-sm text-muted">{snapshot.kobaId}</p>
         </div>
-        <div className="flex flex-wrap gap-2 pb-1">
+        <div className="flex flex-wrap gap-2">
           <Link
             href={`/shops/${shop.slug}`}
             className={cn(buttonVariants({ variant: "secondary" }))}
@@ -70,19 +64,19 @@ export default async function BusinessDashboardPage() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
-        <Card className="border-t-2 border-t-neon-lime">
+        <Card>
           <CardTitle>Live listings</CardTitle>
           <p className="mt-2 font-mono text-2xl">{data.listings.approved}</p>
           <CardDescription>
             {data.listings.pending} pending · {data.listings.draft} drafts
           </CardDescription>
         </Card>
-        <Card className="border-t-2 border-t-neon-lime">
+        <Card>
           <CardTitle>Followers</CardTitle>
           <p className="mt-2 font-mono text-2xl">{data.followers}</p>
           <CardDescription>{data.reviews} shop reviews</CardDescription>
         </Card>
-        <Card className="border-t-2 border-t-neon-lime">
+        <Card>
           <CardTitle>Orders</CardTitle>
           <p className="mt-2 font-mono text-2xl">{shop._count.orders}</p>
           <CardDescription>
@@ -91,7 +85,16 @@ export default async function BusinessDashboardPage() {
         </Card>
       </div>
 
-      <Card className="border-t-2 border-t-neon-lime">
+      <Card>
+        <CardTitle>Influencer promos</CardTitle>
+        <CardDescription className="mb-3">
+          Opt in to let Influencer KOBAIDs create HANDLE-PRODUCT referral codes. Payout terms come
+          from this shop, not the influencer.
+        </CardDescription>
+        {promo ? <ShopPromoForm initial={promo} /> : null}
+      </Card>
+
+      <Card>
         <CardTitle>Shop tagging</CardTitle>
         <CardDescription className="mb-3">
           When off, posts cannot tag this shop. Sponsored placements remain a later ads phase.
@@ -103,7 +106,7 @@ export default async function BusinessDashboardPage() {
         />
       </Card>
 
-      <Card className="border-t-2 border-t-neon-lime">
+      <Card>
         <CardTitle>Inventory</CardTitle>
         <p className="mt-2 font-mono text-2xl">{data.inventoryQty}</p>
         <CardDescription>Units across all shop listings, including drafts.</CardDescription>
@@ -111,14 +114,15 @@ export default async function BusinessDashboardPage() {
 
       <ShopRarityDistributionCard distribution={data.rarityDistribution} />
 
-      <ShopPromoForm promoConfig={promoConfig} />
-
       <div className="flex flex-wrap items-center gap-3">
         <Link href="/business/orders" className={cn(buttonVariants({ variant: "secondary" }))}>
           Order inbox
         </Link>
         <Link href="/business/payouts" className={cn(buttonVariants({ variant: "secondary" }))}>
           Payouts
+        </Link>
+        <Link href="/seller/promotions" className={cn(buttonVariants({ variant: "secondary" }))}>
+          Promotions
         </Link>
         <RequestVerificationButton status={shop.verificationStatus} />
         <Link href="/settings" className={cn(buttonVariants({ variant: "ghost" }))}>

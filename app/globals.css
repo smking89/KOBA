@@ -1,22 +1,19 @@
 @import "tailwindcss";
 
 @theme {
-  --color-background: #050505;
-  --color-surface: #0d0f0e;
-  --color-surface-2: #141816;
-  --color-foreground: #f5fff8;
-  --color-muted: #98a69d;
-  /* Brand accent (client rebrand, 2026-08-16): fire red→orange→gold,
-     replacing the earlier lime/mint gradient. Kept the variable names
-     (neon-lime/neon-mint) so every existing text-neon-lime/bg-neon-lime/
-     border-neon-lime usage across the app repaints automatically. */
-  --color-neon-lime: #ff5a1f;
-  --color-electric-green: #35ff52;
-  --color-neon-mint: #ffb627;
-  --color-border: rgba(255, 90, 31, 0.18);
-  --color-destructive: #ff4d5e;
-  --color-warning: #ffb020;
-  --color-success: #35ff52;
+  --color-background: #0b0c0b;
+  --color-surface: #161916;
+  --color-surface-2: #1c201e;
+  --color-surface-3: #232826;
+  --color-foreground: #f2f7f3;
+  --color-muted: #8b958e;
+  --color-neon-lime: #b8ff00;
+  --color-electric-green: #3ba55d;
+  --color-neon-mint: #00f5a0;
+  --color-border: rgba(255, 255, 255, 0.06);
+  --color-destructive: #ed4245;
+  --color-warning: #faa81a;
+  --color-success: #3ba55d;
   --color-rarity-common: #8b8a9c;
   --color-rarity-uncommon: #1fbf6c;
   --color-rarity-rare: #33c1f0;
@@ -27,11 +24,11 @@
   --font-sans: var(--font-sora), "Sora", ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-plex-mono), "IBM Plex Mono", ui-monospace, monospace;
 
-  --radius-sm: 0.5rem;
-  --radius-md: 0.75rem;
-  --radius-lg: 1rem;
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
 
-  --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.4), 0 12px 28px -16px rgba(0, 0, 0, 0.65);
+  --shadow-soft: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 8px 24px -12px rgba(0, 0, 0, 0.7);
 }
 
 @layer base {
@@ -41,6 +38,7 @@
 
   html {
     color-scheme: dark;
+    scroll-padding-top: 3.5rem;
   }
 
   body {
@@ -49,7 +47,7 @@
   }
 
   ::selection {
-    background: color-mix(in srgb, var(--color-neon-lime) 35%, transparent);
+    background: color-mix(in srgb, var(--color-neon-lime) 28%, transparent);
     color: var(--color-foreground);
   }
 
@@ -72,11 +70,11 @@
 
 @layer utilities {
   .bg-brand-gradient {
-    background-image: linear-gradient(135deg, #f5341e 0%, #ff7a1a 50%, #ffc02e 100%);
+    background-image: linear-gradient(135deg, #c6ff00 0%, #55ff35 48%, #00f5a0 100%);
   }
 
   .text-brand-gradient {
-    background-image: linear-gradient(135deg, #f5341e 0%, #ff7a1a 50%, #ffc02e 100%);
+    background-image: linear-gradient(135deg, #c6ff00 0%, #55ff35 48%, #00f5a0 100%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;

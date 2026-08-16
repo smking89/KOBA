@@ -1,257 +1,707 @@
 import type Stripe from "stripe";
 import { AuditAction } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/db";
-import { getPublicEnv } from "@/lib/env";
 import { writeAuditLog } from "@/features/auth/services/audit-log.service";
 import { getStripe, isStripeConfigured } from "@/features/payments/lib/stripe";
 import { PlusError } from "@/features/plus/lib/errors";
+import {
+  approvedEntitlementCodes,
+  isApprovedEntitlement,
+  type EntitlementCode,
+} from "@/features/plus/lib/entitlements";
+import { resolveActivePlusIdentity } from "@/features/plus/lib/identity";
+import {
+  assertApprovedPlanCode,
+  findPlanConfig,
+  formatDisplayPrice,
+  plusPlanConfigs,
+  type PlusPlanCode,
+} from "@/features/plus/lib/plans";
+import {
+  displayState,
+  evaluateCheckoutEligibility,
+  isEntitledState,
+} from "@/features/plus/lib/policy";
+import { generatePlusRef } from "@/features/plus/lib/refs";
+import { plusAppUrl } from "@/features/plus/lib/return-urls";
+import {
+  assertNoPlusSecrets,
+  mapStripeSubscriptionStatus,
+  periodFromStripeSubscription,
+  priceIdFromStripeSubscription,
+  shouldApplyStripeEvent,
+} from "@/features/plus/lib/stripe-map";
 import { tenureBadgeLabel, tenureBadgeTier } from "@/features/plus/lib/tenure";
 import type { PlusSubscriptionState, PlusSubscriptionView } from "@/features/plus/lib/types";
 
-const PLUS_ENV_VAR = "STRIPE_PLUS_PRICE_ID";
-
-function isPlaceholderPriceId(value: string | undefined): boolean {
-  if (!value) return true;
-  return value.includes("replace") || value.endsWith("_me");
-}
-
-function isPlusPriceConfigured(): boolean {
-  return !isPlaceholderPriceId(process.env[PLUS_ENV_VAR]);
-}
-
 type SubscriptionRow = {
-  state: PlusSubscriptionState;
+  id: string;
+  publicRef: string;
+  userId: string;
+  kobaIdentityId: string;
+  accountType: string;
   planId: string | null;
-  renewsAt: Date | null;
+  interval: PlusSubscriptionView["interval"];
+  state: PlusSubscriptionState;
   cancelAtPeriodEnd: boolean;
-  firstActivatedAt: Date | null;
+  currentPeriodEnd: Date | null;
+  stripeCheckoutSessionId: string | null;
+  stripeCustomerId: string | null;
+  stripeSubscriptionId: string | null;
+  lastStripeEventCreated: number | null;
+  firstActivatedAt?: Date | null;
+  plan: { code: string; interval: NonNullable<PlusSubscriptionView["interval"]> } | null;
 };
 
-function toView(row: SubscriptionRow): PlusSubscriptionView {
-  const tier = row.firstActivatedAt ? tenureBadgeTier(row.firstActivatedAt) : null;
-  return {
-    state: row.state,
-    planId: row.planId,
-    renewsAt: row.renewsAt?.toISOString() ?? null,
-    cancelAtPeriodEnd: row.cancelAtPeriodEnd,
-    badgeVisible: row.state === "ACTIVE",
-    tenureBadgeTier: tier,
-    tenureBadgeLabel: tier ? tenureBadgeLabel(tier) : null,
-  };
+function tenureFields(
+  firstActivatedAt?: Date | null,
+): Pick<PlusSubscriptionView, "tenureBadgeTier" | "tenureBadgeLabel"> {
+  if (!firstActivatedAt) {
+    return { tenureBadgeTier: null, tenureBadgeLabel: null };
+  }
+  const tier = tenureBadgeTier(firstActivatedAt);
+  return { tenureBadgeTier: tier, tenureBadgeLabel: tenureBadgeLabel(tier) };
 }
 
-async function ensureSubscription(userId: string) {
-  return prisma.plusSubscription.upsert({
-    where: { userId },
-    create: { userId, state: "NONE" },
-    update: {},
+function entitledFromRow(row: {
+  state: PlusSubscriptionState;
+  cancelAtPeriodEnd: boolean;
+  currentPeriodEnd: Date | null;
+}): boolean {
+  return isEntitledState(row.state, {
+    cancelAtPeriodEnd: row.cancelAtPeriodEnd,
+    currentPeriodEnd: row.currentPeriodEnd,
   });
 }
 
-export async function getSubscription(userId: string): Promise<PlusSubscriptionView> {
-  const sub = await ensureSubscription(userId);
-  return toView(sub);
+export function toSubscriptionView(
+  row: SubscriptionRow | null,
+  extras?: { processing?: boolean; entitlements?: string[] },
+): PlusSubscriptionView {
+  if (!row) {
+    return {
+      publicRef: null,
+      state: "NONE",
+      displayState: "NONE",
+      planCode: null,
+      planId: null,
+      interval: null,
+      renewsAt: null,
+      accessEndsAt: null,
+      cancelAtPeriodEnd: false,
+      badgeVisible: false,
+      entitled: false,
+      entitlements: extras?.entitlements ?? [],
+      processing: extras?.processing ?? false,
+      accountType: null,
+      hasBillingCustomer: false,
+      ...tenureFields(null),
+    };
+  }
+
+  const entitled = entitledFromRow(row);
+  const shown = displayState(row.state, row.cancelAtPeriodEnd);
+  const periodEnd = row.currentPeriodEnd?.toISOString() ?? null;
+
+  return {
+    publicRef: row.publicRef,
+    state: row.state,
+    displayState: shown,
+    planCode: row.plan?.code ?? null,
+    planId: row.planId,
+    interval: row.plan?.interval ?? row.interval,
+    renewsAt: entitled && !row.cancelAtPeriodEnd ? periodEnd : null,
+    accessEndsAt: row.cancelAtPeriodEnd || !entitled ? periodEnd : null,
+    cancelAtPeriodEnd: row.cancelAtPeriodEnd,
+    badgeVisible: entitled && (extras?.entitlements ?? []).includes("PLUS_BADGE"),
+    entitled,
+    entitlements: extras?.entitlements ?? [],
+    processing: extras?.processing ?? false,
+    accountType: row.accountType,
+    hasBillingCustomer: Boolean(row.stripeCustomerId),
+    ...tenureFields(row.firstActivatedAt),
+  };
 }
 
-/** Whether userId currently has active Plus perks — the gate every perk
- * enforcement point (tenure badge display, per-server bio) calls. */
+const subscriptionInclude = {
+  plan: { select: { code: true, interval: true } },
+} as const;
+
+async function allocatePlusRef(): Promise<string> {
+  for (let attempt = 0; attempt < 32; attempt += 1) {
+    const publicRef = generatePlusRef();
+    const clash = await prisma.plusSubscription.findUnique({ where: { publicRef } });
+    if (!clash) return publicRef;
+  }
+  throw new PlusError("Could not allocate a Plus reference.", "CONFLICT");
+}
+
+export async function ensurePlans() {
+  const configs = plusPlanConfigs();
+  for (const config of configs) {
+    const stripePriceId = config.stripePriceId ?? "unconfigured";
+    const plan = await prisma.subscriptionPlan.upsert({
+      where: { code: config.code },
+      create: {
+        code: config.code,
+        displayName: config.displayName,
+        interval: config.interval,
+        stripePriceId,
+        currency: config.currency,
+        displayAmountCents: config.displayAmountCents,
+        active: Boolean(config.stripePriceId),
+        sortOrder: config.sortOrder,
+        version: 1,
+      },
+      update: {
+        displayName: config.displayName,
+        interval: config.interval,
+        stripePriceId,
+        currency: config.currency,
+        displayAmountCents: config.displayAmountCents,
+        active: Boolean(config.stripePriceId),
+        sortOrder: config.sortOrder,
+      },
+    });
+
+    for (const code of approvedEntitlementCodes()) {
+      await prisma.planEntitlement.upsert({
+        where: { planId_code: { planId: plan.id, code } },
+        create: { planId: plan.id, code, enabled: true, version: 1 },
+        update: { enabled: true },
+      });
+    }
+  }
+}
+
+async function loadIdentitySubscription(identityId: string) {
+  return prisma.plusSubscription.findUnique({
+    where: { kobaIdentityId: identityId },
+    include: subscriptionInclude,
+  });
+}
+
+async function activeGrantCodes(identityId: string, now = new Date()): Promise<string[]> {
+  const grants = await prisma.plusEntitlementGrant.findMany({
+    where: {
+      kobaIdentityId: identityId,
+      revokedAt: null,
+      OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+    },
+    select: { code: true },
+  });
+  return grants.map((row) => row.code).filter(isApprovedEntitlement);
+}
+
+async function planEntitlementCodes(planId: string | null): Promise<string[]> {
+  if (!planId) return [];
+  const rows = await prisma.planEntitlement.findMany({
+    where: { planId, enabled: true },
+    select: { code: true },
+  });
+  return rows.map((row) => row.code).filter(isApprovedEntitlement);
+}
+
+export async function plusBadgeByIdentityIds(identityIds: string[]): Promise<Map<string, boolean>> {
+  const result = new Map<string, boolean>();
+  for (const id of identityIds) {
+    result.set(id, false);
+  }
+  if (identityIds.length === 0) return result;
+  const unique = [...new Set(identityIds)];
+  await Promise.all(
+    unique.map(async (id) => {
+      result.set(id, await hasEntitlementForIdentity(id, "PLUS_BADGE"));
+    }),
+  );
+  return result;
+}
+
+export async function entitlementsForIdentity(identityId: string): Promise<string[]> {
+  const [sub, grants] = await Promise.all([
+    loadIdentitySubscription(identityId),
+    activeGrantCodes(identityId),
+  ]);
+  const fromPlan = sub && entitledFromRow(sub) ? await planEntitlementCodes(sub.planId) : [];
+  return [...new Set([...fromPlan, ...grants])];
+}
+
+export async function hasEntitlementForIdentity(
+  identityId: string,
+  code: EntitlementCode | string,
+): Promise<boolean> {
+  if (!isApprovedEntitlement(code)) return false;
+  const entitlements = await entitlementsForIdentity(identityId);
+  return entitlements.includes(code);
+}
+
+export async function getAccountEntitlements(userId: string): Promise<string[]> {
+  const identity = await resolveActivePlusIdentity(userId);
+  return entitlementsForIdentity(identity.identityId);
+}
+
+export async function hasEntitlement(
+  userId: string,
+  code: EntitlementCode | string,
+): Promise<boolean> {
+  const identity = await resolveActivePlusIdentity(userId);
+  return hasEntitlementForIdentity(identity.identityId, code);
+}
+
+export async function requireEntitlement(userId: string, code: EntitlementCode | string) {
+  const ok = await hasEntitlement(userId, code);
+  if (!ok) {
+    throw new PlusError("KOBA Plus entitlement required.", "FORBIDDEN");
+  }
+}
+
+export async function getSubscriptionStatus(userId: string): Promise<PlusSubscriptionView> {
+  await ensurePlans();
+  const identity = await resolveActivePlusIdentity(userId);
+  const row = await loadIdentitySubscription(identity.identityId);
+  const entitlements = await entitlementsForIdentity(identity.identityId);
+  const processing = Boolean(
+    row?.stripeCheckoutSessionId &&
+    (row.state === "NONE" || row.state === "INCOMPLETE") &&
+    !entitledFromRow(row),
+  );
+  return toSubscriptionView(row, { entitlements, processing });
+}
+
+/** Whether the active KOBAID currently has Plus perks (identity-scoped). */
 export async function isPlusActive(userId: string): Promise<boolean> {
-  const sub = await prisma.plusSubscription.findUnique({ where: { userId } });
-  return sub?.state === "ACTIVE";
+  try {
+    const identity = await resolveActivePlusIdentity(userId);
+    const row = await loadIdentitySubscription(identity.identityId);
+    return Boolean(row && entitledFromRow(row));
+  } catch {
+    return false;
+  }
 }
 
-/**
- * Real Stripe Checkout in subscription mode — a materially different
- * surface than every other Stripe flow in this codebase (one-off
- * Checkout Sessions for marketplace orders/Coin purchases). Fails closed
- * on both Stripe test-mode config AND the Plus price id specifically,
- * same two-layer check pattern as nothing else needs (marketplace/Coins
- * only ever needed the one Stripe config check).
- */
+/** @deprecated Use getSubscriptionStatus — kept for existing callers. */
+export async function getSubscription(userId: string): Promise<PlusSubscriptionView> {
+  return getSubscriptionStatus(userId);
+}
+
+export async function getPlanComparison() {
+  await ensurePlans();
+  const plans = await prisma.subscriptionPlan.findMany({
+    where: { code: { in: ["KOBA_PLUS_MONTHLY", "KOBA_PLUS_ANNUAL"] } },
+    include: { entitlements: true },
+    orderBy: { sortOrder: "asc" },
+  });
+
+  return plans.map((plan) => {
+    const config = findPlanConfig(plan.code);
+    return {
+      code: plan.code,
+      displayName: plan.displayName,
+      interval: plan.interval,
+      currency: plan.currency,
+      displayAmountCents: plan.displayAmountCents,
+      priceLabel: formatDisplayPrice(plan.displayAmountCents, plan.currency, plan.interval),
+      active: plan.active && Boolean(config?.stripePriceId),
+      configured: Boolean(config?.stripePriceId),
+      entitlements: plan.entitlements
+        .filter((row) => row.enabled && isApprovedEntitlement(row.code))
+        .map((row) => row.code),
+    };
+  });
+}
+
+async function getOrCreateStripeCustomer(identity: {
+  userId: string;
+  identityId: string;
+  accountType: string;
+  email: string | null;
+  stripeCustomerId: string | null;
+}): Promise<string> {
+  const stripe = getStripe();
+  if (identity.stripeCustomerId) {
+    return identity.stripeCustomerId;
+  }
+
+  const customer = await stripe.customers.create({
+    ...(identity.email ? { email: identity.email } : {}),
+    metadata: {
+      kobaPlus: "1",
+      userId: identity.userId,
+    },
+  });
+
+  await prisma.user.update({
+    where: { id: identity.userId },
+    data: { stripeCustomerId: customer.id },
+  });
+
+  return customer.id;
+}
+
+async function reuseOpenCheckout(sessionId: string): Promise<string | null> {
+  const session = await getStripe().checkout.sessions.retrieve(sessionId);
+  if (session.url && session.status !== "expired" && session.status !== "complete") {
+    return session.url;
+  }
+  return null;
+}
+
 export async function createPlusCheckout(
   userId: string,
-  idempotencyKey: string,
-): Promise<{ url: string }> {
+  input: { planCode: string; idempotencyKey: string },
+  ipAddress?: string | null,
+): Promise<{ url: string; publicRef: string; processing: true }> {
   if (!isStripeConfigured()) {
-    throw new PlusError("Stripe test mode is not configured.", "INVALID");
-  }
-  if (!isPlusPriceConfigured()) {
     throw new PlusError(
-      `KOBA Plus has no configured price (set ${PLUS_ENV_VAR} to enable).`,
-      "INVALID",
+      "Stripe test mode is not configured. Add sk_test_ keys to continue.",
+      "NOT_CONFIGURED",
     );
   }
 
-  const sub = await ensureSubscription(userId);
-  if (sub.state === "ACTIVE") {
-    throw new PlusError("You already have an active Plus subscription.", "CONFLICT");
+  const planCode = assertApprovedPlanCode(input.planCode);
+  const config = findPlanConfig(planCode);
+  if (!config?.stripePriceId) {
+    throw new PlusError("This Plus plan is not configured for test checkout.", "NOT_CONFIGURED");
   }
 
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
-  const appUrl = getPublicEnv().appUrl;
+  await ensurePlans();
+  const identity = await resolveActivePlusIdentity(userId);
+  const plan = await prisma.subscriptionPlan.findUnique({ where: { code: planCode } });
+  if (!plan?.active || plan.stripePriceId === "unconfigured") {
+    throw new PlusError("This Plus plan is not available.", "INVALID");
+  }
+
+  const existing = await loadIdentitySubscription(identity.identityId);
+  const eligibility = evaluateCheckoutEligibility(existing);
+  if (eligibility === "manage_billing") {
+    throw new PlusError("Update billing for the existing subscription instead.", "CONFLICT");
+  }
+  if (eligibility === "duplicate") {
+    throw new PlusError("This KOBA account already has KOBA Plus.", "CONFLICT");
+  }
+
+  if (
+    existing?.checkoutIdempotencyKey === input.idempotencyKey &&
+    existing.stripeCheckoutSessionId
+  ) {
+    const reused = await reuseOpenCheckout(existing.stripeCheckoutSessionId);
+    if (reused) {
+      return { url: reused, publicRef: existing.publicRef, processing: true };
+    }
+  }
+
+  if (existing?.stripeCheckoutSessionId) {
+    const reused = await reuseOpenCheckout(existing.stripeCheckoutSessionId);
+    if (reused) {
+      return { url: reused, publicRef: existing.publicRef, processing: true };
+    }
+  }
+
+  const customerId = await getOrCreateStripeCustomer(identity);
+  const publicRef = existing?.publicRef ?? (await allocatePlusRef());
   const stripe = getStripe();
-
-  let customerId = sub.stripeCustomerId;
-  if (!customerId) {
-    const customer = await stripe.customers.create(
-      { ...(user?.email ? { email: user.email } : {}), metadata: { userId } },
-      { idempotencyKey: `plus-customer:${userId}` },
-    );
-    customerId = customer.id;
-  }
-
-  const priceId = process.env[PLUS_ENV_VAR];
-  if (!priceId) {
-    throw new PlusError(`KOBA Plus has no configured price (set ${PLUS_ENV_VAR}).`, "INVALID");
-  }
 
   const session = await stripe.checkout.sessions.create(
     {
       mode: "subscription",
       customer: customerId,
-      success_url: `${appUrl}/plus?checkout=success`,
-      cancel_url: `${appUrl}/plus?checkout=cancel`,
-      line_items: [{ price: priceId, quantity: 1 }],
-      metadata: { kind: "plus_subscription", userId },
-      subscription_data: { metadata: { userId } },
+      client_reference_id: publicRef,
+      success_url: plusAppUrl("/plus?checkout=processing"),
+      cancel_url: plusAppUrl("/plus?checkout=cancelled"),
+      line_items: [{ price: plan.stripePriceId, quantity: 1 }],
+      metadata: {
+        kobaPlus: "1",
+        userId: identity.userId,
+        kobaIdentityId: identity.identityId,
+        accountType: identity.accountType,
+        planCode,
+      },
+      subscription_data: {
+        metadata: {
+          kobaPlus: "1",
+          userId: identity.userId,
+          kobaIdentityId: identity.identityId,
+          accountType: identity.accountType,
+          planCode,
+        },
+      },
     },
-    { idempotencyKey: `plus-checkout:${idempotencyKey}` },
+    { idempotencyKey: `plus-checkout:${identity.identityId}:${input.idempotencyKey}` },
   );
 
-  await prisma.plusSubscription.update({
-    where: { userId },
-    data: { stripeCustomerId: customerId },
+  if (!session.url) {
+    throw new PlusError("Stripe did not return a checkout URL.", "INVALID");
+  }
+
+  await prisma.plusSubscription.upsert({
+    where: { kobaIdentityId: identity.identityId },
+    create: {
+      publicRef,
+      userId: identity.userId,
+      kobaIdentityId: identity.identityId,
+      accountType: identity.accountType,
+      planId: plan.id,
+      interval: plan.interval,
+      provider: "stripe",
+      stripeCustomerId: customerId,
+      stripeCheckoutSessionId: session.id,
+      checkoutIdempotencyKey: input.idempotencyKey,
+      state: "INCOMPLETE",
+    },
+    update: {
+      planId: plan.id,
+      interval: plan.interval,
+      stripeCustomerId: customerId,
+      stripeCheckoutSessionId: session.id,
+      checkoutIdempotencyKey: input.idempotencyKey,
+      state: existing?.state === "ACTIVE" ? existing.state : "INCOMPLETE",
+    },
   });
 
   await writeAuditLog({
     actorUserId: userId,
     action: AuditAction.PLUS_CHECKOUT_STARTED,
     targetType: "PlusSubscription",
-    targetId: sub.id,
-    metadata: { charged: false },
+    targetId: publicRef,
+    metadata: { planCode, publicRef, charged: false },
+    ipAddress: ipAddress ?? null,
   });
 
-  if (!session.url) {
-    throw new PlusError("Stripe did not return a checkout URL.", "INVALID");
+  return { url: session.url, publicRef, processing: true };
+}
+
+export async function createBillingPortal(userId: string): Promise<{ url: string }> {
+  if (!isStripeConfigured()) {
+    throw new PlusError("Stripe test mode is not configured.", "NOT_CONFIGURED");
   }
+  const identity = await resolveActivePlusIdentity(userId);
+  const customerId =
+    identity.stripeCustomerId ??
+    (await loadIdentitySubscription(identity.identityId))?.stripeCustomerId;
+  if (!customerId) {
+    throw new PlusError("No billing customer exists for this account.", "NOT_FOUND");
+  }
+
+  const session = await getStripe().billingPortal.sessions.create({
+    customer: customerId,
+    return_url: plusAppUrl("/plus"),
+  });
+
   return { url: session.url };
 }
 
-/**
- * Cancels at period end (not immediately) — Plus perks stay active
- * through what's already been paid for, then the subscription lapses.
- * This is a deliberate default, not a guess left unflagged: ROADMAP.md
- * Phase 16 open question #4 asked whether cancellation is immediate or
- * has a grace period, and "runs out what you paid for" is the standard
- * subscription-product default, but it's still worth the client
- * confirming rather than assuming this is exactly what they want.
- */
-export async function cancelSubscription(
+export async function cancelAtPeriodEnd(
   userId: string,
+  idempotencyKey: string,
   ipAddress?: string | null,
 ): Promise<PlusSubscriptionView> {
-  const sub = await ensureSubscription(userId);
-  if (!sub.stripeSubscriptionId) {
-    throw new PlusError("No active subscription to cancel.", "NOT_FOUND");
-  }
   if (!isStripeConfigured()) {
-    throw new PlusError("Stripe test mode is not configured.", "INVALID");
+    throw new PlusError("Stripe test mode is not configured.", "NOT_CONFIGURED");
+  }
+  const identity = await resolveActivePlusIdentity(userId);
+  const existing = await loadIdentitySubscription(identity.identityId);
+  if (!existing?.stripeSubscriptionId || !entitledFromRow(existing)) {
+    throw new PlusError("No active Plus subscription to cancel.", "NOT_FOUND");
   }
 
-  await getStripe().subscriptions.update(sub.stripeSubscriptionId, {
-    cancel_at_period_end: true,
-  });
+  const updated = await getStripe().subscriptions.update(
+    existing.stripeSubscriptionId,
+    { cancel_at_period_end: true },
+    { idempotencyKey: `plus-cancel:${existing.id}:${idempotencyKey}` },
+  );
 
-  const updated = await prisma.plusSubscription.update({
-    where: { userId },
-    data: { cancelAtPeriodEnd: true },
-  });
-
+  await syncSubscriptionFromStripe(updated, { source: "api" });
   await writeAuditLog({
     actorUserId: userId,
     action: AuditAction.PLUS_CANCELLED,
     targetType: "PlusSubscription",
-    targetId: updated.id,
-    metadata: { effectiveAt: updated.renewsAt },
+    targetId: existing.publicRef,
+    metadata: { publicRef: existing.publicRef, cancelAtPeriodEnd: true },
     ipAddress: ipAddress ?? null,
   });
 
-  return toView(updated);
+  return getSubscriptionStatus(userId);
 }
 
-function mapStripeStatus(status: Stripe.Subscription.Status): PlusSubscriptionState {
-  switch (status) {
-    case "active":
-    case "trialing":
-      return "ACTIVE";
-    case "past_due":
-    case "unpaid":
-      return "PAST_DUE";
-    case "canceled":
-    case "incomplete_expired":
-      return "CANCELLED";
-    default:
-      return "NONE";
+export async function reactivateSubscription(
+  userId: string,
+  idempotencyKey: string,
+  ipAddress?: string | null,
+): Promise<PlusSubscriptionView> {
+  if (!isStripeConfigured()) {
+    throw new PlusError("Stripe test mode is not configured.", "NOT_CONFIGURED");
   }
+  const identity = await resolveActivePlusIdentity(userId);
+  const existing = await loadIdentitySubscription(identity.identityId);
+  if (!existing?.stripeSubscriptionId || !existing.cancelAtPeriodEnd) {
+    throw new PlusError("There is no scheduled cancellation to undo.", "INVALID");
+  }
+  if (!entitledFromRow(existing)) {
+    throw new PlusError("This subscription can no longer be reactivated.", "INVALID");
+  }
+
+  const updated = await getStripe().subscriptions.update(
+    existing.stripeSubscriptionId,
+    { cancel_at_period_end: false },
+    { idempotencyKey: `plus-reactivate:${existing.id}:${idempotencyKey}` },
+  );
+
+  await syncSubscriptionFromStripe(updated, { source: "api" });
+  await writeAuditLog({
+    actorUserId: userId,
+    action: AuditAction.PLUS_UPDATED,
+    targetType: "PlusSubscription",
+    targetId: existing.publicRef,
+    metadata: { publicRef: existing.publicRef, reactivated: true },
+    ipAddress: ipAddress ?? null,
+  });
+
+  return getSubscriptionStatus(userId);
 }
 
-/**
- * Webhook-driven only — the source of truth for subscription state is
- * Stripe, never the checkout redirect. Handles customer.subscription.
- * created/updated/deleted. Idempotent: re-syncing the same Stripe state
- * twice is a no-op beyond the redundant write.
- */
-export async function syncSubscriptionFromStripe(subscription: Stripe.Subscription): Promise<void> {
-  const userId = subscription.metadata?.userId;
-  if (!userId) {
-    return;
+export async function syncSubscriptionFromStripe(
+  subscription: Stripe.Subscription,
+  opts?: {
+    source?: "webhook" | "api" | "reconcile";
+    eventId?: string;
+    eventCreated?: number;
+    checkoutSessionId?: string;
+  },
+) {
+  const source = opts?.source ?? "webhook";
+  const metadata = subscription.metadata ?? {};
+  const identityId = metadata.kobaIdentityId;
+  const existing = subscription.id
+    ? await prisma.plusSubscription.findUnique({
+        where: { stripeSubscriptionId: subscription.id },
+        include: subscriptionInclude,
+      })
+    : null;
+
+  const byIdentity =
+    existing ??
+    (identityId
+      ? await prisma.plusSubscription.findUnique({
+          where: { kobaIdentityId: identityId },
+          include: subscriptionInclude,
+        })
+      : null);
+
+  if (!byIdentity && !identityId) {
+    return null;
   }
 
-  const existing = await ensureSubscription(userId);
-  const nextState = mapStripeStatus(subscription.status);
-  // Stripe API versions matching this SDK (stripe@22.x) moved
-  // current_period_end off the top-level Subscription object onto each
-  // subscription item (a subscription can now have multiple prices with
-  // independent billing periods) — Plus only ever has one item, so read
-  // it from there. Falls back to the existing stored value if Stripe
-  // ever omits it, rather than clobbering a known-good renewsAt with
-  // null.
-  const periodEndUnix = subscription.items.data[0]?.current_period_end;
+  if (
+    source === "webhook" &&
+    !shouldApplyStripeEvent(opts?.eventCreated, byIdentity?.lastStripeEventCreated)
+  ) {
+    return byIdentity;
+  }
 
-  const becameActive = nextState === "ACTIVE" && existing.state !== "ACTIVE";
+  const state = mapStripeSubscriptionStatus(subscription.status);
+  const period = periodFromStripeSubscription(subscription);
+  const priceId = priceIdFromStripeSubscription(subscription);
+  const plan = priceId
+    ? await prisma.subscriptionPlan.findFirst({ where: { stripePriceId: priceId } })
+    : null;
 
-  const updated = await prisma.plusSubscription.update({
-    where: { userId },
-    data: {
-      state: nextState,
-      stripeSubscriptionId: subscription.id,
-      stripeCustomerId:
-        typeof subscription.customer === "string" ? subscription.customer : subscription.customer.id,
-      renewsAt: periodEndUnix ? new Date(periodEndUnix * 1000) : existing.renewsAt,
-      cancelAtPeriodEnd: subscription.cancel_at_period_end,
-      ...(becameActive && !existing.firstActivatedAt ? { firstActivatedAt: new Date() } : {}),
+  const userId = metadata.userId || byIdentity?.userId;
+  const accountType = (metadata.accountType || byIdentity?.accountType || "PLAYER") as
+    "PLAYER" | "BUSINESS" | "INFLUENCER" | "MODERATOR" | "ADMIN" | "SUPERADMIN";
+  const resolvedIdentityId = identityId || byIdentity?.kobaIdentityId;
+  if (!userId || !resolvedIdentityId) {
+    return null;
+  }
+
+  const customerId =
+    typeof subscription.customer === "string"
+      ? subscription.customer
+      : (subscription.customer?.id ?? byIdentity?.stripeCustomerId ?? null);
+
+  const ended =
+    state === "CANCELLED" || state === "EXPIRED" || state === "UNPAID"
+      ? unixOrNow(subscription.ended_at)
+      : null;
+
+  const data = {
+    userId,
+    kobaIdentityId: resolvedIdentityId,
+    accountType,
+    planId: plan?.id ?? byIdentity?.planId ?? null,
+    interval: plan?.interval ?? byIdentity?.interval ?? null,
+    provider: "stripe",
+    stripeCustomerId: customerId,
+    stripeSubscriptionId: subscription.id,
+    stripeCheckoutSessionId: opts?.checkoutSessionId ?? byIdentity?.stripeCheckoutSessionId ?? null,
+    state,
+    cancelAtPeriodEnd: Boolean(subscription.cancel_at_period_end),
+    currentPeriodStart: period.start,
+    currentPeriodEnd: period.end,
+    cancelledAt: unixOrNow(subscription.canceled_at),
+    endedAt: ended,
+    trialEndsAt: unixOrNow(subscription.trial_end),
+    lastStripeEventId: opts?.eventId ?? byIdentity?.lastStripeEventId ?? null,
+    lastStripeEventCreated:
+      source === "webhook"
+        ? (opts?.eventCreated ?? byIdentity?.lastStripeEventCreated ?? null)
+        : (opts?.eventCreated ?? Math.floor(Date.now() / 1000)),
+    version: { increment: 1 },
+  };
+
+  const existingFirstActivatedAt = (byIdentity as { firstActivatedAt?: Date | null } | null)
+    ?.firstActivatedAt;
+  if (state === "ACTIVE" && !existingFirstActivatedAt) {
+    Object.assign(data, { firstActivatedAt: new Date() });
+  }
+
+  const saved = byIdentity
+    ? await prisma.plusSubscription.update({
+        where: { id: byIdentity.id },
+        data,
+        include: subscriptionInclude,
+      })
+    : await prisma.plusSubscription.create({
+        data: {
+          ...data,
+          publicRef: await allocatePlusRef(),
+          version: 1,
+        },
+        include: subscriptionInclude,
+      });
+
+  assertNoPlusSecrets({
+    publicRef: saved.publicRef,
+    state: saved.state,
+    stripeSubscriptionId: saved.stripeSubscriptionId,
+  });
+
+  const becameActive = saved.state === "ACTIVE" && byIdentity?.state !== "ACTIVE";
+  await writeAuditLog({
+    actorUserId: userId,
+    action: becameActive ? AuditAction.PLUS_ACTIVATED : AuditAction.PLUS_UPDATED,
+    targetType: "PlusSubscription",
+    targetId: saved.publicRef,
+    metadata: {
+      publicRef: saved.publicRef,
+      state: saved.state,
+      source,
+      eventId: opts?.eventId ?? null,
     },
   });
 
-  if (becameActive) {
-    await writeAuditLog({
-      actorUserId: userId,
-      action: AuditAction.PLUS_ACTIVATED,
-      targetType: "PlusSubscription",
-      targetId: updated.id,
-      metadata: { stripeSubscriptionId: subscription.id },
-    });
-  }
+  return saved;
 }
 
-export async function markSubscriptionCancelled(subscription: Stripe.Subscription): Promise<void> {
-  const userId = subscription.metadata?.userId;
-  if (!userId) {
-    return;
-  }
-  await ensureSubscription(userId);
-  await prisma.plusSubscription.update({
-    where: { userId },
-    data: { state: "CANCELLED", cancelAtPeriodEnd: false },
+function unixOrNow(value: number | null | undefined): Date | null {
+  if (!value) return null;
+  return new Date(value * 1000);
+}
+
+export async function clearPlusCheckoutSession(sessionId: string) {
+  await prisma.plusSubscription.updateMany({
+    where: { stripeCheckoutSessionId: sessionId, state: { in: ["NONE", "INCOMPLETE"] } },
+    data: { stripeCheckoutSessionId: null, state: "NONE" },
   });
 }
+
+export type PlusPlanCodeExport = PlusPlanCode;

@@ -53,16 +53,16 @@ export const staffVerifyShopSchema = z.object({
 export const promoConfigUpdateSchema = z
   .object({
     influencerEligible: z.boolean().optional(),
-    payoutType: z.enum(["PERCENT", "FIXED"]).optional(),
+    payoutType: z.enum(["PERCENT_BPS", "FIXED_CENTS"]).optional(),
     payoutValue: z.number().int().min(0).optional(),
   })
   .refine(
     (value) =>
-      value.payoutType !== "PERCENT" ||
+      value.payoutType !== "PERCENT_BPS" ||
       value.payoutValue === undefined ||
       value.payoutValue <= 10000,
     {
-      message: "PERCENT payoutValue is basis points and must be between 0 and 10000.",
+      message: "PERCENT_BPS payoutValue is basis points and must be between 0 and 10000.",
       path: ["payoutValue"],
     },
   );

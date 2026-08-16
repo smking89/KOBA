@@ -8,6 +8,7 @@ import { FollowShopButton } from "@/features/shops/components/follow-shop-button
 import { ShopReviewForm } from "@/features/shops/components/shop-review-form";
 import { listPublicProductsForShop } from "@/features/marketplace/services/product.service";
 import { getPublicShop } from "@/features/shops/services/shop.service";
+import { PlusBadge } from "@/features/plus/components/plus-badge";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -34,6 +35,7 @@ export default async function ShopPage({ params }: { params: Promise<{ slug: str
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-3xl font-semibold tracking-tight">{shop.name}</h1>
             {verified ? <Badge tone="live">Verified</Badge> : <Badge>Unverified</Badge>}
+            <PlusBadge visible={shop.plusBadge} />
           </div>
           {shop.kobaId ? <p className="mt-2 font-mono text-sm text-muted">{shop.kobaId}</p> : null}
           <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted">{shop.bio}</p>

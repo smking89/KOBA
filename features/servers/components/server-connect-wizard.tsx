@@ -2,33 +2,45 @@
 
 import { useSession } from "next-auth/react";
 import Link from "next/link";
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
+import { useEffect, useState } from "react";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { StatusPill } from "@/components/koba/status-pill";
-import {
-  canConnectGameServer,
-  rconTestLabel,
-  type RconTestState,
-  type ServerCapability,
-} from "@/features/servers/lib/types";
+import { RustIntegrationPanel } from "@/features/servers/components/rust-integration-panel";
+import { canConnectGameServer, type GameServerOwnerView } from "@/features/servers/lib/types";
+import type { RustIntegrationHealth } from "@/features/servers/lib/types";
 
-const DEMO_CAPABILITIES: ServerCapability[] = [
-  "STATUS",
-  "PLAYER_COUNT",
-  "QUEUE_COUNT",
-  "MAP_INFO",
-  "RCON_READ",
-  "PC",
-];
-
-export function ServerConnectWizard() {
+export function ServerConnectWizard({
+  initialServers,
+  selectedSlug,
+}: {
+  initialServers: GameServerOwnerView[];
+  selectedSlug?: string;
+}) {
   const { data: session, status } = useSession();
   const allowed = canConnectGameServer(session?.user.accountType);
-  const [testState, setTestState] = useState<RconTestState>("IDLE");
-  const [password, setPassword] = useState("");
+  const rustServers = initialServers.filter(
+    (server) => server.gameSlug === "rust" && server.platformFamily === "PC",
+  );
+  const [slug, setSlug] = useState(selectedSlug ?? rustServers[0]?.slug ?? "");
+  const [health, setHealth] = useState<RustIntegrationHealth | null>(null);
+
+  useEffect(() => {
+    if (!slug) return;
+    let cancelled = false;
+    fetch(`/api/servers/${slug}/integrations/rust`, { cache: "no-store" })
+      .then(async (res) => {
+        if (!res.ok) return null;
+        return (await res.json()) as RustIntegrationHealth;
+      })
+      .then((data) => {
+        if (!cancelled) setHealth(data);
+      })
+      .catch(() => {
+        if (!cancelled) setHealth(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [slug]);
 
   if (status === "loading") {
     return <p className="text-sm text-muted">Checking account…</p>;
@@ -64,132 +76,57 @@ export function ServerConnectWizard() {
     );
   }
 
+  const selected = rustServers.find((server) => server.slug === slug) ?? rustServers[0];
+
   return (
     <div className="space-y-6">
       <div>
-        <Link href="/servers" className="text-sm text-muted hover:text-foreground">
-          ← Servers
+        <Link href="/servers/manage" className="text-sm text-muted hover:text-foreground">
+          ← Manage servers
         </Link>
-        <h1 className="mt-2 text-3xl font-semibold tracking-tight">Connect server</h1>
+        <h1 className="mt-2 text-3xl font-semibold tracking-tight">Connect Rust server</h1>
         <p className="mt-2 max-w-2xl text-sm text-muted">
-          RCON credentials are write-only in the UI. KOBA will not redisplay saved secrets. No
-          administrative commands run in this phase — connection test is a stub.
+          Secure, read-only Rust PC integration. Saved passwords are never shown again. Kick, ban,
+          and other administrative commands are disabled.
         </p>
       </div>
 
-      <Card>
-        <CardTitle>Connection wizard</CardTitle>
-        <CardDescription>Game, endpoint, and masked credentials.</CardDescription>
-        <form
-          className="mt-4 grid gap-4 sm:grid-cols-2"
-          onSubmit={(event) => {
-            event.preventDefault();
-            setTestState("TESTING");
-            window.setTimeout(() => setTestState("SUCCESS"), 600);
-          }}
-        >
-          <label className="space-y-1 text-sm">
-            <Label htmlFor="game">Game</Label>
+      {rustServers.length === 0 ? (
+        <Card>
+          <CardTitle>Register a Rust PC server first</CardTitle>
+          <CardDescription>
+            Integrations attach to an owned directory listing. Create a Rust PC server, then return
+            here to configure RCON.
+          </CardDescription>
+          <Link href="/servers/manage" className="mt-4 inline-block text-neon-mint">
+            Open server management
+          </Link>
+        </Card>
+      ) : (
+        <>
+          <label className="block max-w-md space-y-1 text-sm">
+            <span className="text-muted">Owned Rust PC server</span>
             <select
-              id="game"
               className="flex h-10 w-full rounded-md border border-border bg-background px-3"
-              defaultValue="Rust"
+              value={selected?.slug ?? ""}
+              onChange={(event) => setSlug(event.target.value)}
             >
-              <option>Rust</option>
-              <option>Minecraft</option>
-              <option>DayZ</option>
+              {rustServers.map((server) => (
+                <option key={server.slug} value={server.slug}>
+                  {server.name}
+                </option>
+              ))}
             </select>
           </label>
-          <label className="space-y-1 text-sm">
-            <Label htmlFor="platform">Platform</Label>
-            <select
-              id="platform"
-              className="flex h-10 w-full rounded-md border border-border bg-background px-3"
-              defaultValue="PC"
-            >
-              <option>PC</option>
-              <option>CONSOLE</option>
-            </select>
-          </label>
-          <label className="space-y-1 text-sm sm:col-span-2">
-            <Label htmlFor="host">Server address</Label>
-            <Input id="host" placeholder="203.0.113.10" autoComplete="off" />
-          </label>
-          <label className="space-y-1 text-sm">
-            <Label htmlFor="port">Port</Label>
-            <Input id="port" placeholder="28016" inputMode="numeric" autoComplete="off" />
-          </label>
-          <label className="space-y-1 text-sm">
-            <Label htmlFor="rcon-pass">RCON password</Label>
-            <Input
-              id="rcon-pass"
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              autoComplete="new-password"
-              placeholder="••••••••"
+          {selected ? (
+            <RustIntegrationPanel
+              serverSlug={selected.slug}
+              serverName={selected.name}
+              initialHealth={health}
             />
-          </label>
-          <div className="flex flex-wrap items-center gap-2 sm:col-span-2">
-            <Button type="submit" size="sm">
-              Test connection
-            </Button>
-            <Button type="button" size="sm" variant="ghost" onClick={() => setTestState("TIMEOUT")}>
-              Simulate timeout
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              onClick={() => setTestState("AUTH_FAILED")}
-            >
-              Simulate auth failure
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              onClick={() => setTestState("UNSUPPORTED")}
-            >
-              Simulate unsupported
-            </Button>
-            <StatusPill
-              tone={
-                testState === "SUCCESS"
-                  ? "success"
-                  : testState === "TESTING" || testState === "IDLE"
-                    ? "neutral"
-                    : "danger"
-              }
-            >
-              {rconTestLabel(testState)}
-            </StatusPill>
-          </div>
-        </form>
-      </Card>
-
-      <Card>
-        <CardTitle>Capability summary</CardTitle>
-        <CardDescription>Read-only monitoring after a successful link.</CardDescription>
-        <ul className="mt-3 flex flex-wrap gap-2">
-          {DEMO_CAPABILITIES.map((capability) => (
-            <StatusPill key={capability} tone="accent">
-              {capability}
-            </StatusPill>
-          ))}
-        </ul>
-        <div className="mt-4 flex flex-wrap gap-2">
-          <Button size="sm" variant="secondary">
-            Rotate credentials
-          </Button>
-          <Button size="sm" variant="danger">
-            Disconnect
-          </Button>
-        </div>
-        <p className="mt-3 text-xs text-muted">
-          Password field length in memory: {password.length} (value never echoed back after save).
-        </p>
-      </Card>
+          ) : null}
+        </>
+      )}
     </div>
   );
 }

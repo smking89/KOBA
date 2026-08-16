@@ -37,7 +37,11 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await generateProductDescription(session.user.id, parsed.data, clientIp(request));
+    const result = await generateProductDescription(
+      session.user.id,
+      parsed.data,
+      clientIp(request),
+    );
     return NextResponse.json(result);
   } catch (error) {
     return jsonShopError(error, "Could not generate a description.");

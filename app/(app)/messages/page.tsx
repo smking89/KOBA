@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/koba/page-header";
 import { auth } from "@/lib/auth";
 import { InboxList } from "@/features/messages/components/inbox-list";
 import { listInbox } from "@/features/messages/services/message.service";
@@ -16,14 +16,11 @@ export default async function MessagesPage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
-      <div>
-        <Badge tone="live">Private</Badge>
-        <h1 className="mt-3 text-3xl font-semibold tracking-tight">Messages</h1>
-        <p className="mt-2 max-w-2xl text-muted">
-          Direct chats are never cached by the PWA. Vanish mode deletes server copies when you leave
-          — it cannot stop screenshots.
-        </p>
-      </div>
+      <PageHeader
+        eyebrow="Private"
+        title="Messages"
+        description="Direct chats are never cached by the PWA. Vanish mode deletes server copies when you leave — it cannot stop screenshots."
+      />
       <InboxList initial={items} />
     </div>
   );

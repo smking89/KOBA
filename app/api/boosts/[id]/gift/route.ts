@@ -35,7 +35,12 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   }
 
   try {
-    const boost = await giftBoost(session.user.id, id, parsed.data.recipientUserId, clientIp(request));
+    const boost = await giftBoost(
+      session.user.id,
+      id,
+      parsed.data.recipientUserId,
+      clientIp(request),
+    );
     return NextResponse.json({ boost });
   } catch (error) {
     return jsonBoostError(error, "Could not gift this Boost.");

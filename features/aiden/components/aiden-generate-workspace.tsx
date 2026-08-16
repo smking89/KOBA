@@ -2,57 +2,91 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { StatusPill } from "@/components/koba/status-pill";
 import {
-  AIDEN_ASSET_TYPES,
   AIDEN_DISCLAIMER,
   aidenAssetTypeLabel,
   aidenJobLabel,
-  type AidenAssetType,
   type AidenJobView,
 } from "@/features/aiden/lib/types";
-import { coinCostForAssetType } from "@/features/aiden/lib/cost-preview";
 
-// Matches the marketplace's per-game content policy
-// (docs/game-content-policy.md) — Rust and Garry's Mod are the FULL-policy
-// games; Minecraft is SKINS_ONLY, which is fine for Aiden's SKIN/
-// COSMETIC asset types but worth noting if MAP/TERRAIN generation ever
-// gets a Minecraft option here.
-const GAMES = ["Rust", "Minecraft", "Garry's Mod"] as const;
-const PLATFORMS = ["STEAM", "PC", "XBOX"] as const;
+function newKey() {
+  return typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `aiden-${Date.now()}`;
+}
 
 export function AidenGenerateWorkspace({ initialJobs = [] }: { initialJobs?: AidenJobView[] }) {
   const router = useRouter();
-  const [assetType, setAssetType] = useState<AidenAssetType>("CONCEPT_IMAGE");
   const [prompt, setPrompt] = useState("");
-  const [game, setGame] = useState<string>(GAMES[0]);
-  const [platform, setPlatform] = useState<string>(PLATFORMS[0]);
+  const [game, setGame] = useState("Rust");
+  const [platform, setPlatform] = useState("STEAM");
+  const [quality, setQuality] = useState<"standard" | "hd">("standard");
+  const [estimate, setEstimate] = useState<string>("40");
+  const [available, setAvailable] = useState<string | null>(null);
+  const [reserved, setReserved] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const costPreview = coinCostForAssetType(assetType);
+  const [jobs, setJobs] = useState(initialJobs);
 
-  async function submit() {
+  useEffect(() => {
+    setJobs(initialJobs);
+  }, [initialJobs]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetch("/api/aiden/estimate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+      body: JSON.stringify({ assetType: "CONCEPT_IMAGE", quality }),
+    })
+      .then(async (response) => {
+        const payload = (await response.json()) as {
+          estimate?: { estimatedCostCoins?: string };
+          wallet?: { available?: string; reserved?: string };
+        };
+        if (cancelled || !response.ok) return;
+        if (payload.estimate?.estimatedCostCoins) setEstimate(payload.estimate.estimatedCostCoins);
+        if (payload.wallet?.available) setAvailable(payload.wallet.available);
+        if (payload.wallet?.reserved) setReserved(payload.wallet.reserved);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [quality]);
+
+  async function queueJob() {
     setBusy(true);
     setError(null);
-
-    const response = await fetch("/api/aiden/jobs", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt, game, platform, assetType }),
-    });
-    const payload = (await response.json()) as { error?: string };
-    setBusy(false);
-
-    if (!response.ok) {
-      setError(payload.error ?? "Could not queue generation.");
-      return;
+    try {
+      const response = await fetch("/api/aiden/jobs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+        body: JSON.stringify({
+          prompt,
+          game,
+          platform,
+          assetType: "CONCEPT_IMAGE",
+          quality,
+          idempotencyKey: newKey(),
+        }),
+      });
+      const payload = (await response.json()) as AidenJobView & { error?: string };
+      if (!response.ok) {
+        setError(payload.error ?? "Could not queue generation.");
+        return;
+      }
+      router.push(`/aiden/jobs/${payload.publicRef}`);
+    } catch {
+      setError("Network error. Generation requires internet.");
+    } finally {
+      setBusy(false);
     }
-
-    setPrompt("");
-    router.refresh();
   }
 
   return (
@@ -61,15 +95,15 @@ export function AidenGenerateWorkspace({ initialJobs = [] }: { initialJobs?: Aid
         <Link href="/aiden" className="text-sm text-muted hover:text-foreground">
           ← Aiden
         </Link>
-        <h1 className="mt-2 text-3xl font-semibold tracking-tight">Generator</h1>
+        <h1 className="mt-2 text-3xl font-semibold tracking-tight">Create concept image</h1>
         <p className="mt-2 max-w-2xl text-sm text-muted">{AIDEN_DISCLAIMER}</p>
       </div>
 
       <Card>
-        <CardTitle>Prompt composer</CardTitle>
+        <CardTitle>Concept image</CardTitle>
         <CardDescription>
-          Routed through Aiden Studio OS to the matching Vest/Graft/Terra provider — see the
-          job&apos;s status below once queued.
+          Only concept-image generation is active. Output is a private draft, never a game-ready
+          listing.
         </CardDescription>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <label className="space-y-1 text-sm sm:col-span-2">
@@ -78,83 +112,76 @@ export function AidenGenerateWorkspace({ initialJobs = [] }: { initialJobs?: Aid
               value={prompt}
               onChange={(event) => setPrompt(event.target.value)}
               rows={4}
+              maxLength={2000}
+              aria-label="Prompt"
               className="w-full rounded-md border border-border bg-background px-3 py-2"
-              placeholder="Describe the asset…"
+              placeholder="Describe the concept image…"
             />
           </label>
           <label className="space-y-1 text-sm">
-            <span className="text-muted">Game</span>
-            <select
-              value={game}
-              onChange={(event) => setGame(event.target.value)}
-              className="h-10 w-full rounded-md border border-border bg-background px-3"
-            >
-              {GAMES.map((option) => (
-                <option key={option}>{option}</option>
-              ))}
-            </select>
+            <span className="text-muted">Game context</span>
+            <Input value={game} onChange={(event) => setGame(event.target.value)} />
           </label>
           <label className="space-y-1 text-sm">
             <span className="text-muted">Platform</span>
-            <select
-              value={platform}
-              onChange={(event) => setPlatform(event.target.value)}
-              className="h-10 w-full rounded-md border border-border bg-background px-3"
-            >
-              {PLATFORMS.map((option) => (
-                <option key={option}>{option}</option>
-              ))}
-            </select>
+            <Input value={platform} onChange={(event) => setPlatform(event.target.value)} />
           </label>
-          <label className="space-y-1 text-sm sm:col-span-2">
-            <span className="text-muted">Asset type</span>
+          <label className="space-y-1 text-sm">
+            <span className="text-muted">Quality</span>
             <select
-              value={assetType}
-              onChange={(event) => setAssetType(event.target.value as AidenAssetType)}
-              className="h-10 w-full rounded-md border border-border bg-background px-3"
+              value={quality}
+              onChange={(event) => setQuality(event.target.value as "standard" | "hd")}
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm"
             >
-              {AIDEN_ASSET_TYPES.map((type) => (
-                <option key={type} value={type}>
-                  {aidenAssetTypeLabel(type)}
-                </option>
-              ))}
+              <option value="standard">Standard</option>
+              <option value="hd">HD</option>
             </select>
           </label>
         </div>
         <p className="mt-4 text-sm">
-          Cost: <span className="font-mono text-neon-lime">{costPreview} KOBA Coins</span> (reserved
-          on submit, captured on success, released if generation fails)
+          Estimated cost: <span className="font-mono text-neon-lime">{estimate} KOBA Coins</span>
         </p>
-        {error ? <p className="mt-2 text-sm text-destructive">{error}</p> : null}
+        {available != null ? (
+          <p className="mt-1 text-xs text-muted">
+            Wallet available {available}
+            {reserved ? ` · reserved ${reserved}` : ""}
+          </p>
+        ) : null}
+        {error ? <p className="mt-3 text-sm text-destructive">{error}</p> : null}
         <Button
           className="mt-4"
           size="sm"
           disabled={!prompt.trim() || busy}
-          onClick={() => void submit()}
+          onClick={() => void queueJob()}
         >
-          {busy ? "Queuing…" : "Queue generation"}
+          {busy ? "Queuing…" : "Confirm and queue"}
         </Button>
       </Card>
 
       <Card>
         <CardTitle>Generation history</CardTitle>
         <ul className="mt-4 space-y-3">
-          {initialJobs.length === 0 ? (
+          {jobs.length === 0 ? (
             <li className="text-sm text-muted">No generation jobs yet.</li>
           ) : (
-            initialJobs.map((job) => (
+            jobs.map((job) => (
               <li
                 key={job.publicRef}
                 className="flex flex-col gap-2 rounded-md border border-border p-3 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div>
-                  <p className="font-mono text-xs text-neon-mint">{job.publicRef}</p>
+                  <Link
+                    href={`/aiden/jobs/${job.publicRef}`}
+                    className="font-mono text-xs text-neon-mint hover:underline"
+                  >
+                    {job.publicRef}
+                  </Link>
                   <p className="text-sm">{job.prompt}</p>
                   <p className="text-xs text-muted">
-                    {job.game} · {aidenAssetTypeLabel(job.assetType)} ·{" "}
-                    {job.coinCostActual ?? job.coinCostPreview} Coins
-                    {job.coinCostActual !== null && job.coinCostActual !== job.coinCostPreview
-                      ? ` (preview: ${job.coinCostPreview})`
+                    {job.game} · {aidenAssetTypeLabel(job.assetType)} · {job.estimatedCostCoins}{" "}
+                    Coins
+                    {job.coinCostActual != null && job.coinCostActual !== job.coinCostPreview
+                      ? ` (actual: ${job.coinCostActual})`
                       : ""}
                   </p>
                   {job.state === "FAILED" && job.failureReason ? (
@@ -163,9 +190,9 @@ export function AidenGenerateWorkspace({ initialJobs = [] }: { initialJobs?: Aid
                 </div>
                 <StatusPill
                   tone={
-                    job.state === "COMPLETED"
+                    job.state === "SUCCEEDED" || job.state === "COMPLETED"
                       ? "success"
-                      : job.state === "FAILED"
+                      : job.state === "FAILED" || job.state === "CANCELLED"
                         ? "danger"
                         : "warning"
                   }

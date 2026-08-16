@@ -16,6 +16,25 @@ import { getStripe, isStripeConfigured } from "@/features/payments/lib/stripe";
 import { isPlatformFunctionEnabled } from "@/features/platform-control/services/platform-function.service";
 import { generateInventoryRef } from "@/features/trade/lib/refs";
 import type { CheckoutInput } from "@/features/payments/schemas/checkout.schemas";
+import {
+  resolveReferralForCheckout,
+  voidReferralForRefundedOrder,
+} from "@/features/influencer/services/influencer.service";
+import { payInfluencerEarning } from "@/features/influencer/services/payout.service";
+import { getAccountSnapshot } from "@/features/accounts/services/account.service";
+import { buildPricingSnapshot, assertNonNegativeSnapshot } from "@/features/promotions/lib/pricing";
+import {
+  validatePromoForProduct,
+  redeemPromoInTransaction,
+} from "@/features/promotions/services/promo-code.service";
+import { resolveCheckoutAttribution } from "@/features/promotions/services/attribution.service";
+import {
+  createCommissionForPaidOrder,
+  reverseCommissionForOrder,
+} from "@/features/promotions/services/commission.service";
+import { PromotionError } from "@/features/promotions/lib/errors";
+import { emitAlert } from "@/lib/observability/alerts";
+import { logger } from "@/lib/observability/logger";
 
 async function allocateOrderRef(): Promise<string> {
   for (let attempt = 0; attempt < 32; attempt += 1) {
@@ -171,15 +190,96 @@ export async function createCheckoutSession(
     throw new PaymentError("Not enough inventory.", "SOLD_OUT");
   }
 
-  const totalCents = unitPriceCents * quantity;
-  if (exceedsStripeChargeLimit(totalCents)) {
+  const originalSubtotalCents = unitPriceCents * quantity;
+  if (exceedsStripeChargeLimit(originalSubtotalCents)) {
     throw new PaymentError(
       "This order total is too large for a single checkout. Try a smaller quantity, or contact KOBA staff to arrange this purchase.",
       "AMOUNT_TOO_LARGE",
     );
   }
   const feeBps = resolveCommissionBps(shop.verificationStatus);
-  const split = splitPayment(totalCents, feeBps);
+  const checkoutStartedAt = new Date();
+  const buyerSnapshot = await getAccountSnapshot(buyerUserId);
+
+  let promo: Awaited<ReturnType<typeof validatePromoForProduct>> | null = null;
+  if (!existing && input.promoCode) {
+    try {
+      promo = await validatePromoForProduct({
+        code: input.promoCode,
+        productId: product.id,
+        shopId: shop.id,
+        buyerUserId,
+        subtotalCents: originalSubtotalCents,
+        accountType: buyerSnapshot?.activeAccountType ?? "PLAYER",
+      });
+    } catch (error) {
+      if (error instanceof PromotionError) {
+        throw new PaymentError(error.message, "INVALID");
+      }
+      throw error;
+    }
+  }
+
+  const campaignAttr = existing
+    ? null
+    : await resolveCheckoutAttribution({
+        buyerUserId,
+        productId: product.id,
+        shopId: shop.id,
+        shopOwnerUserId: shop.ownerUserId,
+        promoCampaignId: promo?.campaignId ?? null,
+        promoCodeId: promo?.promoCodeId ?? null,
+        cookieToken: input.campaignReferralToken ?? null,
+        checkoutStartedAt,
+      });
+
+  const campaign = campaignAttr
+    ? await prisma.affiliateCampaign.findUnique({ where: { id: campaignAttr.campaignId } })
+    : null;
+
+  const snapshot = buildPricingSnapshot({
+    originalSubtotalCents,
+    discountCents: promo?.discountCents ?? 0,
+    platformFeeBps: feeBps,
+    commissionType: campaign?.commissionType ?? null,
+    commissionValue: campaign?.commissionValue ?? null,
+  });
+  if (!assertNonNegativeSnapshot(snapshot)) {
+    throw new PaymentError("Pricing snapshot is invalid.", "INVALID");
+  }
+  if (snapshot.eligibleCommissionBaseCents < 50 && snapshot.discountCents > 0) {
+    throw new PaymentError("Discounted total is below the minimum charge.", "INVALID");
+  }
+
+  const baseSplit = splitPayment(snapshot.eligibleCommissionBaseCents, feeBps);
+  const referral =
+    existing || campaignAttr
+      ? null
+      : await resolveReferralForCheckout({
+          code: input.referralCode,
+          buyerUserId,
+          productId: product.id,
+          shopId: shop.id,
+          shopOwnerUserId: shop.ownerUserId,
+          shopMemberUserIds: shopMemberUserIds,
+          split: baseSplit,
+        });
+
+  const influencerShareCents = campaignAttr
+    ? snapshot.influencerCommissionCents
+    : (referral?.split.influencerShareCents ?? 0);
+  const split = campaignAttr
+    ? {
+        totalCents: snapshot.eligibleCommissionBaseCents,
+        applicationFeeCents: snapshot.platformFeeCents + snapshot.influencerCommissionCents,
+        sellerPayoutCents: snapshot.sellerProceedsCents,
+      }
+    : (referral?.split ?? {
+        ...baseSplit,
+        totalCents: snapshot.eligibleCommissionBaseCents,
+        sellerPayoutCents: snapshot.sellerProceedsCents,
+        applicationFeeCents: snapshot.platformFeeCents,
+      });
   const publicRef = existing?.publicRef ?? (await allocateOrderRef());
   const buyer = await prisma.user.findUnique({
     where: { id: buyerUserId },
@@ -201,6 +301,15 @@ export async function createCheckoutSession(
         totalCents: split.totalCents,
         applicationFeeCents: split.applicationFeeCents,
         sellerPayoutCents: split.sellerPayoutCents,
+        influencerShareCents,
+        originalSubtotalCents: snapshot.originalSubtotalCents,
+        discountCents: snapshot.discountCents,
+        eligibleCommissionBaseCents: snapshot.eligibleCommissionBaseCents,
+        promoCodeId: promo?.promoCodeId ?? null,
+        campaignId: campaignAttr?.campaignId ?? null,
+        participationId: campaignAttr?.participationId ?? null,
+        attributionSource: campaignAttr?.source ?? null,
+        referralCodeId: referral?.referralCodeId ?? null,
         currency: product.currency,
         idempotencyKey: input.idempotencyKey,
         auctionId: product.auction?.id ?? null,
@@ -214,6 +323,14 @@ export async function createCheckoutSession(
         },
       },
     });
+
+    if (promo) {
+      await redeemPromoInTransaction(tx, {
+        promoCodeId: promo.promoCodeId,
+        userId: buyerUserId,
+        orderId: created.id,
+      });
+    }
 
     const updatedProduct = await tx.product.update({
       where: { id: product.id },
@@ -238,14 +355,23 @@ export async function createCheckoutSession(
         success_url: `${appUrl}/orders/${order.publicRef}?checkout=success`,
         cancel_url: `${appUrl}/market/${product.slug}?checkout=cancel`,
         line_items: [
-          {
-            quantity,
-            price_data: {
-              currency: product.currency.toLowerCase(),
-              unit_amount: unitPriceCents,
-              product_data: { name: product.title },
-            },
-          },
+          snapshot.discountCents > 0
+            ? {
+                quantity: 1,
+                price_data: {
+                  currency: product.currency.toLowerCase(),
+                  unit_amount: split.totalCents,
+                  product_data: { name: `${product.title} (promo applied)` },
+                },
+              }
+            : {
+                quantity,
+                price_data: {
+                  currency: product.currency.toLowerCase(),
+                  unit_amount: unitPriceCents,
+                  product_data: { name: product.title },
+                },
+              },
         ],
         // No transfer_data/application_fee_amount here: the charge settles to the
         // PLATFORM's own Stripe balance, not a destination charge to the seller's
@@ -326,6 +452,19 @@ export async function markOrderPaid(input: {
     throw new PaymentError("Order not found.", "NOT_FOUND");
   }
   if (order.status === "PAID" || order.status === "FULFILLED" || order.status === "REFUNDED") {
+    if (order.status !== "REFUNDED") {
+      await createCommissionForPaidOrder(order.id).catch((error) => {
+        logger.error(
+          "Campaign commission after duplicate paid event failed",
+          {
+            event: "payment_side_effect_failure",
+            operation: "commission_create",
+            outcome: "failure",
+          },
+          error,
+        );
+      });
+    }
     return order;
   }
   if (order.status !== "PENDING") {
@@ -362,6 +501,31 @@ export async function markOrderPaid(input: {
     targetType: "Order",
     targetId: order.id,
     metadata: { publicRef: order.publicRef },
+  });
+
+  if (paid.referralCodeId) {
+    await payInfluencerEarning(paid.id).catch((error) => {
+      logger.error(
+        "Influencer payout after order paid failed",
+        {
+          event: "payment_side_effect_failure",
+          operation: "influencer_payout",
+          outcome: "failure",
+        },
+        error,
+      );
+    });
+  }
+  await createCommissionForPaidOrder(paid.id).catch((error) => {
+    logger.error(
+      "Campaign commission after order paid failed",
+      {
+        event: "payment_side_effect_failure",
+        operation: "commission_create",
+        outcome: "failure",
+      },
+      error,
+    );
   });
 
   return paid;
@@ -460,28 +624,30 @@ export async function refundOrder(actorUserId: string, publicRef: string, actorI
   }
 
   // Escrow-aware: this PaymentIntent is a plain platform-balance charge with
-  // no `transfer_data` attached (see the checkout session creation above) —
-  // `reverse_transfer: true` on a refund only reverses a transfer that is
-  // attached to the *charge itself* (destination charges), which this is
-  // not. The seller's payout is a separate, manually-created
-  // `stripe.transfers.create()` call in escrow.service.ts#releaseEscrow,
-  // tracked via `OrderEscrow.stripeTransferId`. If that transfer already
-  // went out, we must explicitly reverse *that specific transfer* before
-  // refunding the buyer from the platform balance — otherwise the seller
-  // keeps the payout and the platform eats the refund with no recovery.
+  // no `transfer_data` attached — `reverse_transfer: true` only reverses a
+  // transfer attached to the charge itself. Seller payout is a separate
+  // `stripe.transfers.create()` in escrow.service.ts#releaseEscrow.
   const stripe = getStripe();
-  if (order.escrow?.status === "RELEASED" && order.escrow.stripeTransferId) {
-    await stripe.transfers.createReversal(
-      order.escrow.stripeTransferId,
-      { amount: order.sellerPayoutCents },
-      { idempotencyKey: `transfer-reversal:${order.publicRef}` },
-    );
-  }
+  try {
+    if (order.escrow?.status === "RELEASED" && order.escrow.stripeTransferId) {
+      await stripe.transfers.createReversal(
+        order.escrow.stripeTransferId,
+        { amount: order.sellerPayoutCents },
+        { idempotencyKey: `transfer-reversal:${order.publicRef}` },
+      );
+    }
 
-  await stripe.refunds.create(
-    { payment_intent: order.stripePaymentIntentId },
-    { idempotencyKey: `refund:${order.publicRef}` },
-  );
+    await stripe.refunds.create(
+      { payment_intent: order.stripePaymentIntentId },
+      { idempotencyKey: `refund:${order.publicRef}` },
+    );
+  } catch (error) {
+    await emitAlert("refund_failure", "Stripe refund create failed", {
+      labels: { operation: "refund", errorClass: "payment" },
+      error,
+    });
+    throw error;
+  }
 
   return markOrderRefunded(order.publicRef, actorUserId);
 }
@@ -529,6 +695,29 @@ export async function markOrderRefunded(publicRef: string, actorUserId?: string 
     targetType: "Order",
     targetId: order.id,
     metadata: { publicRef },
+  });
+
+  await voidReferralForRefundedOrder(order.id).catch((error) => {
+    logger.error(
+      "Influencer earning void after refund failed",
+      {
+        event: "payment_side_effect_failure",
+        operation: "referral_void",
+        outcome: "failure",
+      },
+      error,
+    );
+  });
+  await reverseCommissionForOrder(order.id, "refund").catch((error) => {
+    logger.error(
+      "Campaign commission reverse after refund failed",
+      {
+        event: "payment_side_effect_failure",
+        operation: "commission_reverse",
+        outcome: "failure",
+      },
+      error,
+    );
   });
 
   return refunded;
@@ -595,7 +784,10 @@ export async function fulfillOrder(actorUserId: string, publicRef: string) {
  */
 export async function claimFreebie(buyerUserId: string, slug: string, ipAddress?: string | null) {
   if (!(await isPlatformFunctionEnabled("MARKETPLACE_CHECKOUT"))) {
-    throw new PaymentError("Marketplace checkout is temporarily disabled by KOBA staff.", "DISABLED");
+    throw new PaymentError(
+      "Marketplace checkout is temporarily disabled by KOBA staff.",
+      "DISABLED",
+    );
   }
 
   const product = await prisma.product.findUnique({

@@ -108,7 +108,9 @@ export async function runWebRconCommand(input: {
       clearTimeout(timer);
       // A close before any matching message usually means the password
       // (the URL path) was rejected.
-      reject(new WebRconError(`WebRcon closed before responding (code ${event.code}).`, "AUTH_FAILED"));
+      reject(
+        new WebRconError(`WebRcon closed before responding (code ${event.code}).`, "AUTH_FAILED"),
+      );
     });
   });
 }

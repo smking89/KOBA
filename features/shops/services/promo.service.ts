@@ -1,20 +1,17 @@
+import type { PromoPayoutType } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/db";
 import { ShopError } from "@/features/shops/services/shop.service";
 import type { PromoConfigUpdateInput } from "@/features/shops/schemas/shop.schemas";
 
 /**
- * payoutValue is basis points (0-10000 == 0%-100%) for PERCENT, cents for
- * FIXED (only non-negative, no fixed upper bound). Pure so it's trivially
- * unit tested without Prisma.
+ * payoutValue is basis points (0-10000 == 0%-100%) for PERCENT_BPS, cents for
+ * FIXED_CENTS (only non-negative, no fixed upper bound).
  */
-export function isValidPromoPayoutValue(
-  payoutType: "PERCENT" | "FIXED",
-  payoutValue: number,
-): boolean {
+export function isValidPromoPayoutValue(payoutType: PromoPayoutType, payoutValue: number): boolean {
   if (!Number.isInteger(payoutValue) || payoutValue < 0) {
     return false;
   }
-  if (payoutType === "PERCENT") {
+  if (payoutType === "PERCENT_BPS") {
     return payoutValue <= 10000;
   }
   return true;
@@ -35,7 +32,7 @@ export async function updatePromoConfig(userId: string, input: PromoConfigUpdate
   }
 
   const existing = await prisma.shopPromoConfig.findUnique({ where: { shopId: shop.id } });
-  const payoutType = input.payoutType ?? existing?.payoutType ?? "PERCENT";
+  const payoutType = input.payoutType ?? existing?.payoutType ?? "PERCENT_BPS";
   const payoutValue = input.payoutValue ?? existing?.payoutValue ?? 0;
 
   if (!isValidPromoPayoutValue(payoutType, payoutValue)) {

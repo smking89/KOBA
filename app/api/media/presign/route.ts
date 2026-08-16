@@ -4,6 +4,8 @@ import { clientIp } from "@/lib/http/client-ip";
 import { rateLimit } from "@/lib/security/rate-limit";
 import { createPresignedUpload, isObjectStorageConfigured } from "@/features/media/lib/storage";
 import { presignMediaSchema } from "@/features/media/schemas/media.schemas";
+import { emitAlert } from "@/lib/observability/alerts";
+import { unexpectedJsonError } from "@/lib/observability/http";
 
 export async function POST(request: Request) {
   const session = await auth();
@@ -48,7 +50,10 @@ export async function POST(request: Request) {
     });
     return NextResponse.json(result);
   } catch (error) {
-    console.error(error);
-    return NextResponse.json({ error: "Could not create upload URL." }, { status: 500 });
+    await emitAlert("storage_failure", "Presigned upload URL creation failed", {
+      labels: { operation: "media_presign", errorClass: "storage" },
+      error,
+    });
+    return unexpectedJsonError(error, "Could not create upload URL.");
   }
 }

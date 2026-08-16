@@ -8,6 +8,7 @@ declare module "next-auth" {
       kobaId: string | null;
       accountType: KobaAccountType | null;
       kobaIdRevealed: boolean;
+      impersonatorId?: string | null;
     } & DefaultSession["user"];
   }
 

@@ -5,6 +5,8 @@ import { clientIp } from "@/lib/http/client-ip";
 import { rateLimit } from "@/lib/security/rate-limit";
 import { issueStaffKobaIdSchema } from "@/features/accounts/schemas/account.schemas";
 import { KobaIdError, mintStaffKobaId } from "@/features/koba-id/services/mint.service";
+import { assertStaffAal2 } from "@/features/staff-mfa/lib/assurance";
+import { staffMfaErrorResponse } from "@/features/staff-mfa/lib/http";
 
 export async function POST(request: Request) {
   const session = await auth();
@@ -40,6 +42,7 @@ export async function POST(request: Request) {
   }
 
   try {
+    await assertStaffAal2(session.user.id, { stepUp: true });
     const identity = await mintStaffKobaId({
       actorUserId: session.user.id,
       targetUserId: target.id,
@@ -52,6 +55,8 @@ export async function POST(request: Request) {
       { status: 201 },
     );
   } catch (error) {
+    const mfa = staffMfaErrorResponse(error);
+    if (mfa) return mfa;
     if (error instanceof KobaIdError) {
       const status = error.code === "FORBIDDEN" ? 403 : error.code === "ALREADY_EXISTS" ? 409 : 400;
       return NextResponse.json({ error: error.message, code: error.code }, { status });

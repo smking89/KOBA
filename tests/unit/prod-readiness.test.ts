@@ -96,6 +96,7 @@ describe("stripe readiness", () => {
 describe("prod readiness routes", () => {
   it("does not treat health as sensitive but caches media APIs carefully", () => {
     expect(isSensitivePath("/api/health")).toBe(false);
+    expect(isSensitivePath("/api/ready")).toBe(false);
     expect(isSensitivePath("/api/media/presign")).toBe(true);
     expect(isUpstashConfigured()).toBe(
       Boolean(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN),

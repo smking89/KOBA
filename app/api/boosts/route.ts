@@ -4,7 +4,11 @@ import { auth } from "@/lib/auth";
 import { clientIp } from "@/lib/http/client-ip";
 import { rateLimit } from "@/lib/security/rate-limit";
 import { jsonBoostError } from "@/features/boost/lib/http";
-import { listMyBoosts, newBoostIdempotencyKey, purchaseBoost } from "@/features/boost/services/boost.service";
+import {
+  listMyBoosts,
+  newBoostIdempotencyKey,
+  purchaseBoost,
+} from "@/features/boost/services/boost.service";
 
 const purchaseSchema = z.object({
   idempotencyKey: z.string().trim().min(8).max(80).optional(),

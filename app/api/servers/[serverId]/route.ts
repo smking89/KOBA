@@ -1,15 +1,80 @@
 import { NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
+import { clientIp } from "@/lib/http/client-ip";
+import { rateLimit } from "@/lib/security/rate-limit";
 import { jsonServerError } from "@/features/servers/lib/http";
-import { getBySlugOrRef } from "@/features/servers/services/server.service";
+import { updateServerSchema } from "@/features/servers/schemas/server.schemas";
+import {
+  archiveServer,
+  getBySlugOrRef,
+  updateServer,
+} from "@/features/servers/services/server.service";
 
-export async function GET(
-  _request: Request,
-  context: { params: Promise<{ serverId: string }> },
-) {
+export const dynamic = "force-dynamic";
+
+const noStore = { "Cache-Control": "no-store" };
+
+export async function GET(_request: Request, context: { params: Promise<{ serverId: string }> }) {
+  const session = await auth();
   const { serverId } = await context.params;
   try {
-    return NextResponse.json(await getBySlugOrRef(serverId));
+    return NextResponse.json(await getBySlugOrRef(serverId, session?.user.id ?? null));
   } catch (error) {
     return jsonServerError(error, "Could not load server.");
+  }
+}
+
+export async function PATCH(request: Request, context: { params: Promise<{ serverId: string }> }) {
+  const session = await auth();
+  if (!session?.user.id) {
+    return NextResponse.json({ error: "Unauthorized." }, { status: 401, headers: noStore });
+  }
+  const limited = await rateLimit(`server-update:${session.user.id}`, 30, 15 * 60 * 1000);
+  if (!limited.success) {
+    return NextResponse.json(
+      { error: "Too many server update attempts." },
+      { status: 429, headers: noStore },
+    );
+  }
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400, headers: noStore });
+  }
+  const parsed = updateServerSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Invalid server update." },
+      { status: 400, headers: noStore },
+    );
+  }
+  const { serverId } = await context.params;
+  try {
+    const server = await updateServer(session.user.id, serverId, parsed.data, clientIp(request));
+    return NextResponse.json(server, { headers: noStore });
+  } catch (error) {
+    return jsonServerError(error, "Could not update server.");
+  }
+}
+
+export async function DELETE(request: Request, context: { params: Promise<{ serverId: string }> }) {
+  const session = await auth();
+  if (!session?.user.id) {
+    return NextResponse.json({ error: "Unauthorized." }, { status: 401, headers: noStore });
+  }
+  const limited = await rateLimit(`server-archive:${session.user.id}`, 20, 15 * 60 * 1000);
+  if (!limited.success) {
+    return NextResponse.json(
+      { error: "Too many archive attempts." },
+      { status: 429, headers: noStore },
+    );
+  }
+  const { serverId } = await context.params;
+  try {
+    const result = await archiveServer(session.user.id, serverId, clientIp(request));
+    return NextResponse.json(result, { headers: noStore });
+  } catch (error) {
+    return jsonServerError(error, "Could not archive server.");
   }
 }

@@ -4,7 +4,15 @@ import { useState } from "react";
 import { Share2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export function ShareButton({ slug, title, className }: { slug: string; title: string; className?: string }) {
+export function ShareButton({
+  slug,
+  title,
+  className,
+}: {
+  slug: string;
+  title: string;
+  className?: string;
+}) {
   const [copied, setCopied] = useState(false);
 
   async function share() {

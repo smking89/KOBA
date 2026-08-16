@@ -13,6 +13,7 @@ export class PaymentError extends Error {
       | "CONFLICT"
       | "INVALID_SIGNATURE"
       | "NOT_PAID"
+      | "INVALID"
       | "AMOUNT_TOO_LARGE"
       | "DISABLED"
       | "NOT_FREEBIE",

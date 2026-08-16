@@ -46,7 +46,12 @@ describe("Coin package catalog", () => {
       isCoinPackageConsistent({ id: "zero", label: "Zero", priceCents: 0, coinAmount: 100n }),
     ).toBe(false);
     expect(
-      isCoinPackageConsistent({ id: "zero-coins", label: "Zero Coins", priceCents: 100, coinAmount: 0n }),
+      isCoinPackageConsistent({
+        id: "zero-coins",
+        label: "Zero Coins",
+        priceCents: 100,
+        coinAmount: 0n,
+      }),
     ).toBe(false);
   });
 });

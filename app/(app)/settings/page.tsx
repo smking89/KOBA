@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { PageHeader } from "@/components/koba/page-header";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
-import { HexAvatar } from "@/components/koba/hex-avatar";
 import { RestartTourButton } from "@/components/koba/restart-tour-button";
 import { RarityChip } from "@/features/marketplace/components/rarity-chip";
 import { PRODUCT_RARITIES, RARITY_LABEL } from "@/features/marketplace/lib/catalog";
@@ -10,6 +10,7 @@ import { getAccountSnapshot } from "@/features/accounts/services/account.service
 import { AccountModeSwitch } from "@/features/accounts/components/account-mode-switch";
 import { ACCOUNT_TYPE_LABEL } from "@/features/koba-id/lib/format";
 import { TagPrivacyForm } from "@/features/social/components/tag-privacy-form";
+import { PlusBadge } from "@/features/plus/components/plus-badge";
 
 export const metadata = { title: "Settings" };
 
@@ -27,22 +28,12 @@ export default async function SettingsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="h-20 rounded-2xl bg-brand-gradient md:h-28" />
-
-      <header className="-mt-10 flex flex-wrap items-end gap-4 px-2 md:-mt-12">
-        <HexAvatar name={snapshot.displayName ?? snapshot.handle} size="lg" />
-        <div className="pb-1">
-          <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
-          <p className="text-sm text-muted">
-            Signed in as {session.user.email ?? snapshot.displayName}
-          </p>
-        </div>
-      </header>
-
-      <p className="max-w-2xl px-2 text-sm text-muted">
-        Each mode is its own KOBAID — switching changes tools for this device. Staff identities
-        are issued by KOBA, never here.
-      </p>
+      <PageHeader
+        eyebrow="Account"
+        eyebrowTone="default"
+        title="Settings"
+        description={`Signed in as ${session.user.email ?? snapshot.displayName}. Each mode is its own KOBAID — switching changes tools for this device. Staff identities are issued by KOBA, never here.`}
+      />
 
       <section className="space-y-3">
         <h2 className="text-lg font-semibold">Account mode</h2>
@@ -61,7 +52,23 @@ export default async function SettingsPage() {
           <span className="font-mono text-foreground">{snapshot.kobaId ?? "pending"}</span>
           {" · "}
           {ACCOUNT_TYPE_LABEL[snapshot.activeAccountType]}
+          {snapshot.plusBadge ? (
+            <>
+              {" · "}
+              <PlusBadge visible />
+            </>
+          ) : null}
         </CardDescription>
+        <p className="mt-3 text-sm text-muted">
+          <Link href="/settings/security" className="text-neon-lime hover:underline">
+            Security
+          </Link>
+          {" · "}
+          <Link href="/plus" className="text-neon-lime hover:underline">
+            Manage KOBA Plus
+          </Link>{" "}
+          for this active account.
+        </p>
       </Card>
 
       <Card className="border-t-2 border-t-neon-lime">

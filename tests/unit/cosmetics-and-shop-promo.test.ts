@@ -95,37 +95,37 @@ describe("cosmetic query building", () => {
 });
 
 describe("promo payout value validation", () => {
-  it("accepts basis points 0-10000 for PERCENT", () => {
-    expect(isValidPromoPayoutValue("PERCENT", 0)).toBe(true);
-    expect(isValidPromoPayoutValue("PERCENT", 10000)).toBe(true);
-    expect(isValidPromoPayoutValue("PERCENT", 500)).toBe(true);
+  it("accepts basis points 0-10000 for PERCENT_BPS", () => {
+    expect(isValidPromoPayoutValue("PERCENT_BPS", 0)).toBe(true);
+    expect(isValidPromoPayoutValue("PERCENT_BPS", 10000)).toBe(true);
+    expect(isValidPromoPayoutValue("PERCENT_BPS", 500)).toBe(true);
   });
 
-  it("rejects PERCENT above 10000 basis points", () => {
-    expect(isValidPromoPayoutValue("PERCENT", 10001)).toBe(false);
+  it("rejects PERCENT_BPS above 10000 basis points", () => {
+    expect(isValidPromoPayoutValue("PERCENT_BPS", 10001)).toBe(false);
   });
 
-  it("accepts any non-negative integer cents for FIXED", () => {
-    expect(isValidPromoPayoutValue("FIXED", 0)).toBe(true);
-    expect(isValidPromoPayoutValue("FIXED", 250_000)).toBe(true);
+  it("accepts any non-negative integer cents for FIXED_CENTS", () => {
+    expect(isValidPromoPayoutValue("FIXED_CENTS", 0)).toBe(true);
+    expect(isValidPromoPayoutValue("FIXED_CENTS", 250_000)).toBe(true);
   });
 
   it("rejects negative or non-integer values for both types", () => {
-    expect(isValidPromoPayoutValue("PERCENT", -1)).toBe(false);
-    expect(isValidPromoPayoutValue("FIXED", -1)).toBe(false);
-    expect(isValidPromoPayoutValue("PERCENT", 4.5)).toBe(false);
-    expect(isValidPromoPayoutValue("FIXED", 4.5)).toBe(false);
+    expect(isValidPromoPayoutValue("PERCENT_BPS", -1)).toBe(false);
+    expect(isValidPromoPayoutValue("FIXED_CENTS", -1)).toBe(false);
+    expect(isValidPromoPayoutValue("PERCENT_BPS", 4.5)).toBe(false);
+    expect(isValidPromoPayoutValue("FIXED_CENTS", 4.5)).toBe(false);
   });
 
-  it("the update schema rejects out-of-range PERCENT values", () => {
+  it("the update schema rejects out-of-range PERCENT_BPS values", () => {
     expect(
-      promoConfigUpdateSchema.safeParse({ payoutType: "PERCENT", payoutValue: 20000 }).success,
+      promoConfigUpdateSchema.safeParse({ payoutType: "PERCENT_BPS", payoutValue: 20000 }).success,
     ).toBe(false);
     expect(
-      promoConfigUpdateSchema.safeParse({ payoutType: "PERCENT", payoutValue: 8000 }).success,
+      promoConfigUpdateSchema.safeParse({ payoutType: "PERCENT_BPS", payoutValue: 8000 }).success,
     ).toBe(true);
     expect(
-      promoConfigUpdateSchema.safeParse({ payoutType: "FIXED", payoutValue: 20000 }).success,
+      promoConfigUpdateSchema.safeParse({ payoutType: "FIXED_CENTS", payoutValue: 20000 }).success,
     ).toBe(true);
   });
 });

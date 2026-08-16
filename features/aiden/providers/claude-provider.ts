@@ -54,7 +54,9 @@ export async function generateText(input: {
 
   if (!response.ok) {
     const body = await response.text().catch(() => "");
-    throw new ClaudeGenerationError(`Claude API returned ${response.status}: ${body.slice(0, 300)}`);
+    throw new ClaudeGenerationError(
+      `Claude API returned ${response.status}: ${body.slice(0, 300)}`,
+    );
   }
 
   const data = (await response.json()) as {

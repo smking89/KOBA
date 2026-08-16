@@ -4,6 +4,7 @@ import { sameRarityTier } from "@/features/trade/lib/types";
 import { canConnectGameServer } from "@/features/servers/lib/types";
 import { generateTradeRef } from "@/features/trade/lib/refs";
 import { generateServerRef } from "@/features/servers/lib/refs";
+import { generatePlusRef } from "@/features/plus/lib/refs";
 
 describe("secret-box", () => {
   it("round-trips sealed secrets without exposing plaintext in the sealed payload", () => {
@@ -24,5 +25,6 @@ describe("expansion backend contracts", () => {
   it("generates public refs with expected prefixes", () => {
     expect(generateTradeRef()).toMatch(/^KOBA-TRD-/);
     expect(generateServerRef()).toMatch(/^KOBA-SRV-/);
+    expect(generatePlusRef()).toMatch(/^KOBA-PLS-/);
   });
 });

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -8,46 +9,50 @@ export const metadata = { title: "Developers" };
 export default function DevelopersPage() {
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-semibold tracking-tight">Developer marketplace</h1>
-        <p className="mt-2 max-w-2xl text-sm text-muted">
-          Applications and plugins for KOBA communities. No real API keys or plugin execution in
-          this phase — security review states are presentation only.
-        </p>
+      <div className="flex items-start gap-4">
+        <Image src="/brand/koba-logo.png" alt="" width={48} height={48} className="rounded-md" />
+        <div>
+          <p className="font-mono text-xs uppercase tracking-[0.2em] text-neon-mint">Developers</p>
+          <h1 className="mt-2 text-3xl font-semibold tracking-tight">Build on KOBA</h1>
+          <p className="mt-2 max-w-2xl text-sm text-muted">
+            Register a publisher, create sandbox apps, issue hashed API keys, and submit plugins or
+            digital products for staff review. KOBA never executes third-party plugin code.
+          </p>
+        </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-3">
         <Card>
-          <CardTitle>Applications</CardTitle>
-          <CardDescription>Installable apps with scopes and versions.</CardDescription>
+          <CardTitle>Publisher portal</CardTitle>
+          <CardDescription>Profiles, team roles, sandbox apps, and keys.</CardDescription>
           <Link
-            href="/developers/apps"
+            href="/developers/new"
             className={cn(buttonVariants({ size: "sm" }), "mt-4 inline-flex")}
+          >
+            Create publisher
+          </Link>
+        </Card>
+        <Card>
+          <CardTitle>App marketplace</CardTitle>
+          <CardDescription>Browse published bots, plugins, and tools.</CardDescription>
+          <Link
+            href="/apps"
+            className={cn(buttonVariants({ size: "sm", variant: "secondary" }), "mt-4 inline-flex")}
           >
             Browse apps
           </Link>
         </Card>
         <Card>
-          <CardTitle>Plugins</CardTitle>
-          <CardDescription>Game/server plugins with compatibility metadata.</CardDescription>
+          <CardTitle>Dashboard</CardTitle>
+          <CardDescription>Manage products, webhooks, and submissions.</CardDescription>
           <Link
-            href="/developers/plugins"
+            href="/developers/dashboard"
             className={cn(buttonVariants({ size: "sm", variant: "secondary" }), "mt-4 inline-flex")}
           >
-            Browse plugins
+            Open dashboard
           </Link>
         </Card>
       </div>
-
-      <Card>
-        <CardTitle>Dashboard placeholders</CardTitle>
-        <CardDescription>Earnings, API keys, revocation — UI stubs.</CardDescription>
-        <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-muted">
-          <li>API key created once — never shown again after issuance (future)</li>
-          <li>Earnings placeholder for paid listings</li>
-          <li>Install / revoke controls without side effects</li>
-        </ul>
-      </Card>
     </div>
   );
 }

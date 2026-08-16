@@ -42,7 +42,10 @@ export function buildRequest(challenge?: Buffer): Buffer {
 function readCString(buf: Buffer, offset: number): { value: string; next: number } {
   const end = buf.indexOf(0x00, offset);
   if (end === -1) {
-    throw new SourceQueryError("Malformed A2S_INFO response (unterminated string).", "MALFORMED_RESPONSE");
+    throw new SourceQueryError(
+      "Malformed A2S_INFO response (unterminated string).",
+      "MALFORMED_RESPONSE",
+    );
   }
   return { value: buf.toString("utf8", offset, end), next: end + 1 };
 }

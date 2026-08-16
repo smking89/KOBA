@@ -125,6 +125,31 @@ export async function verifyEmail(email: string, token: string, ipAddress?: stri
   await mintPublicKobaId(user.id, profile?.activeAccountType ?? "PLAYER", ipAddress);
 }
 
+export async function resendVerificationEmail(email: string): Promise<{ sent: true }> {
+  const normalizedEmail = email.toLowerCase();
+  const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+  if (!user || user.emailVerified) {
+    return { sent: true };
+  }
+
+  const token = randomBytes(32).toString("hex");
+  const expires = new Date(Date.now() + VERIFICATION_TTL_MS);
+
+  await prisma.verificationToken.deleteMany({
+    where: { identifier: normalizedEmail },
+  });
+  await prisma.verificationToken.create({
+    data: {
+      identifier: normalizedEmail,
+      token,
+      expires,
+    },
+  });
+
+  await sendVerificationEmail(normalizedEmail, token);
+  return { sent: true };
+}
+
 const RESET_PREFIX = "reset:";
 
 export async function requestPasswordReset(email: string, ipAddress?: string | null) {
@@ -201,6 +226,20 @@ export async function resetPassword(
     prisma.verificationToken.deleteMany({
       where: { identifier: `${RESET_PREFIX}${normalizedEmail}`, token },
     }),
+  ]);
+
+  const { revokeAllStaffSessions } =
+    await import("@/features/staff-mfa/services/staff-session.service");
+  await revokeAllStaffSessions({
+    userId: user.id,
+    reason: "password-reset",
+    ip: ipAddress ?? null,
+  });
+
+  const { notifyStaffSecurity } = await import("@/features/staff-mfa/lib/notifications");
+  await notifyStaffSecurity(user.email, "KOBA password changed", [
+    "Your KOBA password was reset.",
+    "Privileged staff sessions, if any, were signed out.",
   ]);
 
   await writeAuditLog({

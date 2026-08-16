@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { GroupError, groupErrorStatus } from "@/features/groups/lib/errors";
+import { unexpectedJsonError } from "@/lib/observability/http";
 
 export function jsonGroupError(error: unknown, fallback = "Could not complete group action.") {
   if (error instanceof GroupError) {
@@ -8,6 +9,5 @@ export function jsonGroupError(error: unknown, fallback = "Could not complete gr
       { status: groupErrorStatus(error.code) },
     );
   }
-  console.error(error);
-  return NextResponse.json({ error: fallback }, { status: 500 });
+  return unexpectedJsonError(error, fallback);
 }
