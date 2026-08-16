@@ -2,7 +2,13 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { EmptyState } from "@/components/koba/empty-state";
+import { PageHeader } from "@/components/koba/page-header";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { NativeSelect } from "@/components/ui/native-select";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { StatusPill } from "@/components/koba/status-pill";
 import {
   hasCapability,
@@ -40,44 +46,36 @@ export function ServerDirectory({ initialServers = [] }: { initialServers?: Game
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight">Game servers</h1>
-          <p className="mt-2 max-w-2xl text-sm text-muted">
-            Directory of verified community servers. Metrics only appear when a capability reports
-            them — KOBA never invents player counts or map data.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Link
-            href="/servers/manage"
-            className="inline-flex h-10 items-center justify-center rounded-md border border-border px-4 text-sm font-semibold"
-          >
-            Manage servers
-          </Link>
-          <Link
-            href="/servers/connect"
-            className="inline-flex h-10 items-center justify-center rounded-md bg-brand-gradient px-4 text-sm font-semibold text-background"
-          >
-            RCON (14E)
-          </Link>
-        </div>
-      </div>
+      <PageHeader
+        eyebrow="Directory"
+        title="Game servers"
+        description="Directory of verified community servers. Metrics only appear when a capability reports them — KOBA never invents player counts or map data."
+        actions={
+          <>
+            <Link href="/servers/manage" className={cn(buttonVariants({ variant: "secondary" }))}>
+              Manage servers
+            </Link>
+            <Link href="/servers/connect" className={cn(buttonVariants())}>
+              RCON (14E)
+            </Link>
+          </>
+        }
+      />
 
       <Card>
         <CardTitle>Filters</CardTitle>
         <div className="mt-4 flex flex-col gap-3 sm:flex-row">
-          <input
+          <Input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search name, region, tags"
-            className="h-10 flex-1 rounded-md border border-border bg-background px-3 text-sm"
+            className="flex-1"
             aria-label="Search servers"
           />
-          <select
+          <NativeSelect
             value={game}
             onChange={(event) => setGame(event.target.value)}
-            className="h-10 rounded-md border border-border bg-background px-3 text-sm sm:w-48"
+            className="sm:w-48"
             aria-label="Filter by game"
           >
             <option value="ALL">All games</option>
@@ -86,13 +84,15 @@ export function ServerDirectory({ initialServers = [] }: { initialServers?: Game
                 {name}
               </option>
             ))}
-          </select>
+          </NativeSelect>
         </div>
       </Card>
 
       <ul className="grid gap-4 md:grid-cols-2">
         {servers.length === 0 ? (
-          <li className="text-sm text-muted">No verified servers in the directory yet.</li>
+          <li className="md:col-span-2">
+            <EmptyState>No verified servers in the directory yet.</EmptyState>
+          </li>
         ) : null}
         {servers.map((server) => {
           const players = visiblePlayerCount(server);

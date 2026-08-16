@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { Home, Store, Newspaper, MessageSquare, Ellipsis } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { isMoreSectionActive, isNavActive, MOBILE_MORE_LINKS } from "@/features/navigation/lib/nav";
@@ -20,11 +20,15 @@ export function MobileNav() {
   const panelId = useId();
   const moreActive = isMoreSectionActive(pathname);
 
+  useEffect(() => {
+    setMoreOpen(false);
+  }, [pathname]);
+
   return (
     <>
       {moreOpen ? (
         <div
-          className="fixed inset-0 z-40 bg-background/70 md:hidden"
+          className="fixed inset-0 z-40 bg-background/70 lg:hidden"
           aria-hidden
           onClick={() => setMoreOpen(false)}
         />
@@ -34,7 +38,7 @@ export function MobileNav() {
           id={panelId}
           role="dialog"
           aria-label="More destinations"
-          className="fixed inset-x-0 bottom-16 z-50 mx-auto max-w-lg rounded-t-lg border border-border bg-surface p-3 shadow-soft md:hidden"
+          className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-50 mx-auto max-w-lg rounded-t-xl border border-border bg-surface p-3 shadow-soft lg:hidden"
         >
           <ul className="grid grid-cols-2 gap-1">
             {MOBILE_MORE_LINKS.map((link) => (
@@ -42,7 +46,7 @@ export function MobileNav() {
                 <Link
                   href={link.href}
                   className={cn(
-                    "block rounded-md px-3 py-3 text-sm font-medium",
+                    "block rounded-lg px-3 py-3 text-sm font-medium",
                     isNavActive(pathname, link.href)
                       ? "bg-surface-2 text-neon-lime"
                       : "text-muted hover:bg-surface-2 hover:text-foreground",
@@ -58,17 +62,17 @@ export function MobileNav() {
       ) : null}
       <nav
         aria-label="Primary"
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface/95 backdrop-blur md:hidden"
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface/95 backdrop-blur lg:hidden"
       >
-        <ul className="mx-auto flex max-w-lg items-center justify-around px-2 py-2">
+        <ul className="mx-auto flex max-w-lg items-stretch px-1 pt-1 pb-[max(0.35rem,env(safe-area-inset-bottom))]">
           {primary.map(({ href, label, icon: Icon }) => {
             const active = isNavActive(pathname, href);
             return (
-              <li key={href}>
+              <li key={href} className="flex-1">
                 <Link
                   href={href}
                   className={cn(
-                    "flex min-w-14 flex-col items-center gap-1 rounded-md px-2 py-1 text-[0.65rem] font-medium",
+                    "flex h-12 w-full flex-col items-center justify-center gap-0.5 rounded-lg text-[0.65rem] font-medium",
                     active ? "text-neon-lime" : "text-muted hover:text-foreground",
                   )}
                 >
@@ -78,11 +82,11 @@ export function MobileNav() {
               </li>
             );
           })}
-          <li>
+          <li className="flex-1">
             <button
               type="button"
               className={cn(
-                "flex min-w-14 flex-col items-center gap-1 rounded-md px-2 py-1 text-[0.65rem] font-medium",
+                "flex h-12 w-full flex-col items-center justify-center gap-0.5 rounded-lg text-[0.65rem] font-medium",
                 moreOpen || moreActive ? "text-neon-lime" : "text-muted hover:text-foreground",
               )}
               aria-expanded={moreOpen}

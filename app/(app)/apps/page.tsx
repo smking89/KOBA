@@ -1,6 +1,11 @@
 import Link from "next/link";
-import { Card, CardDescription, CardTitle } from "@/components/ui/card";
+import { EmptyState } from "@/components/koba/empty-state";
+import { PageHeader } from "@/components/koba/page-header";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardDescription, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { NativeSelect } from "@/components/ui/native-select";
 import { searchPublicProducts } from "@/features/developers/services/developer.service";
 
 export const metadata = { title: "App marketplace" };
@@ -29,46 +34,29 @@ export default async function AppsCatalogPage({
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-semibold tracking-tight">Apps and plugins</h1>
-        <p className="mt-2 max-w-2xl text-sm text-muted">
-          Third-party software is not guaranteed safe. KOBA does not execute uploaded code. Only
-          published, staff-reviewed listings appear here.
-        </p>
-      </div>
-      <form className="grid gap-3 md:grid-cols-5" method="get">
-        <input
-          name="q"
-          defaultValue={params.q}
-          placeholder="Search"
-          className="h-10 rounded-md border border-border bg-surface-2 px-3 text-sm"
-        />
-        <input
-          name="game"
-          defaultValue={params.game}
-          placeholder="Game"
-          className="h-10 rounded-md border border-border bg-surface-2 px-3 text-sm"
-        />
-        <input
+      <PageHeader
+        eyebrow="Catalog"
+        title="Apps and plugins"
+        description="Third-party software is not guaranteed safe. KOBA does not execute uploaded code. Only published, staff-reviewed listings appear here."
+      />
+      <form
+        className="grid gap-3 rounded-xl border border-border bg-surface p-4 md:grid-cols-5"
+        method="get"
+      >
+        <Input name="q" defaultValue={params.q} placeholder="Search" aria-label="Search apps" />
+        <Input name="game" defaultValue={params.game} placeholder="Game" aria-label="Game" />
+        <Input
           name="platform"
           defaultValue={params.platform}
           placeholder="Platform"
-          className="h-10 rounded-md border border-border bg-surface-2 px-3 text-sm"
+          aria-label="Platform"
         />
-        <select
-          name="pricing"
-          defaultValue={params.pricing ?? ""}
-          className="h-10 rounded-md border border-border bg-surface-2 px-3 text-sm"
-        >
+        <NativeSelect name="pricing" defaultValue={params.pricing ?? ""} aria-label="Pricing">
           <option value="">Any price</option>
           <option value="FREE">Free</option>
           <option value="PAID">Paid</option>
-        </select>
-        <select
-          name="category"
-          defaultValue={params.category ?? ""}
-          className="h-10 rounded-md border border-border bg-surface-2 px-3 text-sm"
-        >
+        </NativeSelect>
+        <NativeSelect name="category" defaultValue={params.category ?? ""} aria-label="Category">
           <option value="">Any category</option>
           <option value="DISCORD_BOT">Discord bot</option>
           <option value="GAME_SERVER_PLUGIN">Game-server plugin</option>
@@ -78,37 +66,41 @@ export default async function AppsCatalogPage({
           <option value="API_SERVICE">API service</option>
           <option value="UTILITY">Utility</option>
           <option value="THEME">Theme</option>
-        </select>
-        <button
-          type="submit"
-          className="h-10 rounded-md bg-neon-lime px-4 text-sm text-background md:col-span-5"
-        >
+        </NativeSelect>
+        <Button type="submit" className="md:col-span-5">
           Filter
-        </button>
+        </Button>
       </form>
-      <ul className="grid gap-4 md:grid-cols-2">
-        {items.map((item) => (
-          <li key={item.publicRef}>
-            <Card>
-              <div className="flex flex-wrap gap-2">
-                {item.kobaOfficial ? <Badge tone="success">KOBA official</Badge> : null}
-                {item.verifiedPublisher ? (
-                  <Badge>Verified</Badge>
-                ) : (
-                  <Badge tone="warning">Unverified</Badge>
-                )}
-              </div>
-              <CardTitle className="mt-2">{item.name}</CardTitle>
-              <CardDescription>
-                {item.priceLabel} · {item.category}
-              </CardDescription>
-              <Link href={`/apps/${item.slug}`} className="mt-3 inline-flex text-sm text-neon-lime">
-                Details
-              </Link>
-            </Card>
-          </li>
-        ))}
-      </ul>
+      {items.length === 0 ? (
+        <EmptyState>No published apps match these filters.</EmptyState>
+      ) : (
+        <ul className="grid gap-4 md:grid-cols-2">
+          {items.map((item) => (
+            <li key={item.publicRef}>
+              <Card className="flex h-full flex-col">
+                <div className="flex flex-wrap gap-2">
+                  {item.kobaOfficial ? <Badge tone="success">KOBA official</Badge> : null}
+                  {item.verifiedPublisher ? (
+                    <Badge>Verified</Badge>
+                  ) : (
+                    <Badge tone="warning">Unverified</Badge>
+                  )}
+                </div>
+                <CardTitle className="mt-2">{item.name}</CardTitle>
+                <CardDescription>
+                  {item.priceLabel} · {item.category}
+                </CardDescription>
+                <Link
+                  href={`/apps/${item.slug}`}
+                  className="mt-auto pt-3 text-sm font-semibold text-neon-lime hover:underline"
+                >
+                  Details →
+                </Link>
+              </Card>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

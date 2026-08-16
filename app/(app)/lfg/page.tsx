@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/koba/empty-state";
+import { PageHeader } from "@/components/koba/page-header";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -25,24 +27,21 @@ export default async function LfgPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <Badge tone="live">Looking for Group</Badge>
-          <h1 className="mt-3 text-3xl font-semibold tracking-tight">Find teammates</h1>
-          <p className="mt-2 max-w-2xl text-muted">
-            Filter by game, platform, region, skill, mic, and availability. Authors accept requests
-            until the roster fills or the post expires.
-          </p>
-        </div>
-        <Link href="/lfg/new" className={cn(buttonVariants())}>
-          New post
-        </Link>
-      </div>
+      <PageHeader
+        eyebrow="Looking for Group"
+        title="Find teammates"
+        description="Filter by game, platform, region, skill, mic, and availability. Authors accept requests until the roster fills or the post expires."
+        actions={
+          <Link href="/lfg/new" className={cn(buttonVariants())}>
+            New post
+          </Link>
+        }
+      />
 
       <LfgFilters query={query} games={games} />
 
       {posts.length === 0 ? (
-        <p className="text-sm text-muted">No open parties match these filters.</p>
+        <EmptyState>No open parties match these filters.</EmptyState>
       ) : (
         <div className="space-y-3">
           {posts.map((post) => {

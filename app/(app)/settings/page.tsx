@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/koba/page-header";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { auth } from "@/lib/auth";
 import { getAccountSnapshot } from "@/features/accounts/services/account.service";
@@ -25,14 +25,12 @@ export default async function SettingsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <Badge>Account</Badge>
-        <h1 className="mt-3 text-3xl font-semibold tracking-tight">Settings</h1>
-        <p className="mt-2 max-w-2xl text-muted">
-          Signed in as {session.user.email ?? snapshot.displayName}. Each mode is its own KOBAID —
-          switching changes tools for this device. Staff identities are issued by KOBA, never here.
-        </p>
-      </div>
+      <PageHeader
+        eyebrow="Account"
+        eyebrowTone="default"
+        title="Settings"
+        description={`Signed in as ${session.user.email ?? snapshot.displayName}. Each mode is its own KOBAID — switching changes tools for this device. Staff identities are issued by KOBA, never here.`}
+      />
 
       <section className="space-y-3">
         <h2 className="text-lg font-semibold">Account mode</h2>

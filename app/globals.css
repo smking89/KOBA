@@ -37,11 +37,17 @@
 
   html {
     color-scheme: dark;
+    scroll-padding-top: 4.5rem;
   }
 
   body {
     @apply bg-background text-foreground font-sans antialiased;
     min-height: 100dvh;
+    background-image: radial-gradient(
+      70rem 28rem at 50% -12rem,
+      color-mix(in srgb, var(--color-neon-lime) 7%, transparent),
+      transparent 70%
+    );
   }
 
   ::selection {

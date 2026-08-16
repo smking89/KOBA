@@ -24,7 +24,7 @@ export function ProductCard({
   return (
     <article
       className={cn(
-        "flex flex-col overflow-hidden rounded-lg border border-border bg-surface shadow-soft border-t-4",
+        "flex h-full flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-soft border-t-4 transition-colors hover:border-neon-lime/35",
         rarityAccentClass(product.rarity),
       )}
     >

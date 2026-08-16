@@ -3,10 +3,10 @@
 import Link from "next/link";
 import { signOut, useSession } from "next-auth/react";
 import { usePathname } from "next/navigation";
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { BrandMark } from "@/components/koba/brand-mark";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   DESKTOP_MORE_LINKS,
   DESKTOP_PRIMARY_LINKS,
@@ -28,6 +28,9 @@ function isStaffSessionType(value: string | null | undefined): boolean {
   return value === "SUPERADMIN" || value === "ADMIN" || value === "MODERATOR";
 }
 
+const navItemClass =
+  "inline-flex h-9 items-center rounded-lg px-3 text-sm font-medium transition-colors";
+
 export function AppHeader() {
   const pathname = usePathname();
   const { data: session, status } = useSession();
@@ -35,12 +38,37 @@ export function AppHeader() {
   const showStaff = isLoggedIn && isStaffSessionType(session?.user.accountType);
   const [moreOpen, setMoreOpen] = useState(false);
   const moreId = useId();
+  const moreRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setMoreOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!moreOpen) return;
+    function onPointerDown(event: PointerEvent) {
+      if (!moreRef.current?.contains(event.target as Node)) {
+        setMoreOpen(false);
+      }
+    }
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setMoreOpen(false);
+      }
+    }
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [moreOpen]);
 
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-background/90 backdrop-blur">
-      <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-4">
+      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-3 px-4">
         <BrandMark />
-        <nav aria-label="Desktop" className="hidden items-center gap-4 lg:flex">
+        <nav aria-label="Desktop" className="hidden min-w-0 items-center gap-1 lg:flex">
           {DESKTOP_PRIMARY_LINKS.map((link) => {
             const active = isNavActive(pathname, link.href);
             return (
@@ -48,24 +76,24 @@ export function AppHeader() {
                 key={link.href}
                 href={link.href}
                 className={cn(
-                  "text-sm font-medium transition-colors",
-                  active ? "text-neon-lime" : "text-muted hover:text-foreground",
+                  navItemClass,
+                  active
+                    ? "bg-surface-2 text-neon-lime"
+                    : "text-muted hover:bg-surface-2 hover:text-foreground",
                 )}
               >
-                {active ? (
-                  <span className="border-b-2 border-neon-lime pb-0.5">{link.label}</span>
-                ) : (
-                  link.label
-                )}
+                {link.label}
               </Link>
             );
           })}
-          <div className="relative">
+          <div className="relative" ref={moreRef}>
             <button
               type="button"
               className={cn(
-                "text-sm font-medium transition-colors",
-                moreOpen ? "text-neon-lime" : "text-muted hover:text-foreground",
+                navItemClass,
+                moreOpen
+                  ? "bg-surface-2 text-neon-lime"
+                  : "text-muted hover:bg-surface-2 hover:text-foreground",
               )}
               aria-expanded={moreOpen}
               aria-controls={moreId}
@@ -77,7 +105,7 @@ export function AppHeader() {
               <div
                 id={moreId}
                 role="menu"
-                className="absolute top-full right-0 z-50 mt-2 min-w-44 rounded-md border border-border bg-surface p-1 shadow-soft"
+                className="absolute top-full right-0 z-50 mt-2 min-w-48 rounded-xl border border-border bg-surface p-1.5 shadow-soft"
               >
                 {DESKTOP_MORE_LINKS.map((link) => (
                   <Link
@@ -85,7 +113,7 @@ export function AppHeader() {
                     role="menuitem"
                     href={link.href}
                     className={cn(
-                      "block rounded-md px-3 py-2 text-sm",
+                      "block rounded-lg px-3 py-2 text-sm",
                       isNavActive(pathname, link.href)
                         ? "bg-surface-2 text-neon-lime"
                         : "text-muted hover:bg-surface-2 hover:text-foreground",
@@ -99,26 +127,38 @@ export function AppHeader() {
             ) : null}
           </div>
         </nav>
-        <div className="hidden items-center gap-3 md:flex">
+        <div className="flex shrink-0 items-center gap-1 sm:gap-2">
           {isLoggedIn ? (
             <>
               {showStaff ? (
                 <Link
                   href="/admin"
-                  className="text-sm font-medium text-muted transition-colors hover:text-foreground"
+                  className={cn(
+                    navItemClass,
+                    "hidden text-muted hover:bg-surface-2 hover:text-foreground sm:inline-flex",
+                    isNavActive(pathname, "/admin") && "bg-surface-2 text-neon-lime",
+                  )}
                 >
                   Staff
                 </Link>
               ) : null}
               <Link
                 href="/orders"
-                className="text-sm font-medium text-muted transition-colors hover:text-foreground"
+                className={cn(
+                  navItemClass,
+                  "hidden text-muted hover:bg-surface-2 hover:text-foreground sm:inline-flex",
+                  isNavActive(pathname, "/orders") && "bg-surface-2 text-neon-lime",
+                )}
               >
                 Orders
               </Link>
               <Link
                 href="/settings"
-                className="hidden font-mono text-xs text-muted transition-colors hover:text-foreground sm:inline"
+                className={cn(
+                  navItemClass,
+                  "max-w-[7.5rem] truncate font-mono text-xs text-muted hover:bg-surface-2 hover:text-foreground sm:max-w-[12rem]",
+                  isNavActive(pathname, "/settings") && "bg-surface-2 text-neon-lime",
+                )}
               >
                 {session?.user.kobaId ?? "Settings"}
               </Link>
@@ -130,13 +170,13 @@ export function AppHeader() {
             <>
               <Link
                 href="/login"
-                className="text-sm font-medium text-muted transition-colors hover:text-foreground"
+                className={cn(navItemClass, "text-muted hover:bg-surface-2 hover:text-foreground")}
               >
                 Sign in
               </Link>
               <Link
                 href="/register"
-                className="inline-flex h-8 items-center justify-center rounded-md border border-border bg-surface px-3 text-xs font-semibold text-foreground transition-colors hover:bg-surface-2"
+                className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}
               >
                 Register
               </Link>

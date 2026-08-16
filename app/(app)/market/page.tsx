@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { auth } from "@/lib/auth";
-import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/koba/empty-state";
+import { PageHeader } from "@/components/koba/page-header";
 import { MarketFilters } from "@/features/marketplace/components/market-filters";
 import { ProductCard } from "@/features/marketplace/components/product-card";
 import { parseMarketQuery } from "@/features/marketplace/schemas/market.schemas";
@@ -46,14 +47,11 @@ export default async function MarketPage({
 
   return (
     <div className="space-y-6">
-      <div>
-        <Badge tone="live">Marketplace</Badge>
-        <h1 className="mt-3 text-3xl font-semibold tracking-tight">Trade what you build</h1>
-        <p className="mt-2 max-w-2xl text-muted">
-          Skins, maps, monuments, kits, and cosmetics. Only approved listings appear here. Place
-          bids on live auctions, then pay reserved wins through Stripe Checkout.
-        </p>
-      </div>
+      <PageHeader
+        eyebrow="Marketplace"
+        title="Trade what you build"
+        description="Skins, maps, monuments, kits, and cosmetics. Only approved listings appear here. Place bids on live auctions, then pay reserved wins through Stripe Checkout."
+      />
 
       <MarketFilters query={query} games={games} categories={categories} />
 
@@ -67,10 +65,10 @@ export default async function MarketPage({
       ) : null}
 
       {catalog.items.length === 0 ? (
-        <p className="rounded-lg border border-border bg-surface p-6 text-sm text-muted">
+        <EmptyState>
           No approved listings match these filters. After migrating, seed a catalog with{" "}
-          <code className="font-mono text-xs">pnpm db:seed</code>.
-        </p>
+          <code className="font-mono text-xs text-foreground">pnpm db:seed</code>.
+        </EmptyState>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {catalog.items.map((product) => (
@@ -80,7 +78,7 @@ export default async function MarketPage({
       )}
 
       {catalog.pageCount > 1 ? (
-        <nav className="flex items-center justify-between text-sm" aria-label="Pagination">
+        <nav className="flex items-center justify-between gap-3 text-sm" aria-label="Pagination">
           {query.page > 1 ? (
             <Link
               href={pageHref(params, query.page - 1)}

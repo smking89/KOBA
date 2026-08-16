@@ -1,5 +1,5 @@
 import { auth } from "@/lib/auth";
-import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/koba/page-header";
 import { FeedList } from "@/features/social/components/feed-list";
 import { PostComposer } from "@/features/social/components/post-composer";
 import { StoryTray } from "@/features/social/components/story-tray";
@@ -17,14 +17,11 @@ export default async function FeedPage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
-      <div>
-        <Badge tone="live">Live</Badge>
-        <h1 className="mt-3 text-3xl font-semibold tracking-tight">Feed</h1>
-        <p className="mt-2 max-w-2xl text-muted">
-          Follow people, tag shops and groups, and report content for staff review. Stories expire
-          after 24 hours.
-        </p>
-      </div>
+      <PageHeader
+        eyebrow="Live"
+        title="Feed"
+        description="Follow people, tag shops and groups, and report content for staff review. Stories expire after 24 hours."
+      />
       <StoryTray stories={stories} signedIn={signedIn} />
       {signedIn ? <PostComposer /> : null}
       <FeedList initial={feed} signedIn={signedIn} />

@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
+import { EmptyState } from "@/components/koba/empty-state";
+import { PageHeader } from "@/components/koba/page-header";
 import { formatPrice } from "@/features/marketplace/lib/catalog";
 import { listBuyerOrders } from "@/features/payments/services/checkout.service";
 import { Badge } from "@/components/ui/badge";
@@ -17,16 +19,15 @@ export default async function BuyerOrdersPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-semibold tracking-tight">Your orders</h1>
-        <p className="mt-1 text-sm text-muted">
-          Receipts stay on KOBA. Payment status comes from Stripe, not the browser.
-        </p>
-      </div>
+      <PageHeader
+        eyebrow="Purchases"
+        title="Your orders"
+        description="Receipts stay on KOBA. Payment status comes from Stripe, not the browser."
+      />
       {orders.length === 0 ? (
-        <p className="text-sm text-muted">No orders yet.</p>
+        <EmptyState>No orders yet.</EmptyState>
       ) : (
-        <ul className="divide-y divide-border rounded-lg border border-border">
+        <ul className="divide-y divide-border rounded-xl border border-border bg-surface">
           {orders.map((order) => (
             <li
               key={order.publicRef}
