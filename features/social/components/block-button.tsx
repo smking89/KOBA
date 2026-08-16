@@ -39,7 +39,12 @@ export function BlockButton({
   }
 
   return (
-    <Button size="sm" variant={blocked ? "danger" : "ghost"} onClick={() => void toggle()} disabled={busy}>
+    <Button
+      size="sm"
+      variant={blocked ? "danger" : "ghost"}
+      onClick={() => void toggle()}
+      disabled={busy}
+    >
       {blocked ? "Unblock" : "Block"}
     </Button>
   );

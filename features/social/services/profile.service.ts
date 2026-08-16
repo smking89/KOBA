@@ -10,7 +10,13 @@ const userPublic = {
   image: true,
   createdAt: true,
   profile: {
-    select: { handle: true, displayName: true, bio: true, tagPrivacy: true, activeAccountType: true },
+    select: {
+      handle: true,
+      displayName: true,
+      bio: true,
+      tagPrivacy: true,
+      activeAccountType: true,
+    },
   },
   kobaIdentities: { select: { id: true, code: true, accountType: true } },
 } as const;

@@ -104,7 +104,10 @@ export function ProfileHero({
           </div>
           <div className="mb-1 flex flex-wrap items-center justify-end gap-2">
             {profile.isSelf ? (
-              <Link href="/settings" className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>
+              <Link
+                href="/settings"
+                className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}
+              >
                 Edit Profile
               </Link>
             ) : (
@@ -184,7 +187,10 @@ export function ProfileHero({
                     )}
                   >
                     <span
-                      className={cn("h-2 w-2 shrink-0 rounded-full", ROLE_DOT[identity.accountType])}
+                      className={cn(
+                        "h-2 w-2 shrink-0 rounded-full",
+                        ROLE_DOT[identity.accountType],
+                      )}
                       aria-hidden
                     />
                     {ACCOUNT_TYPE_LABEL[identity.accountType]}
