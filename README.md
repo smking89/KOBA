@@ -401,11 +401,11 @@ curl -s "http://localhost:3000/api/health?deep=1"
 
 | Token          | Value                                  |
 | -------------- | -------------------------------------- |
-| Background     | `#050505`                              |
-| Surface        | `#0D0F0E` / `#141816`                  |
-| Text           | `#F5FFF8` / muted `#98A69D`            |
+| Background     | `#0B0C0B`                              |
+| Surface        | `#161916` / `#1C201E` / `#232826`      |
+| Text           | `#F2F7F3` / muted `#8B958E`            |
 | Neon lime      | `#B8FF00`                              |
-| Electric green | `#35FF52`                              |
+| Electric green | `#3BA55D`                              |
 | Neon mint      | `#00F5A0`                              |
 | Brand gradient | `135deg · #C6FF00 → #55FF35 → #00F5A0` |
 
