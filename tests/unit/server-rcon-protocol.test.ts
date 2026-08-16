@@ -7,6 +7,12 @@ import {
   parsePlayerListOutput,
   parseStatusOutput,
 } from "@/features/servers/lib/rcon/rust-webrcon";
+import {
+  buildAddKitItemCommand,
+  buildAssignKitToSpawnGroupCommand,
+  buildCreateKitCommand,
+  buildGiveKitCommand,
+} from "@/features/servers/lib/rcon/kit-commands";
 
 describe("Source RCON packet encode/decode", () => {
   it("round-trips id/type/body through encode then decode", () => {
@@ -212,5 +218,64 @@ describe("queryProtocolForGame", () => {
 
   it("returns null for a game with no known query adapter", () => {
     expect(queryProtocolForGame("Minecraft", "PC")).toBeNull();
+  });
+});
+
+describe("Rust `kit` console-command builders", () => {
+  it("builds a kit-create command", () => {
+    expect(buildCreateKitCommand("Starter")).toBe('kit add "Starter"');
+  });
+
+  it("builds a kit-add-item command matching the sourced example exactly", () => {
+    expect(
+      buildAddKitItemCommand({
+        kitName: "Starter",
+        itemShortname: "rifle.ak",
+        amount: 1,
+        condition: 1,
+        container: "Belt",
+      }),
+    ).toBe('kit add "Starter" "rifle.ak" "1" "1" "Belt"');
+  });
+
+  it("builds a give-to-player command", () => {
+    expect(buildGiveKitCommand("Starter", "SomeGamertag")).toBe(
+      'kit givetoplayer "Starter" "SomeGamertag"',
+    );
+  });
+
+  it("builds a spawn-group assignment command matching the sourced example exactly", () => {
+    expect(buildAssignKitToSpawnGroupCommand("Starter", "user")).toBe(
+      'kit edit "Starter" add group "user"',
+    );
+  });
+
+  it("rejects a kit-add-item amount that isn't a positive integer", () => {
+    expect(() =>
+      buildAddKitItemCommand({
+        kitName: "Starter",
+        itemShortname: "rifle.ak",
+        amount: 0,
+        condition: 1,
+        container: "Belt",
+      }),
+    ).toThrow();
+  });
+
+  it("rejects a kit-add-item condition that's negative", () => {
+    expect(() =>
+      buildAddKitItemCommand({
+        kitName: "Starter",
+        itemShortname: "rifle.ak",
+        amount: 1,
+        condition: -1,
+        container: "Belt",
+      }),
+    ).toThrow();
+  });
+
+  it("fails closed on a double-quote in an argument rather than emitting a malformed command", () => {
+    expect(() => buildCreateKitCommand('Star"ter')).toThrow();
+    expect(() => buildGiveKitCommand("Starter", 'Game"tag')).toThrow();
   });
 });

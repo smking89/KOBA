@@ -45,3 +45,10 @@ export const serverBioSchema = z.object({
 });
 
 export type ServerBioInput = z.infer<typeof serverBioSchema>;
+
+export const giveKitSchema = z.object({
+  kitName: z.string().trim().min(1).max(64),
+  gamertag: z.string().trim().min(1).max(64),
+});
+
+export type GiveKitInput = z.infer<typeof giveKitSchema>;

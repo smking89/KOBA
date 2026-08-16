@@ -79,6 +79,7 @@ enum AuditAction {
   PLUS_ACTIVATED
   SERVER_ACTIVE_MAP_SET
   FREEBIE_CLAIMED
+  SERVER_KIT_DELIVERED
 }
 
 // Major, independently-toggleable platform functions. This is the registry

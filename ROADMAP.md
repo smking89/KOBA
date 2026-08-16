@@ -1284,6 +1284,19 @@ surfaced once the bot actually exists.
   the buyer's linked server account); for client-side skins this
   coordinates with the Phase 21 plugin instead — the bot itself doesn't
   reach into a player's PC.
+  **Groundwork shipped (2026-08-16):** the actual `kit` Oxide/uMod
+  console-command syntax (real, multi-sourced admin docs — Reddit
+  r/RustConsole, GameServerKings' Rust kits guide, the Rust Console
+  Edition community-servers GitBook), a pure command-string builder
+  for it, and a `giveKitToPlayer` service primitive that runs
+  `kit givetoplayer "[kit]" "[gamertag]"` over whichever RCON transport
+  `rconProtocolForGame` picks (`features/servers/lib/rcon/kit-commands.ts`,
+  wired into `features/servers/services/server.service.ts` and
+  `POST /api/servers/[serverId]/kits/give`). Not yet wired to order
+  fulfillment — that still needs the Discord account-linking flow
+  (gamertag capture) described above, which doesn't exist yet. KOBA
+  doesn't create kits; server owners set those up in-panel themselves,
+  same as they would for KAOSBOT/Ch33kys/Veretech.
 - **Third-party delivery bot interop (deferred, client decision
   2026-08-16): for now, console kit/in-game-item delivery goes through
   KOBAbot only.** A server owner already running a different console

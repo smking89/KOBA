@@ -15,6 +15,7 @@ import type { CreateServerInput, RconActionInput } from "@/features/servers/sche
 import { isPlusActive } from "@/features/plus/services/plus.service";
 import { queryProtocolForGame, rconProtocolForGame } from "@/features/servers/lib/rcon/registry";
 import { runRconCommand, SourceRconError } from "@/features/servers/lib/rcon/source-rcon";
+import { buildGiveKitCommand } from "@/features/servers/lib/rcon/kit-commands";
 import {
   queryRustStatusViaRcon,
   runWebRconCommand,
@@ -390,6 +391,71 @@ export async function testRconConnection(
     targetType: "GameServer",
     targetId: server.id,
     metadata: { action: "test", state },
+    ipAddress: ipAddress ?? null,
+  });
+
+  return { state };
+}
+
+/**
+ * Delivers a pre-built Rust `kit` (set up by the server owner in-panel —
+ * KOBA doesn't create kits, only triggers `kit givetoplayer`) to a
+ * player by gamertag/Steam persona over RCON. Same command syntax on
+ * PC and console (the `kit` Oxide/uMod plugin, see kit-commands.ts) —
+ * only the transport differs, already abstracted by rconProtocolForGame.
+ *
+ * This is the item-delivery primitive Phase 22 (Discord Bot) needs;
+ * not yet wired to order fulfillment — that needs the Discord
+ * account-linking flow (gamertag capture) this phase doesn't have yet.
+ */
+export async function giveKitToPlayer(
+  userId: string,
+  serverIdOrSlug: string,
+  kitName: string,
+  gamertag: string,
+  ipAddress?: string | null,
+): Promise<{ state: RconTestState }> {
+  await assertBusinessOrInfluencer(userId);
+  const server = await loadServer(serverIdOrSlug);
+  await assertOwner(server, userId);
+
+  const host = server.host;
+  const port = server.port;
+  const protocol = rconProtocolForGame(server.game, server.platformFamily);
+
+  let state: RconTestState;
+  if (!host || port == null || !protocol) {
+    state = "UNSUPPORTED";
+  } else {
+    const credential = await prisma.serverCredential.findUnique({ where: { serverId: server.id } });
+    if (!credential) {
+      state = "UNSUPPORTED";
+    } else {
+      try {
+        const password = openSecret(credential);
+        const command = buildGiveKitCommand(kitName, gamertag);
+        if (protocol === "RUST_WEBRCON") {
+          await runWebRconCommand({ host, port, password, command, timeoutMs: 5000 });
+        } else {
+          await runRconCommand({ host, port, password, command, timeoutMs: 5000 });
+        }
+        state = "SUCCESS";
+      } catch (error) {
+        if (error instanceof SourceRconError || error instanceof WebRconError) {
+          state = error.kind === "AUTH_FAILED" ? "AUTH_FAILED" : "TIMEOUT";
+        } else {
+          state = "TIMEOUT";
+        }
+      }
+    }
+  }
+
+  await writeAuditLog({
+    actorUserId: userId,
+    action: AuditAction.SERVER_KIT_DELIVERED,
+    targetType: "GameServer",
+    targetId: server.id,
+    metadata: { kitName, gamertag, state },
     ipAddress: ipAddress ?? null,
   });
 
