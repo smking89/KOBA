@@ -64,12 +64,13 @@ async function deliver(payload: MailPayload): Promise<void> {
     );
   }
 
-  logger.info("Dev mail captured (body omitted)", {
+  logger.info("Dev mail captured", {
     event: "email_dev_capture",
     operation: "email_deliver",
     outcome: "success",
     extra: { subject: payload.subject },
   });
+  console.info(`[koba:mail] ${payload.subject}\n${payload.text}`);
 }
 
 export async function sendVerificationEmail(email: string, token: string): Promise<void> {

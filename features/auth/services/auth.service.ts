@@ -125,6 +125,31 @@ export async function verifyEmail(email: string, token: string, ipAddress?: stri
   await mintPublicKobaId(user.id, profile?.activeAccountType ?? "PLAYER", ipAddress);
 }
 
+export async function resendVerificationEmail(email: string): Promise<{ sent: true }> {
+  const normalizedEmail = email.toLowerCase();
+  const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+  if (!user || user.emailVerified) {
+    return { sent: true };
+  }
+
+  const token = randomBytes(32).toString("hex");
+  const expires = new Date(Date.now() + VERIFICATION_TTL_MS);
+
+  await prisma.verificationToken.deleteMany({
+    where: { identifier: normalizedEmail },
+  });
+  await prisma.verificationToken.create({
+    data: {
+      identifier: normalizedEmail,
+      token,
+      expires,
+    },
+  });
+
+  await sendVerificationEmail(normalizedEmail, token);
+  return { sent: true };
+}
+
 const RESET_PREFIX = "reset:";
 
 export async function requestPasswordReset(email: string, ipAddress?: string | null) {

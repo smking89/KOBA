@@ -24,10 +24,12 @@ export function LoginForm() {
   const {
     register,
     handleSubmit,
+    getValues,
     formState: { errors, isSubmitting },
   } = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
   });
+  const [resendState, setResendState] = useState<"idle" | "sending" | "sent">("idle");
 
   const onSubmit = handleSubmit(async (values) => {
     setFormError(null);
@@ -69,6 +71,29 @@ export function LoginForm() {
     router.refresh();
   });
 
+  async function resendVerification() {
+    const email = getValues("email");
+    setResendState("sending");
+    setFormError(null);
+    try {
+      const response = await fetch("/api/auth/resend-verification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+        body: JSON.stringify({ email }),
+      });
+      if (!response.ok) {
+        setFormError("Could not resend verification. Try again in a few minutes.");
+        setResendState("idle");
+        return;
+      }
+      setResendState("sent");
+    } catch {
+      setFormError("Could not resend verification. Try again in a few minutes.");
+      setResendState("idle");
+    }
+  }
+
   return (
     <AuthCard
       title="Sign in"
@@ -78,6 +103,12 @@ export function LoginForm() {
         <AuthAlert variant="success">Email verified. You can sign in now.</AuthAlert>
       ) : null}
       {formError ? <AuthAlert variant="error">{formError}</AuthAlert> : null}
+      {resendState === "sent" ? (
+        <AuthAlert variant="info">
+          If this account needs verification, a new link was sent. In local development, open the
+          link printed in the terminal running the app.
+        </AuthAlert>
+      ) : null}
 
       <form onSubmit={onSubmit} className="space-y-4">
         <FormField id="email" label="Email" error={errors.email?.message}>
@@ -97,6 +128,14 @@ export function LoginForm() {
           <Link href="/forgot-password" className="text-neon-lime hover:underline">
             Forgot password?
           </Link>
+          <button
+            type="button"
+            className="text-muted hover:text-foreground hover:underline disabled:opacity-50"
+            disabled={resendState === "sending"}
+            onClick={() => void resendVerification()}
+          >
+            {resendState === "sending" ? "Sending…" : "Resend verification"}
+          </button>
         </div>
 
         <Button type="submit" className="w-full" disabled={isSubmitting}>
