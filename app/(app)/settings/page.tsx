@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { HexAvatar } from "@/components/koba/hex-avatar";
+import { RestartTourButton } from "@/components/koba/restart-tour-button";
 import { RarityChip } from "@/features/marketplace/components/rarity-chip";
 import { PRODUCT_RARITIES, RARITY_LABEL } from "@/features/marketplace/lib/catalog";
 import { auth } from "@/lib/auth";
@@ -92,6 +93,14 @@ export default async function SettingsPage() {
         <CardDescription>
           Technical light tokens may exist later for tooling, but KOBA ships dark-first.
         </CardDescription>
+      </Card>
+
+      <Card className="border-t-2 border-t-neon-lime">
+        <CardTitle>Getting started</CardTitle>
+        <CardDescription className="mb-4">
+          Replay the welcome walkthrough — Market, Groups &amp; LFG, Servers, Aiden &amp; Coins.
+        </CardDescription>
+        <RestartTourButton />
       </Card>
     </div>
   );
