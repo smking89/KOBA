@@ -37,6 +37,8 @@ export type PublicProductCard = {
   /** True while an active Boost (features/boost) targets this product. */
   boosted: boolean;
   freebiePolicy: FreebiePolicy;
+  /** Short excerpt of the full description — card "flavor text". */
+  descriptionSnippet: string;
 };
 
 export type PublicProductDetail = PublicProductCard & {

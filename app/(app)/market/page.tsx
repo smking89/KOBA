@@ -32,10 +32,10 @@ export default async function MarketPage({
     <div className="space-y-6">
       <div>
         <Badge tone="live">Marketplace</Badge>
-        <h1 className="mt-3 text-3xl font-semibold tracking-tight">Trade what you build</h1>
+        <h1 className="mt-3 text-3xl font-semibold tracking-tight">Skins, kits, and maps</h1>
         <p className="mt-2 max-w-2xl text-muted">
-          Skins, maps, monuments, kits, and cosmetics. Only approved listings appear here. Place
-          bids on live auctions, then pay reserved wins through Stripe Checkout.
+          Buy from verified sellers, bid on live auctions, or grab a free drop — every listing
+          here has been reviewed before it&apos;s live. Own something? You can trade it too.
         </p>
       </div>
 

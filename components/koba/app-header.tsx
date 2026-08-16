@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import {
   DESKTOP_MORE_LINKS,
   DESKTOP_PRIMARY_LINKS,
+  isMoreSectionActive,
   isNavActive,
 } from "@/features/navigation/lib/nav";
 
@@ -97,7 +98,7 @@ export function AppHeader() {
             type="button"
             className={cn(
               "inline-flex h-8 w-8 items-center justify-center rounded-md text-muted transition-colors hover:text-foreground",
-              menuOpen ? "text-neon-lime" : null,
+              menuOpen || isMoreSectionActive(pathname) ? "text-neon-lime" : null,
             )}
             aria-label={menuOpen ? "Close menu" : "Open menu"}
             aria-expanded={menuOpen}

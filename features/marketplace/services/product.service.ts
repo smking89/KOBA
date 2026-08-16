@@ -54,6 +54,14 @@ function sellerFrom(product: NonNullable<ProductRecord>): PublicSeller {
   };
 }
 
+function descriptionSnippet(description: string, maxLength = 90): string {
+  const trimmed = description.trim();
+  if (trimmed.length <= maxLength) {
+    return trimmed;
+  }
+  return `${trimmed.slice(0, maxLength).trimEnd()}…`;
+}
+
 function stockQty(product: NonNullable<ProductRecord>): number {
   if (product.variants.length > 0) {
     return product.variants.reduce((sum, variant) => sum + variant.inventoryQty, 0);
@@ -82,6 +90,7 @@ function toCard(
     favorited,
     boosted,
     freebiePolicy: product.freebiePolicy as FreebiePolicy,
+    descriptionSnippet: descriptionSnippet(product.description),
     auction: product.auction
       ? {
           status: product.auction.status,
