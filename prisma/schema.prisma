@@ -78,6 +78,7 @@ enum AuditAction {
   AIDEN_ASSET_PUBLISHED
   PLUS_ACTIVATED
   SERVER_ACTIVE_MAP_SET
+  FREEBIE_CLAIMED
 }
 
 // Major, independently-toggleable platform functions. This is the registry
@@ -157,6 +158,7 @@ model User {
   ownedServers    GameServer[]
   plusSubscription PlusSubscription?
   serverBios       ServerBio[]
+  freebieClaims    FreebieClaim[]
   coinWallet      CoinWallet?
   ledgerAccounts  LedgerAccount[]
   aidenJobs       AidenJob[]
@@ -416,6 +418,20 @@ model Category {
   products  Product[]
 }
 
+/// Freebie policy (ROADMAP.md Phase 18): NONE = normal paid listing.
+/// PERMANENT = always free, no quantity limit. LIMITED_QUANTITY = free
+/// for the first `freebieQuantityRemaining` claims, then reverts to
+/// `priceCents` as a normal paid listing. Deliberately NOT a separate
+/// $0-price convention (priceCents already allows 0) — freebiePolicy
+/// disambiguates "genuinely free" from "a seller priced this at zero,"
+/// which are different things (a $0 non-freebie product would still go
+/// through paid checkout's Stripe flow, wastefully, for no money moved).
+enum FreebiePolicy {
+  NONE
+  PERMANENT
+  LIMITED_QUANTITY
+}
+
 model Product {
   id                 String           @id @default(cuid())
   slug               String           @unique
@@ -434,6 +450,14 @@ model Product {
   gameId             String
   categoryId         String
   publishedAt        DateTime?
+  freebiePolicy      FreebiePolicy    @default(NONE)
+  /// Meaningful only when freebiePolicy = LIMITED_QUANTITY — a one-time
+  /// lifetime pool per product (client direction not yet given on
+  /// replenishment; "first 15 free" is modeled as never resetting,
+  /// flagged in ROADMAP.md as the default, not a guess left unstated).
+  /// Decrements independently of inventoryQty, which also decrements on
+  /// a free claim (a free claim still consumes real stock).
+  freebieQuantityRemaining Int?
   createdAt          DateTime         @default(now())
   updatedAt          DateTime         @updatedAt
 
@@ -447,6 +471,7 @@ model Product {
   orderItems OrderItem[]
   auction    Auction?
   aidenAsset AidenAsset?
+  freebieClaims FreebieClaim[]
 
   @@index([moderationStatus, publishedAt])
   @@index([gameId])
@@ -456,6 +481,25 @@ model Product {
   @@index([shopId])
   @@index([priceCents])
   @@index([rarityRank])
+  @@index([freebiePolicy])
+}
+
+/// One row per successful free claim — enforces one-claim-per-buyer
+/// (Order itself has no such constraint; multiple paid orders for the
+/// same product are normal). Modeled on DevInstall's shape.
+model FreebieClaim {
+  id           String   @id @default(cuid())
+  productId    String
+  buyerUserId  String
+  orderId      String   @unique
+  createdAt    DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  buyer   User    @relation(fields: [buyerUserId], references: [id], onDelete: Cascade)
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, buyerUserId])
+  @@index([buyerUserId])
 }
 
 model ProductVariant {
@@ -673,6 +717,7 @@ model Order {
   buyer  User         @relation("OrderBuyer", fields: [buyerUserId], references: [id], onDelete: Restrict)
   items  OrderItem[]
   escrow OrderEscrow?
+  freebieClaim FreebieClaim?
 
   @@index([shopId, createdAt])
   @@index([buyerUserId])

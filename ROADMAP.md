@@ -45,7 +45,7 @@ open questions that need client decisions before (or during) each phase.
 - [Phase 15 — KOBAads + Boost](#phase-15--kobaads--boost)
 - [Phase 16 — KOBA Plus (subscriptions)](#phase-16--koba-plus-subscriptions)
 - [Phase 17 — Game Server Directory + Live RCON](#phase-17--game-server-directory--live-rcon)
-- [Phase 18 — Freebie Products](#phase-18--freebie-products)
+- [Phase 18 — Freebie Products (status: done)](#phase-18--freebie-products-status-done)
 - [Phase 19 — Rarity-Matched Trading (status: done)](#phase-19--rarity-matched-trading-status-done)
 - [Phase 20 — Multi-Subdomain Architecture](#phase-20--multi-subdomain-architecture)
 - [Phase 21 — KOBA PC Plugin](#phase-21--koba-pc-plugin)
@@ -1024,12 +1024,11 @@ a real connection — now real for every case below.
 
 ---
 
-## Phase 18 — Freebie Products
+## Phase 18 — Freebie Products (status: done)
 
 Sellers can mark a product free — **permanently**, or **for a fixed
 initial quantity** (e.g. "first 15 free," then it reverts to its normal
-paid price). Surfaced on a dedicated "Freebie" tab. Not built yet;
-no existing schema field or route covers this.
+paid price). Surfaced via a "Freebies only" filter on `/market`.
 
 **Scope, as engineering deliverables**
 
@@ -1059,12 +1058,33 @@ no existing schema field or route covers this.
 
 - Product / Order (done) — additive only.
 
-**Open questions for the client**
+**Resolved (shipped this way, revisit if the client wants different behavior)**
 
-1. Does a limited-quantity freebie ever replenish (e.g. weekly reset), or
-   is "first 15" a one-time lifetime pool per product?
-2. Does claiming a freebie count toward the same per-buyer purchase
-   limits/analytics as a paid order, or is it tracked separately?
+1. No auto-replenish. `freebieQuantityRemaining` is a one-time lifetime
+   pool per product; a seller re-stocks it by editing the listing (the
+   edit form's freebie-quantity field resets the counter to whatever's
+   submitted, rather than diffing against prior claims).
+2. Claims flow through the same `Order`/`FreebieClaim`/`InventoryItem`
+   pipeline as a paid purchase (`fulfillOrder`'s inventory-grant path,
+   reused via `grantInventoryForOrderItems`), so they show up in the
+   same order history and analytics as paid orders — just at
+   `totalCents: 0` and `status: FULFILLED` immediately, no Stripe
+   round-trip.
+
+**What shipped**
+
+- `Product.freebiePolicy` (`NONE` | `PERMANENT` | `LIMITED_QUANTITY`) +
+  `freebieQuantityRemaining`; `FreebieClaim` (unique per
+  product+buyer, unique per order) enforces one-claim-per-buyer.
+- `claimFreebie` (`features/payments/services/checkout.service.ts`):
+  atomic decrement + `Order` + `FreebieClaim` + `InventoryItem` grant
+  in one transaction, gated behind `MARKETPLACE_CHECKOUT`, fail-closed
+  on self-buy / sold-out / already-claimed / non-freebie listing.
+- `POST /api/market/products/[slug]/claim-freebie`, rate-limited.
+- Seller create/edit form gained a freebie-policy select + quantity
+  field; `/market` gained a "Freebies only" filter, a Free badge on
+  product cards, and a Claim button on the product detail page that
+  replaces the checkout button for freebie listings.
 
 ---
 
@@ -1257,6 +1277,23 @@ surfaced once the bot actually exists.
   the buyer's linked server account); for client-side skins this
   coordinates with the Phase 21 plugin instead — the bot itself doesn't
   reach into a player's PC.
+- **Delivery must also work when the server owner runs a *different*
+  Discord delivery bot instead of (or alongside) KOBAbot** — e.g. a
+  console Rust server already running **KAOSBOT** (bot.ka0s.uk),
+  **Ch33kys RCE Bot** (ch33kysrcebot.com), or **Veretech**
+  (docs.tip4serv.com), all of which already deliver purchased items via
+  RCON when notified by a webshop. Real, verified via web search
+  2026-08-16 — not guessed. All three integrate with **Tip4Serv**
+  (a console-Rust webshop platform, the console-market analog of
+  Tebex/PC Rust), so the likely-correct shape is: KOBA's fulfillment
+  path fires an **outbound webhook per order** (product/kit ref, buyer's
+  linked console identity, quantity) that a server owner can point at
+  whichever delivery bot they already run, rather than KOBA trying to
+  integrate with each bot's private API individually. **Not yet
+  designed or built** — this needs the actual Tip4Serv/KAOSBOT/Ch33kys/
+  Veretech incoming-webhook contract (payload shape, auth) confirmed
+  from their own docs before writing an adapter; do not guess the
+  payload format.
 - **This is a separate always-on service**, not a Next.js route — a
   Discord gateway connection needs its own long-running process and
   hosting decision, run alongside but not inside this web app.

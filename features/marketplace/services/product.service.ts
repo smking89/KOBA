@@ -10,7 +10,12 @@ import type {
   PublicProductDetail,
   PublicSeller,
 } from "@/features/marketplace/lib/product-dto";
-import type { GamePlatform, ListingType, ProductRarity } from "@/features/marketplace/lib/catalog";
+import type {
+  FreebiePolicy,
+  GamePlatform,
+  ListingType,
+  ProductRarity,
+} from "@/features/marketplace/lib/catalog";
 
 const productInclude = {
   game: { select: { slug: true, name: true } },
@@ -76,6 +81,7 @@ function toCard(
     thumbnailAlt: product.media[0]?.alt ?? product.title,
     favorited,
     boosted,
+    freebiePolicy: product.freebiePolicy as FreebiePolicy,
     auction: product.auction
       ? {
           status: product.auction.status,
@@ -170,10 +176,19 @@ export async function getPublicProduct(
   const qty = stockQty(product);
   const boostedIds = await activeBoostedTargetIds("PRODUCT");
 
+  let freebieClaimed = false;
+  if (viewerUserId && product.freebiePolicy !== "NONE") {
+    const claim = await prisma.freebieClaim.findUnique({
+      where: { productId_buyerUserId: { productId: product.id, buyerUserId: viewerUserId } },
+    });
+    freebieClaimed = Boolean(claim);
+  }
+
   return {
     ...toCard(product, favorited, boostedIds.has(product.id)),
     description: product.description,
     inventoryQty: qty,
+    freebieClaimed,
     variants: product.variants.map((variant) => ({
       sku: variant.sku,
       name: variant.name,

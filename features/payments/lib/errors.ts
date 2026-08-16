@@ -14,7 +14,8 @@ export class PaymentError extends Error {
       | "INVALID_SIGNATURE"
       | "NOT_PAID"
       | "AMOUNT_TOO_LARGE"
-      | "DISABLED",
+      | "DISABLED"
+      | "NOT_FREEBIE",
   ) {
     super(message);
     this.name = "PaymentError";

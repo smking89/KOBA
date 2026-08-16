@@ -35,6 +35,19 @@ export function buildPublicProductWhere(query: MarketQuery): Prisma.ProductWhere
     where.listingType = query.listing;
   }
 
+  if (query.freebie) {
+    where.AND = [
+      ...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []),
+      {
+        OR: [
+          { freebiePolicy: "PERMANENT" },
+          // A limited-quantity freebie with nothing left shouldn't show as claimable.
+          { freebiePolicy: "LIMITED_QUANTITY", freebieQuantityRemaining: { gt: 0 } },
+        ],
+      },
+    ];
+  }
+
   return where;
 }
 

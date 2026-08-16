@@ -70,6 +70,9 @@ export type CategoryKind = (typeof CATEGORY_KINDS)[number];
 export const LISTING_TYPES = ["FIXED", "AUCTION"] as const;
 export type ListingType = (typeof LISTING_TYPES)[number];
 
+export const FREEBIE_POLICIES = ["NONE", "PERMANENT", "LIMITED_QUANTITY"] as const;
+export type FreebiePolicy = (typeof FREEBIE_POLICIES)[number];
+
 export const MODERATION_STATUSES = [
   "DRAFT",
   "PENDING",
