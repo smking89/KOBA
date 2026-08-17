@@ -1,6 +1,8 @@
 -- Phase 14G: Aiden asynchronous concept generation
 
-ALTER TYPE "AuditAction" ADD VALUE 'AIDEN_JOB_COMPLETED';
+-- AIDEN_JOB_COMPLETED already added by 20250815070000_aiden_generation_pipeline —
+-- this line duplicated it, which fails ALTER TYPE ... ADD VALUE on any fresh
+-- database (confirmed via a shadow-database replay failure, not just here).
 ALTER TYPE "AuditAction" ADD VALUE 'AIDEN_ASSET_REVIEW_SUBMITTED';
 ALTER TYPE "AuditAction" ADD VALUE 'AIDEN_ASSET_APPROVED';
 ALTER TYPE "AuditAction" ADD VALUE 'AIDEN_ASSET_REJECTED';

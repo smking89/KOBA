@@ -153,6 +153,7 @@ enum AuditAction {
   FREEBIE_CLAIMED
   SERVER_KIT_DELIVERED
   PRODUCT_COMMENT_POSTED
+  ACHIEVEMENT_UNLOCKED
 }
 
 // Major, independently-toggleable platform functions. This is the registry
@@ -197,6 +198,7 @@ model User {
   products       Product[]
   favorites      ProductFavorite[]
   productComments ProductComment[]
+  achievements   UserAchievement[]
   ownedShop      Shop?            @relation("ShopOwner")
   shopMemberships ShopMember[]
   shopFollows    ShopFollow[]
@@ -664,6 +666,51 @@ model ProductComment {
 
   @@index([productId, createdAt])
   @@index([authorUserId])
+}
+
+enum AchievementCategory {
+  ACCOUNT_AGE
+  TRADING
+  MARKETPLACE
+  COMMUNITY
+  SPECIAL
+}
+
+/// Catalog of earnable badges (client spec, 2026-08-16: "earned, never
+/// bought or sold" — no priceCents/currency field on this model at all,
+/// deliberately). Rows are upserted idempotently by slug from
+/// features/achievements/lib/catalog.ts, the actual source of truth.
+model Achievement {
+  id          String              @id @default(cuid())
+  slug        String              @unique
+  name        String
+  description String
+  /// Reuses the product rarity tiers as the badge tier system (same
+  /// six-tier scale, same crest artwork/colors as marketplace rarity —
+  /// client spec: "each badge belongs to a rarity type").
+  rarity      ProductRarity
+  category    AchievementCategory
+  /// lucide-react icon component name, rendered over the rarity crest.
+  icon        String
+  createdAt   DateTime            @default(now())
+
+  unlocks UserAchievement[]
+
+  @@index([category])
+}
+
+model UserAchievement {
+  id            String   @id @default(cuid())
+  userId        String
+  achievementId String
+  unlockedAt    DateTime @default(now())
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievement Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, achievementId])
+  @@index([userId])
+  @@index([achievementId])
 }
 
 enum ShopVerificationStatus {

@@ -6,6 +6,7 @@ import { PrismaClient } from "../lib/generated/prisma/client";
 import { generateKobaIdCode } from "../features/koba-id/lib/format";
 import { RARITY_RANK } from "../features/marketplace/lib/catalog";
 import { assertSeedAllowed } from "../lib/security/seed-guard";
+import { syncAchievementCatalog } from "../features/achievements/services/achievement.service";
 
 const connectionString =
   process.env.DATABASE_URL ?? "postgresql://koba:koba@localhost:5432/koba?schema=public";
@@ -139,6 +140,8 @@ async function main() {
   // KOBA-SEC-001: seeding plants development fixtures (including a local
   // staff login) and must never run against production data.
   assertSeedAllowed();
+
+  await syncAchievementCatalog();
 
   for (const game of games) {
     await prisma.game.upsert({

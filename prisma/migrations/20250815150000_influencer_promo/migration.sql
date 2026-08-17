@@ -1,6 +1,13 @@
 -- Phase 14I: influencer promo, referral codes, and earnings
 
-CREATE TYPE "PromoPayoutType" AS ENUM ('PERCENT_BPS', 'FIXED_CENTS');
+-- PromoPayoutType was already created by 20250815040000_add_cosmetics_and_shop_promo
+-- (a parallel-session migration, earlier timestamp) as ('PERCENT', 'FIXED').
+-- Renamed to the ('PERCENT_BPS', 'FIXED_CENTS') values this migration
+-- actually needs instead of re-creating the type under the same name (which
+-- fails outright on a fresh database — confirmed via a shadow-database
+-- replay failure: a type name can only be created once).
+ALTER TYPE "PromoPayoutType" RENAME VALUE 'PERCENT' TO 'PERCENT_BPS';
+ALTER TYPE "PromoPayoutType" RENAME VALUE 'FIXED' TO 'FIXED_CENTS';
 CREATE TYPE "InfluencerEarningStatus" AS ENUM ('ACCRUED', 'PAYABLE', 'PAID', 'VOID', 'HELD');
 
 ALTER TYPE "AuditAction" ADD VALUE IF NOT EXISTS 'REFERRAL_CODE_CREATED';
@@ -12,15 +19,16 @@ ALTER TYPE "AuditAction" ADD VALUE IF NOT EXISTS 'INFLUENCER_EARNING_VOIDED';
 ALTER TYPE "AuditAction" ADD VALUE IF NOT EXISTS 'SHOP_PROMO_UPDATED';
 ALTER TYPE "AuditAction" ADD VALUE IF NOT EXISTS 'INFLUENCER_PAYOUT_ONBOARDED';
 
-CREATE TABLE "ShopPromoConfig" (
-    "shopId" TEXT NOT NULL,
-    "influencerEligible" BOOLEAN NOT NULL DEFAULT false,
-    "payoutType" "PromoPayoutType" NOT NULL DEFAULT 'PERCENT_BPS',
-    "payoutValue" INTEGER NOT NULL DEFAULT 1000,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
-
-    CONSTRAINT "ShopPromoConfig_pkey" PRIMARY KEY ("shopId")
-);
+-- ShopPromoConfig was already created by 20250815040000_add_cosmetics_and_shop_promo
+-- (a parallel-session migration merged in after this one was written, with an
+-- earlier timestamp), but with payoutType/payoutValue defaulting to the old
+-- 'PERCENT'/0 scheme. Reconciled here to the PromoPayoutType enum + BPS
+-- defaults this migration actually introduces, instead of re-creating the
+-- table (which is not idempotent on a fresh database — confirmed via a
+-- shadow-database replay failure).
+ALTER TABLE "ShopPromoConfig" ALTER COLUMN "payoutType" TYPE "PromoPayoutType" USING 'PERCENT_BPS'::"PromoPayoutType";
+ALTER TABLE "ShopPromoConfig" ALTER COLUMN "payoutType" SET DEFAULT 'PERCENT_BPS';
+ALTER TABLE "ShopPromoConfig" ALTER COLUMN "payoutValue" SET DEFAULT 1000;
 
 CREATE TABLE "ReferralCode" (
     "id" TEXT NOT NULL,
@@ -97,7 +105,9 @@ CREATE INDEX "InfluencerEarning_status_idx" ON "InfluencerEarning"("status");
 CREATE UNIQUE INDEX "InfluencerPayoutAccount_stripeAccountId_key" ON "InfluencerPayoutAccount"("stripeAccountId");
 CREATE INDEX "Order_referralCodeId_idx" ON "Order"("referralCodeId");
 
-ALTER TABLE "ShopPromoConfig" ADD CONSTRAINT "ShopPromoConfig_shopId_fkey" FOREIGN KEY ("shopId") REFERENCES "Shop"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+-- ShopPromoConfig_shopId_fkey was already added by
+-- 20250815040000_add_cosmetics_and_shop_promo (see note above) — not
+-- idempotent to re-add on a fresh database.
 ALTER TABLE "ReferralCode" ADD CONSTRAINT "ReferralCode_influencerUserId_fkey" FOREIGN KEY ("influencerUserId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "ReferralCode" ADD CONSTRAINT "ReferralCode_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "ReferralCode" ADD CONSTRAINT "ReferralCode_shopId_fkey" FOREIGN KEY ("shopId") REFERENCES "Shop"("id") ON DELETE CASCADE ON UPDATE CASCADE;

@@ -87,6 +87,7 @@ export async function getProfileByHandle(handle: string, viewerUserId?: string |
       : null;
 
   return {
+    userId,
     handle: profile.handle,
     name: displayName(profile.user),
     bio: profile.bio,

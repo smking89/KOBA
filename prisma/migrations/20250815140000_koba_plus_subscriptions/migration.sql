@@ -1,15 +1,15 @@
 -- Real Stripe Subscriptions for KOBA Plus, plus the per-server bio perk.
--- Extends the existing PlusSubscription scaffolding (previously a UI-shell
--- stub with no Stripe fields at all) rather than replacing it.
+--
+-- stripeCustomerId/stripeSubscriptionId/cancelAtPeriodEnd on
+-- PlusSubscription and AuditAction.PLUS_ACTIVATED were already added by
+-- 20250815060000_koba_plus_subscriptions (a parallel-session migration
+-- merged in after this one was written, with an earlier timestamp) —
+-- removed here so this migration is idempotent on a fresh database
+-- (confirmed via a shadow-database replay failure: duplicate ADD VALUE/
+-- ADD COLUMN/CREATE UNIQUE INDEX are not idempotent in Postgres).
+-- firstActivatedAt and the ServerBio table are still unique to this one.
 
-ALTER TYPE "AuditAction" ADD VALUE 'PLUS_ACTIVATED';
-
-ALTER TABLE "PlusSubscription" ADD COLUMN "stripeCustomerId" TEXT;
-ALTER TABLE "PlusSubscription" ADD COLUMN "stripeSubscriptionId" TEXT;
-ALTER TABLE "PlusSubscription" ADD COLUMN "cancelAtPeriodEnd" BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE "PlusSubscription" ADD COLUMN "firstActivatedAt" TIMESTAMP(3);
-
-CREATE UNIQUE INDEX "PlusSubscription_stripeSubscriptionId_key" ON "PlusSubscription"("stripeSubscriptionId");
 
 CREATE TABLE "ServerBio" (
   "id" TEXT NOT NULL,

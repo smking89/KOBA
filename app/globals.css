@@ -84,4 +84,22 @@
     background-clip: text;
     color: transparent;
   }
+
+  /* Pulsing glow for Legendary/Relic achievement badges — the "harder to
+     earn badges need animated effects" tier. Reduced-motion users get the
+     static drop-shadow only, handled by the global animation-duration
+     override above. */
+  .animate-badge-glow {
+    animation: badge-glow 2.4s ease-in-out infinite;
+  }
+
+  @keyframes badge-glow {
+    0%,
+    100% {
+      filter: brightness(1) saturate(1);
+    }
+    50% {
+      filter: brightness(1.18) saturate(1.3);
+    }
+  }
 }

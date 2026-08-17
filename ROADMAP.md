@@ -1483,6 +1483,69 @@ money.ts`) — extends to a new flat-rate commission path.
 
 ---
 
+## Phase 24 — Achievement Badges (status: done)
+
+Client spec (2026-08-16): "similar to the Discord-style badges that show
+in the user's profile page, KOBA needs its own... use the 6-tier rarity
+as well so each badge belongs to a rarity type, these badges are earned
+never bought or sold, make yearly account age badges, and also come up
+with achievements that unlock the badges, when a badge is unlocked, a
+confetti animation, the harder to earn badges need animated effects."
+
+**Data model** (`prisma/schema.prisma`): `Achievement` (catalog row —
+slug/name/description/`ProductRarity`/`AchievementCategory`/lucide icon
+name) + `UserAchievement` (grant join row, unique per user+achievement).
+Reuses the exact six-tier marketplace rarity scale — and its crest
+artwork (`public/brand/rarity/*.png`) — as the badge tier system, per
+spec. No price field on either model: badges are earned only, never
+purchased or gifted.
+
+**Catalog** (`features/achievements/lib/catalog.ts`): 19 real, computable
+achievements across 5 categories — `ACCOUNT_AGE` (yearly tenure badges:
+1/2/3/5/10 years, Common→Relic), `TRADING` (first-trade, 10-trade
+veteran, 50-trade master, Relic-item collector), `MARKETPLACE`
+(shop-owner, first-sale, KOBA-verified shop, 50-sale storefront),
+`COMMUNITY` (first comment, 25-post social butterfly, 50-follower
+community favorite), and `SPECIAL` (active KOBA Plus member, 1-year Plus
+veteran, and a Founding Member badge scoped to accounts created within
+30 days of KOBA's real `20250814120000_init` migration date — not an
+arbitrary cutoff).
+
+**Service** (`features/achievements/services/achievement.service.ts`):
+`syncAchievementCatalog()` idempotently upserts the catalog by slug (run
+from `prisma/seed.ts`); `evaluateAndGrantAchievements(userId)` checks
+every not-yet-held achievement's real criterion against live data (trade
+counts, order counts, follower counts, etc.), grants any newly satisfied
+ones, and writes an `ACHIEVEMENT_UNLOCKED` audit-chain entry per grant;
+`listUserAchievements(userId)` returns what a user currently holds.
+
+**UI**: `AchievementBadge` renders the rarity crest as the badge frame
+with a small lucide-icon overlay tinted to the tier color (Legendary and
+Relic tiers get an animated `filter: brightness/saturate` glow —
+`animate-badge-glow` in `app/globals.css`, respecting
+`prefers-reduced-motion`); `AchievementBadgeGrid` shows the full catalog
+grouped by category on `/u/[handle]`, unlocked badges in full color and
+not-yet-earned ones greyed out (Discord-style shelf, not hidden);
+`AchievementConfetti` (client) fires a `canvas-confetti` burst — a bigger
+one for Legendary/Relic unlocks — the moment a self-view page load grants
+something new. Evaluation only runs on the profile owner's own page load
+(`profile.isSelf`), not on every visitor view.
+
+**Migration-history cleanup (prerequisite fix):** adding this phase's
+migration surfaced pre-existing, real duplicate-statement bugs in the
+migration history left by two independently-developed branches that had
+each built overlapping features (KOBA Plus subscriptions, Aiden async
+generation, shop promo/influencer config) under different migration
+filenames, both merged into `main`. Fixed: duplicate `AuditAction` enum
+values, a duplicate `ShopPromoConfig` table (recreated with different
+column defaults by a later migration), a `PromoPayoutType` enum created
+twice under the same name with different value sets (reconciled via
+`ALTER TYPE ... RENAME VALUE` instead of a second `CREATE TYPE`), and a
+duplicate foreign-key constraint. This wasn't just a shadow-database
+quirk — it would have broken any genuinely fresh production install too.
+
+---
+
 ## Sequencing / milestones
 
 ```
