@@ -4,6 +4,7 @@ import Link from "next/link";
 import { signOut, useSession } from "next-auth/react";
 import { usePathname } from "next/navigation";
 import { Hash, LogOut, Settings } from "lucide-react";
+import { NavProfileAvatar } from "@/components/koba/nav-profile-avatar";
 import { cn } from "@/lib/utils";
 import { isNavActive, SIDEBAR_SECTIONS } from "@/features/navigation/lib/nav";
 import { clearPageCaches } from "@/lib/pwa/clear-caches";
@@ -31,7 +32,7 @@ export function AppSidebar({
 }) {
   const pathname = usePathname();
   const { data: session, status } = useSession();
-  const isLoggedIn = status === "authenticated";
+  const isLoggedIn = Boolean(session?.user) || status === "authenticated";
   const showStaff = isLoggedIn && isStaffSessionType(session?.user.accountType);
 
   return (
@@ -85,15 +86,15 @@ export function AppSidebar({
           </Link>
         ) : null}
       </nav>
-      <div className="flex h-[52px] items-center gap-2 bg-black/25 px-2">
+      <div className="flex h-14 items-center gap-2 bg-black/25 px-2">
         {isLoggedIn ? (
           <>
             <div className="flex min-w-0 flex-1 items-center gap-2">
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-gradient text-xs font-bold text-background">
-                {(session?.user.kobaId ?? "K").slice(0, 1)}
-              </span>
+              <NavProfileAvatar size="xs" onNavigate={onNavigate} />
               <span className="truncate font-mono text-xs text-muted">
-                {session?.user.kobaId ?? "Signed in"}
+                {session?.user.handle
+                  ? `@${session.user.handle}`
+                  : (session?.user.kobaId ?? "Signed in")}
               </span>
             </div>
             <Link

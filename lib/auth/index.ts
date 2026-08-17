@@ -22,6 +22,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.kobaId = snapshot?.kobaId ?? null;
         token.accountType = snapshot?.activeAccountType ?? null;
         token.kobaIdRevealed = snapshot?.kobaIdRevealed === true;
+        token.handle = snapshot?.handle ?? null;
+        token.plusBadge = snapshot?.plusBadge === true;
+        if (snapshot?.displayName) token.name = snapshot.displayName;
+        if (snapshot?.image) token.picture = snapshot.image;
+      } else if (token.sub && typeof token.handle !== "string") {
+        const { getAccountSnapshot } = await import("@/features/accounts/services/account.service");
+        const snapshot = await getAccountSnapshot(token.sub);
+        token.handle = snapshot?.handle ?? "";
+        token.plusBadge = snapshot?.plusBadge === true;
+        if (snapshot?.image) token.picture = snapshot.image;
       }
 
       return token;

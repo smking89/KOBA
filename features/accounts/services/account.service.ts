@@ -11,6 +11,7 @@ export type AccountSnapshot = {
   userId: string;
   handle: string;
   displayName: string | null;
+  image: string | null;
   bio: string | null;
   tagPrivacy: TagPrivacy;
   activeAccountType: KobaAccountType;
@@ -47,6 +48,7 @@ export async function getAccountSnapshot(userId: string): Promise<AccountSnapsho
     userId: user.id,
     handle: user.profile?.handle ?? "player",
     displayName: user.profile?.displayName ?? user.name,
+    image: user.image,
     bio: user.profile?.bio ?? null,
     tagPrivacy: user.profile?.tagPrivacy ?? "FOLLOWERS",
     activeAccountType,

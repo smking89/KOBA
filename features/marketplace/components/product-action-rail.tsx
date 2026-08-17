@@ -20,6 +20,7 @@ function RailButton({
   active,
   label,
   count,
+  tone = "feed",
   children,
 }: {
   onClick?: () => void;
@@ -27,20 +28,31 @@ function RailButton({
   active?: boolean;
   label: string;
   count?: number;
+  tone?: "feed" | "card";
   children: React.ReactNode;
 }) {
   const content = (
     <>
       <span
         className={cn(
-          "flex h-9 w-9 items-center justify-center rounded-full bg-white/85 backdrop-blur-sm",
-          active ? "text-destructive" : "text-black/70",
+          "flex items-center justify-center rounded-full backdrop-blur-sm",
+          tone === "card"
+            ? cn(
+                "h-8 w-8 border border-white/10 bg-black/55",
+                active ? "text-destructive" : "text-foreground",
+              )
+            : cn("h-9 w-9 bg-white/85", active ? "text-destructive" : "text-black/70"),
         )}
       >
         {children}
       </span>
       {count != null ? (
-        <span className="text-[0.65rem] font-semibold text-white drop-shadow">
+        <span
+          className={cn(
+            "text-[0.65rem] font-semibold drop-shadow",
+            tone === "card" ? "text-foreground" : "text-white",
+          )}
+        >
           {formatCount(count)}
         </span>
       ) : null}
@@ -72,9 +84,11 @@ function RailButton({
 export function ProductActionRail({
   product,
   signedIn,
+  variant = "feed",
 }: {
   product: PublicProductCard;
   signedIn: boolean;
+  variant?: "feed" | "card";
 }) {
   const router = useRouter();
   const [liked, setLiked] = useState(product.favorited);
@@ -121,6 +135,15 @@ export function ProductActionRail({
       setReposted(true);
       router.refresh();
     }
+  }
+
+  if (variant === "card") {
+    return (
+      <RailButton onClick={() => void toggleLike()} active={liked} label="Like" tone="card">
+        <Heart className={cn("h-4 w-4", liked && "fill-current")} aria-hidden />
+        {busy ? <span className="sr-only">Updating…</span> : null}
+      </RailButton>
+    );
   }
 
   return (

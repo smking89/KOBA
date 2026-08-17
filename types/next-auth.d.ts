@@ -8,6 +8,8 @@ declare module "next-auth" {
       kobaId: string | null;
       accountType: KobaAccountType | null;
       kobaIdRevealed: boolean;
+      handle: string | null;
+      plusBadge: boolean;
       impersonatorId?: string | null;
     } & DefaultSession["user"];
   }
@@ -16,6 +18,8 @@ declare module "next-auth" {
     kobaId?: string | null;
     accountType?: KobaAccountType | null;
     kobaIdRevealed?: boolean;
+    handle?: string | null;
+    plusBadge?: boolean;
   }
 }
 
@@ -25,6 +29,8 @@ declare module "next-auth/jwt" {
     kobaId?: string | null;
     accountType?: KobaAccountType | null;
     kobaIdRevealed?: boolean;
+    handle?: string | null;
+    plusBadge?: boolean;
   }
 }
 

@@ -90,16 +90,26 @@ describe("KOBA-SEC-004 JWT claims cannot be set by the client", () => {
       kobaId: "KOBA-P-1111",
       accountType: "PLAYER",
       kobaIdRevealed: false,
+      handle: "max",
+      plusBadge: false,
     };
     const result = edgeAuthConfig.callbacks.jwt({
       token: { ...token },
       trigger: "update",
-      session: { accountType: "SUPERADMIN", kobaId: "KOBA-S-9999", kobaIdRevealed: true },
+      session: {
+        accountType: "SUPERADMIN",
+        kobaId: "KOBA-S-9999",
+        kobaIdRevealed: true,
+        handle: "hacker",
+        plusBadge: true,
+      },
       // Auth.js passes more fields; the callback must not need them.
     } as never);
     expect(result.accountType).toBe("PLAYER");
     expect(result.kobaId).toBe("KOBA-P-1111");
     expect(result.kobaIdRevealed).toBe(false);
+    expect(result.handle).toBe("max");
+    expect(result.plusBadge).toBe(false);
   });
 
   it("still applies claims from the authenticated user at sign-in", () => {
@@ -110,11 +120,15 @@ describe("KOBA-SEC-004 JWT claims cannot be set by the client", () => {
         kobaId: "KOBA-B-2222",
         accountType: "BUSINESS",
         kobaIdRevealed: true,
+        handle: "shop",
+        plusBadge: true,
       },
     } as never);
     expect(result.sub).toBe("user-2");
     expect(result.accountType).toBe("BUSINESS");
     expect(result.kobaIdRevealed).toBe(true);
+    expect(result.handle).toBe("shop");
+    expect(result.plusBadge).toBe(true);
   });
 });
 

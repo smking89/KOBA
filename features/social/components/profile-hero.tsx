@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { HexAvatar } from "@/components/koba/hex-avatar";
 import { KobaBadgeArt } from "@/components/koba/koba-badge-art";
 import { PlusBadge } from "@/features/plus/components/plus-badge";
 import { FollowButton } from "@/features/social/components/follow-button";
@@ -37,11 +38,6 @@ const ROLE_DOT: Record<KobaAccountType, string> = {
   MODERATOR: "bg-electric-green",
 };
 
-function initials(name: string): string {
-  const parts = name.trim().split(/\s+/).slice(0, 2);
-  return parts.map((part) => part[0]?.toUpperCase() ?? "").join("") || "?";
-}
-
 function memberSince(iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "—";
@@ -56,7 +52,7 @@ function bannerStyle(handle: string, plus: boolean): CSSProperties {
   const hue = hash % 360;
   if (plus) {
     return {
-      background: `linear-gradient(135deg, hsl(${hue} 42% 14%) 0%, #3a2208 52%, #4a1408 100%)`,
+      background: `linear-gradient(135deg, hsl(${hue} 32% 14%) 0%, #163016 52%, #0c1a0c 100%)`,
     };
   }
   return {
@@ -81,8 +77,11 @@ export function ProfileHero({
   signedIn: boolean;
 }) {
   return (
-    <section className="overflow-hidden rounded-xl border border-white/[0.06] bg-surface-3 shadow-soft">
-      <div className="relative h-40" style={bannerStyle(profile.handle, profile.plusBadge)}>
+    <section className="rounded-xl border border-white/[0.06] bg-surface-3 shadow-soft">
+      <div
+        className="relative h-40 overflow-hidden rounded-t-xl"
+        style={bannerStyle(profile.handle, profile.plusBadge)}
+      >
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_18%_85%,rgba(184,255,0,0.2),transparent_58%)]" />
         {profile.plusBadge ? (
           <div className="absolute top-4 right-4">
@@ -93,14 +92,14 @@ export function ProfileHero({
 
       <div className="px-4 pb-5 sm:px-5">
         <div className="flex flex-wrap items-end justify-between gap-3">
-          <div className="-mt-12 flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border-[6px] border-surface-3 bg-brand-gradient text-2xl font-bold text-background">
-            {profile.image ? (
-              // User avatars may be remote https URLs (OAuth / CDN).
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={profile.image} alt="" className="h-full w-full object-cover" />
-            ) : (
-              <span aria-hidden>{initials(profile.name)}</span>
-            )}
+          <div className="-mt-14">
+            <HexAvatar
+              name={profile.name}
+              image={profile.image}
+              size="lg"
+              plus={profile.plusBadge}
+              accountType={profile.accountType}
+            />
           </div>
           <div className="mb-1 flex flex-wrap items-center justify-end gap-2">
             {profile.isSelf ? (

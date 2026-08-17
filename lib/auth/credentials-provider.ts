@@ -35,10 +35,13 @@ async function sessionUserFromId(userId: string) {
   return {
     id: user.id,
     email: user.email,
-    name: user.name,
+    name: snapshot?.displayName ?? user.name,
+    image: snapshot?.image ?? user.image,
+    handle: snapshot?.handle ?? user.profile?.handle ?? null,
     kobaId: snapshot?.kobaId ?? null,
     accountType: snapshot?.activeAccountType ?? accountType,
     kobaIdRevealed: snapshot?.kobaIdRevealed ?? false,
+    plusBadge: snapshot?.plusBadge ?? false,
   };
 }
 

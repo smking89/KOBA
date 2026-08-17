@@ -14,6 +14,11 @@ export const edgeAuthConfig = {
         token.kobaId = typeof user.kobaId === "string" ? user.kobaId : null;
         token.accountType = user.accountType ?? null;
         token.kobaIdRevealed = user.kobaIdRevealed === true;
+        token.handle = typeof user.handle === "string" ? user.handle : null;
+        token.plusBadge = user.plusBadge === true;
+        if (typeof user.name === "string") token.name = user.name;
+        if (typeof user.email === "string") token.email = user.email;
+        if (typeof user.image === "string") token.picture = user.image;
       }
 
       // KOBA-SEC-004: `update()` payloads arrive from the browser and are
@@ -28,6 +33,11 @@ export const edgeAuthConfig = {
         session.user.accountType =
           typeof token.accountType === "string" ? (token.accountType as KobaAccountType) : null;
         session.user.kobaIdRevealed = token.kobaIdRevealed === true;
+        session.user.handle = typeof token.handle === "string" ? token.handle : null;
+        session.user.plusBadge = token.plusBadge === true;
+        if (typeof token.picture === "string") {
+          session.user.image = token.picture;
+        }
       }
       return session;
     },

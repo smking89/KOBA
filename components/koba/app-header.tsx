@@ -10,8 +10,8 @@ import { isNavActive, navLabelForPath } from "@/features/navigation/lib/nav";
 
 export function AppHeader({ onOpenMenu }: { onOpenMenu?: () => void }) {
   const pathname = usePathname();
-  const { status } = useSession();
-  const isLoggedIn = status === "authenticated";
+  const { data: session, status } = useSession();
+  const isLoggedIn = Boolean(session?.user) || status === "authenticated";
   const title = navLabelForPath(pathname);
 
   return (
