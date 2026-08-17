@@ -1,11 +1,12 @@
 # KOBA Achievement Badges — Reference Sheet
 
 Full catalog of every earnable badge (`features/achievements/lib/catalog.ts`), 64 total.
-Badges are **earned only** — never bought, sold, or gifted. Art style reference:
-[mezotv/discord-badges](https://github.com/mezotv/discord-badges) (MIT-licensed, see
-`public/brand/achievements/LICENSE-discord-badges.txt`) — five categories (account age,
-trade volume, game collector, Boost rank, KOBA Plus tenure) use real tiered art from
-that repo; badges with no matching real asset render through KOBA's procedural gem frame.
+Badges are **earned only** — never bought, sold, or gifted. Every badge is an original
+circular coin medallion (`features/achievements/components/badge-frame.tsx`) — milled edge,
+glossy gradient face, richer detail at higher rarity. Ladder badges (account age, trade
+volume, game collector, Boost rank) emboss a bold rank numeral directly into the coin
+instead of a distinct icon per rung. KOBA Plus tenure badges emboss the real KOBA Plus
+mark the same way — built into the coin's own tones, not a separately-colored sticker.
 
 ## Special (10)
 
@@ -26,16 +27,16 @@ that repo; badges with no matching real asset render through KOBA's procedural g
 
 | Badge | Name | Rarity | Description | Threshold |
 |---|---|---|---|---|
-| ![](account-age-1y.png) | **Seed** | Common | Been part of KOBA for 1 year. | 1 |
-| ![](account-age-2y.png) | **Sprout** | Common | Been part of KOBA for 2 years. | 2 |
-| ![](account-age-3y.png) | **Bud** | Uncommon | Been part of KOBA for 3 years. | 3 |
-| ![](account-age-4y.png) | **Sapling** | Uncommon | Been part of KOBA for 4 years. | 4 |
-| ![](account-age-5y.png) | **Blossom** | Rare | Been part of KOBA for 5 years. | 5 |
-| ![](account-age-6y.png) | **Redwood** | Rare | Been part of KOBA for 6 years. | 6 |
-| ![](account-age-7y.png) | **Sequoia** | Epic | Been part of KOBA for 7 years. | 7 |
-| ![](account-age-8y.png) | **Bristlecone** | Epic | Been part of KOBA for 8 years. | 8 |
-| ![](account-age-9y.png) | **Stromatolite** | Legendary | Been part of KOBA for 9 years. | 9 |
-| ![](account-age-10y.png) | **Primordial** | Relic | Been part of KOBA for 10 years. | 10 |
+| ![](account-age-1y.png) | **First Anniversary** | Common | Been part of KOBA for 1 year. | 1 |
+| ![](account-age-2y.png) | **Two-Year Veteran** | Common | Been part of KOBA for 2 years. | 2 |
+| ![](account-age-3y.png) | **Three-Year Veteran** | Uncommon | Been part of KOBA for 3 years. | 3 |
+| ![](account-age-4y.png) | **Four-Year Veteran** | Uncommon | Been part of KOBA for 4 years. | 4 |
+| ![](account-age-5y.png) | **Five-Year Veteran** | Rare | Been part of KOBA for 5 years. | 5 |
+| ![](account-age-6y.png) | **Six-Year Veteran** | Rare | Been part of KOBA for 6 years. | 6 |
+| ![](account-age-7y.png) | **Seven-Year Veteran** | Epic | Been part of KOBA for 7 years. | 7 |
+| ![](account-age-8y.png) | **Eight-Year Veteran** | Epic | Been part of KOBA for 8 years. | 8 |
+| ![](account-age-9y.png) | **Nine-Year Veteran** | Legendary | Been part of KOBA for 9 years. | 9 |
+| ![](account-age-10y.png) | **Decade Club** | Relic | Been part of KOBA for 10 years. | 10 |
 
 ## Trading (21)
 
