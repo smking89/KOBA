@@ -21,7 +21,7 @@ export default function DevelopersPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardTitle>Publisher portal</CardTitle>
           <CardDescription>Profiles, team roles, sandbox apps, and keys.</CardDescription>
@@ -30,6 +30,19 @@ export default function DevelopersPage() {
             className={cn(buttonVariants({ size: "sm" }), "mt-4 inline-flex")}
           >
             Create publisher
+          </Link>
+        </Card>
+        <Card>
+          <CardTitle>API catalog</CardTitle>
+          <CardDescription>
+            AI Behavior, Faction Simulation, Event Trigger, Logistics, NPC Personality, Pack
+            Metadata.
+          </CardDescription>
+          <Link
+            href="/developers/apis"
+            className={cn(buttonVariants({ size: "sm", variant: "secondary" }), "mt-4 inline-flex")}
+          >
+            Browse APIs
           </Link>
         </Card>
         <Card>

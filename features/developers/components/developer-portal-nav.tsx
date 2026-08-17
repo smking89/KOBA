@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 
 const LINKS = [
   { href: "/developers/dashboard", label: "Dashboard" },
+  { href: "/developers/apis", label: "API catalog" },
   { href: "/developers/applications", label: "Applications" },
   { href: "/developers/api-keys", label: "API keys" },
   { href: "/developers/webhooks", label: "Webhooks" },
