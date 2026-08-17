@@ -1,4 +1,3 @@
-import Image from "next/image";
 import {
   Award,
   BadgeCheck,
@@ -23,7 +22,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { RARITY_ICON_SRC } from "@/features/marketplace/components/rarity-chip";
+import { BadgeFrame } from "@/features/achievements/components/badge-frame";
 import type { ProductRarity } from "@/features/marketplace/lib/catalog";
 
 // Named imports only (not `import * as icons`) — every icon used by
@@ -60,20 +59,6 @@ const badgeSize: Record<"sm" | "md" | "lg", { frame: string; glyph: string; glyp
   sm: { frame: "h-12 w-12", glyph: "h-5 w-5", glyphPx: 20 },
   md: { frame: "h-16 w-16", glyph: "h-7 w-7", glyphPx: 28 },
   lg: { frame: "h-24 w-24", glyph: "h-10 w-10", glyphPx: 40 },
-};
-
-// Same six-tier color scale as the marketplace rarity chips
-// (features/marketplace/components/rarity-chip.tsx) — the glyph overlay is
-// tinted to match its crest instead of a flat white, and only the two
-// hardest-to-earn tiers get an animated glow (client spec: "the harder to
-// earn badges need animated effects").
-const glyphColorClass: Record<ProductRarity, string> = {
-  COMMON: "text-rarity-common",
-  UNCOMMON: "text-rarity-uncommon",
-  RARE: "text-rarity-rare",
-  EPIC: "text-rarity-epic",
-  LEGENDARY: "text-rarity-legendary",
-  RELIC: "text-rarity-relic",
 };
 
 const glowClass: Record<ProductRarity, string> = {
@@ -117,22 +102,18 @@ export function AchievementBadge({
       title={unlocked ? `${name} — ${description}` : `Locked — ${description}`}
     >
       <div className={cn("relative shrink-0", frame, !unlocked && "opacity-35 grayscale")}>
-        <Image
-          src={RARITY_ICON_SRC[rarity]}
-          alt=""
-          width={glyphPx * 3}
-          height={glyphPx * 3}
-          className={cn("h-full w-full object-contain", unlocked && glowClass[rarity])}
-          aria-hidden
+        <BadgeFrame
+          rarity={rarity}
+          size={glyphPx * 3}
+          className={cn("h-full w-full", unlocked && glowClass[rarity])}
         />
         <Icon
           aria-hidden
           className={cn(
-            "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2",
+            "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.55)]",
             glyph,
-            unlocked ? glyphColorClass[rarity] : "text-muted",
           )}
-          strokeWidth={2.25}
+          strokeWidth={2.5}
         />
       </div>
       <span className="sr-only">{unlocked ? name : `${name} (locked)`}</span>
