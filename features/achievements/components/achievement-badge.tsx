@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BadgeFrame, coinTones } from "@/features/achievements/components/badge-frame";
-import { KobaPlusMark } from "@/components/koba/koba-plus-mark";
+import { PlusGemBadge, type PlusGemTier } from "@/features/achievements/components/plus-gem-badge";
 import type { ProductRarity } from "@/features/marketplace/lib/catalog";
 
 // Named imports only (not `import * as icons`) — every icon used by a
@@ -110,7 +110,21 @@ function Emboss({ rarity, children }: { rarity: ProductRarity; children: React.R
   );
 }
 
+// PLUS_LADDER slugs (catalog.ts), in tier order — used to pick which gem
+// tier a "plus-*" catalog entry renders as in PlusGemBadge.
+const PLUS_TIER_BY_SLUG: Record<string, PlusGemTier> = {
+  "plus-bronze": "bronze",
+  "plus-silver": "silver",
+  "plus-gold": "gold",
+  "plus-platinum": "platinum",
+  "plus-diamond": "diamond",
+  "plus-emerald": "emerald",
+  "plus-ruby": "ruby",
+  "plus-opal": "opal",
+};
+
 export function AchievementBadge({
+  slug,
   name,
   description,
   rarity,
@@ -120,6 +134,10 @@ export function AchievementBadge({
   size = "md",
   className,
 }: {
+  /** Catalog slug — used to resolve which KOBA Plus gem tier to render
+   * when `icon === "koba-plus"` (falls back to the "bronze" gem shape if
+   * not a recognized plus-* slug). */
+  slug?: string | undefined;
   name: string;
   description: string;
   rarity: ProductRarity;
@@ -138,6 +156,25 @@ export function AchievementBadge({
   const { frame, glyph, glyphPx, numeral: numeralClass } = badgeSize[size];
   const isPlusMark = icon === "koba-plus";
 
+  // KOBA Plus tenure tiers render as the client's own gem-shield design
+  // (2026-08-17: hand-sketched outline references, regenerated here as
+  // shaded vector gem art) rather than the generic circular coin — every
+  // other achievement in the catalog still uses BadgeFrame below.
+  if (isPlusMark) {
+    const tier = (slug && PLUS_TIER_BY_SLUG[slug]) || "bronze";
+    return (
+      <div
+        className={cn("group relative flex flex-col items-center gap-1.5", className)}
+        title={unlocked ? `${name} — ${description}` : `Locked — ${description}`}
+      >
+        <div className={cn("relative shrink-0", frame, !unlocked && "opacity-35 grayscale")}>
+          <PlusGemBadge tier={tier} size={glyphPx * 3} className="h-full w-full" />
+        </div>
+        <span className="sr-only">{unlocked ? name : `${name} (locked)`}</span>
+      </div>
+    );
+  }
+
   return (
     <div
       className={cn("group relative flex flex-col items-center gap-1.5", className)}
@@ -150,9 +187,7 @@ export function AchievementBadge({
           className={cn("h-full w-full", unlocked && tierEffectClass[rarity])}
         />
         <Emboss rarity={rarity}>
-          {isPlusMark ? (
-            <KobaPlusMark size={glyphPx * 1.1} tone="mono" />
-          ) : numeral !== undefined ? (
+          {numeral !== undefined ? (
             <span className={cn("font-mono font-extrabold", numeralClass)}>{numeral}</span>
           ) : (
             (() => {

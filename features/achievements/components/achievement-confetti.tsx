@@ -46,6 +46,7 @@ export function AchievementConfetti({ unlocked }: { unlocked: UnlockedAchievemen
         {unlocked.slice(0, 3).map((badge) => (
           <AchievementBadge
             key={badge.slug}
+            slug={badge.slug}
             name={badge.name}
             description={badge.description}
             rarity={badge.rarity as ProductRarity}

@@ -37,6 +37,7 @@ export function AchievementBadgeGrid({ unlockedSlugs }: { unlockedSlugs: string[
             {byCategory.get(category)!.map((entry) => (
               <AchievementBadge
                 key={entry.slug}
+                slug={entry.slug}
                 name={entry.name}
                 description={entry.description}
                 rarity={entry.rarity}

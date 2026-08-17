@@ -57,7 +57,7 @@ export function RegisterForm() {
   return (
     <AuthCard
       title="Create account"
-      description="Choose Player, Business, or Influencer. Staff KOBAIDs are issued by KOBA, never here."
+      description="Choose Player, Business, or Influencer."
     >
       {formError ? <AuthAlert variant="error">{formError}</AuthAlert> : null}
 

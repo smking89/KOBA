@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import React, { type CSSProperties } from "react";
 
 /**
  * The real KOBA Plus mark — client-supplied asset (2026-08-17,

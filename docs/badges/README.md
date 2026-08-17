@@ -5,9 +5,20 @@ Badges are **earned only** — never bought, sold, or gifted. Every badge is an 
 circular coin medallion (`features/achievements/components/badge-frame.tsx`) with a recessed
 emblem panel behind the glyph. Ladder badges (account age, trade volume, game collector,
 Boost rank) emboss a bold rank numeral into that panel instead of a distinct icon per rung.
-KOBA Plus tenure badges emboss the real KOBA Plus mark (`public/brand/koba-plus-mark.png`,
-client-supplied) the same way — built into the coin's own tones, not a separately-colored
-sticker glued on top.
+
+KOBA Plus tenure badges are the one exception to the coin shape: they render as a faceted
+gem-cut shield (`features/achievements/components/plus-gem-badge.tsx`), built from the
+client's own hand-sketched outline concepts (2026-08-17) — a consistent shield silhouette
+across all 8 tiers, with escalating ornamentation as tenure climbs (plain point → small
+notch → teardrop pendant → full lotus crown + side studs + pendant), rendered in each
+tier's real gem material (bronze copper, silver, gold, cool platinum, icy diamond, emerald
+green, ruby red, and Opal's iridescent rainbow). The real KOBA Plus mark
+(`public/brand/koba-plus-mark.png`, client-supplied) is engraved into the center of every
+tier using the same light/dark relief technique as the coin badges — built into the gem's
+own tones, not a separately-colored sticker glued on top. Platinum and Opal weren't in the
+client's 6-example set; their ornamentation follows the same escalating language as an
+extrapolation (Platinum between Gold's pendant and Diamond's crown; Opal above Ruby with
+the original KOBA Plus rainbow spectrum).
 
 ## Special (10)
 
