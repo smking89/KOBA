@@ -1,18 +1,24 @@
 "use client";
 
 import { useState } from "react";
-import { Share2 } from "lucide-react";
+import { Forward, Share2, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function ShareButton({
   slug,
   title,
   className,
+  icon = "share",
 }: {
   slug: string;
   title: string;
   className?: string;
+  /** "forward" matches the curved-arrow glyph used on the TCG-style
+   * product card (client reference, 2026-08-17); "share" (default) is
+   * the export-box glyph used everywhere else. */
+  icon?: "share" | "forward";
 }) {
+  const Icon: LucideIcon = icon === "forward" ? Forward : Share2;
   const [copied, setCopied] = useState(false);
 
   async function share() {
@@ -44,7 +50,7 @@ export function ShareButton({
         className,
       )}
     >
-      <Share2 className="h-4 w-4" aria-hidden />
+      <Icon className="h-4 w-4" aria-hidden />
     </button>
   );
 }

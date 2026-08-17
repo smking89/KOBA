@@ -28,6 +28,9 @@ export type PublicProductCard = {
   priceCents: number;
   currency: string;
   inStock: boolean;
+  /** Real remaining stock (summed across variants when the product has
+   * them) — shown on the card footer as an edition-style count. */
+  inventoryQty: number;
   platforms: GamePlatform[];
   game: { slug: string; name: string };
   category: { slug: string; name: string };
@@ -58,7 +61,6 @@ export type PublicProductCard = {
 
 export type PublicProductDetail = PublicProductCard & {
   description: string;
-  inventoryQty: number;
   variants: { sku: string; name: string; priceCents: number; inventoryQty: number }[];
   media: { url: string; alt: string; kind: "IMAGE" | "VIDEO" }[];
   /** True when the signed-in viewer has already claimed this freebie. */

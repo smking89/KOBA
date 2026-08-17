@@ -112,6 +112,7 @@ function toCard(
     priceCents: product.priceCents,
     currency: product.currency,
     inStock: stockQty(product) > 0,
+    inventoryQty: stockQty(product),
     platforms: product.platforms as GamePlatform[],
     game: product.game,
     category: product.category,
@@ -240,7 +241,6 @@ export async function getPublicProduct(
     saved = Boolean(save);
   }
 
-  const qty = stockQty(product);
   const boostedIds = await activeBoostedTargetIds("PRODUCT");
 
   let freebieClaimed = false;
@@ -254,7 +254,6 @@ export async function getPublicProduct(
   return {
     ...toCard(product, favorited, saved, boostedIds.has(product.id)),
     description: product.description,
-    inventoryQty: qty,
     freebieClaimed,
     variants: product.variants.map((variant) => ({
       sku: variant.sku,

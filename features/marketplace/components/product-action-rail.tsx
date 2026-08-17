@@ -18,8 +18,10 @@ function formatCount(count: number): string {
 // should not have a circle border around them") — matches the plain
 // lucide-icon convention already used platform-wide (IconRail/AppSidebar).
 // The "overlay" layout (full-bleed feed slide, icon sits on a photo/video)
-// gets a drop-shadow for legibility; the "inline" layout (compact grid
-// card, icon sits on the card's own surface color) doesn't need one.
+// gets a drop-shadow for legibility; "inline" (compact grid card) sits on
+// the card's own surface color; "card" (TCG-style card, client reference
+// 2026-08-17) is a pure brand-orange outline rail over a flat white image
+// area — no shadow needed, nothing to stand out against.
 function RailButton({
   onClick,
   href,
@@ -34,30 +36,32 @@ function RailButton({
   active?: boolean;
   label: string;
   count?: number;
-  layout: "overlay" | "inline";
+  layout: "overlay" | "inline" | "card";
   children: React.ReactNode;
 }) {
   const overlay = layout === "overlay";
+  const card = layout === "card";
   const content = (
     <>
       <span
         className={cn(
           "flex items-center justify-center transition-transform hover:scale-110",
-          overlay
-            ? "h-8 w-8 text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)]"
-            : "h-5 w-5 text-muted",
-          active && (overlay ? "text-neon-lime" : "text-neon-lime"),
+          overlay && "h-8 w-8 text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)]",
+          layout === "inline" && "h-5 w-5 text-muted",
+          card && "h-8 w-8 text-neon-lime",
+          active && "text-neon-lime",
         )}
       >
         {children}
       </span>
-      {count != null ? (
+      {/* "card" layout (TCG-style product card, client exact-match
+          reference 2026-08-17) shows icons only, no count labels. */}
+      {count != null && !card ? (
         <span
           className={cn(
             "font-semibold",
-            overlay
-              ? "text-[0.65rem] text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]"
-              : "text-[0.7rem] text-muted",
+            overlay && "text-[0.65rem] text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]",
+            layout === "inline" && "text-[0.7rem] text-muted",
           )}
         >
           {formatCount(count)}
@@ -65,9 +69,8 @@ function RailButton({
       ) : null}
     </>
   );
-  const className = overlay
-    ? "flex flex-col items-center gap-0.5"
-    : "flex items-center gap-1";
+  const className =
+    layout === "inline" ? "flex items-center gap-1" : "flex flex-col items-center gap-0.5";
   if (href) {
     return (
       <Link href={href} aria-label={label} title={label} className={className}>
@@ -83,16 +86,18 @@ function RailButton({
 }
 
 /**
- * Like / save / comment / repost / share — real counts where the data
+ * Like / share / comment / repost / save — real counts where the data
  * model actually tracks one (ProductFavorite / ProductComment); save is a
  * private wishlist (ProductSave) so it never shows a count; share has no
  * count (no ShareEvent model exists) so it renders without a number
  * rather than inventing one.
  *
  * `layout="overlay"` is the TikTok-style vertical rail over a full-bleed
- * feed slide (client reference, Fintory UI kit). `layout="inline"` is a
- * compact horizontal row for the marketplace grid card, where five
- * stacked icons over a much shorter image would eat most of the card.
+ * feed slide. `layout="inline"` is a compact horizontal row for the
+ * marketplace grid card. `layout="card"` is the brand-orange outline rail
+ * for the TCG-style product card (client reference, 2026-08-17) — same
+ * vertical rail shape as "overlay" but a flat orange-outline treatment
+ * and the reference's own icon order (like, share, comment, repost, save).
  */
 export function ProductActionRail({
   product,
@@ -101,7 +106,7 @@ export function ProductActionRail({
 }: {
   product: PublicProductCard;
   signedIn: boolean;
-  layout?: "overlay" | "inline";
+  layout?: "overlay" | "inline" | "card";
 }) {
   const router = useRouter();
   const [liked, setLiked] = useState(product.favorited);
@@ -168,56 +173,67 @@ export function ProductActionRail({
     }
   }
 
-  const overlay = layout === "overlay";
+  const iconSize = layout === "inline" ? "h-[18px] w-[18px]" : "h-6 w-6";
+  const shareClassName = cn(
+    "flex items-center justify-center",
+    layout === "overlay" && "h-8 w-8 text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)]",
+    layout === "inline" && "h-5 w-5 text-muted hover:text-neon-lime",
+    layout === "card" && "h-8 w-8 text-neon-lime",
+  );
+
+  const likeButton = (
+    <RailButton onClick={() => void toggleLike()} active={liked} label="Like" count={likeCount} layout={layout}>
+      <Heart className={cn(iconSize, liked && "fill-current")} aria-hidden />
+    </RailButton>
+  );
+  const shareButton = (
+    <ShareButton
+      slug={product.slug}
+      title={product.title}
+      icon={layout === "card" ? "forward" : "share"}
+      className={shareClassName}
+    />
+  );
+  const commentButton = (
+    <RailButton href={`/market/${product.slug}#comments`} label="Comments" count={product.commentCount} layout={layout}>
+      <MessageCircle className={iconSize} aria-hidden />
+    </RailButton>
+  );
+  const repostButton = (
+    <RailButton
+      onClick={() => void repost()}
+      active={reposted}
+      label={reposted ? "Reposted to your feed" : "Repost to your feed"}
+      layout={layout}
+    >
+      <Repeat2 className={iconSize} aria-hidden />
+    </RailButton>
+  );
+  const saveButton = (
+    <RailButton onClick={() => void toggleSave()} active={saved} label={saved ? "Saved" : "Save"} layout={layout}>
+      <Bookmark className={cn(iconSize, saved && "fill-current")} aria-hidden />
+    </RailButton>
+  );
 
   return (
-    <div className={overlay ? "flex flex-col items-center gap-4" : "flex items-center gap-3.5"}>
-      <RailButton
-        onClick={() => void toggleLike()}
-        active={liked}
-        label="Like"
-        count={likeCount}
-        layout={layout}
-      >
-        <Heart className={cn(overlay ? "h-6 w-6" : "h-[18px] w-[18px]", liked && "fill-current")} aria-hidden />
-      </RailButton>
-      <RailButton
-        href={`/market/${product.slug}#comments`}
-        label="Comments"
-        count={product.commentCount}
-        layout={layout}
-      >
-        <MessageCircle className={overlay ? "h-6 w-6" : "h-[18px] w-[18px]"} aria-hidden />
-      </RailButton>
-      <RailButton
-        onClick={() => void toggleSave()}
-        active={saved}
-        label={saved ? "Saved" : "Save"}
-        layout={layout}
-      >
-        <Bookmark
-          className={cn(overlay ? "h-6 w-6" : "h-[18px] w-[18px]", saved && "fill-current")}
-          aria-hidden
-        />
-      </RailButton>
-      <RailButton
-        onClick={() => void repost()}
-        active={reposted}
-        label={reposted ? "Reposted to your feed" : "Repost to your feed"}
-        layout={layout}
-      >
-        <Repeat2 className={overlay ? "h-6 w-6" : "h-[18px] w-[18px]"} aria-hidden />
-      </RailButton>
-      <ShareButton
-        slug={product.slug}
-        title={product.title}
-        className={cn(
-          "flex items-center justify-center",
-          overlay
-            ? "h-8 w-8 text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)]"
-            : "h-5 w-5 text-muted hover:text-neon-lime",
-        )}
-      />
+    <div className={layout === "inline" ? "flex items-center gap-3.5" : "flex flex-col items-center gap-4"}>
+      {layout === "card" ? (
+        <>
+          {likeButton}
+          {shareButton}
+          {commentButton}
+          {repostButton}
+          {saveButton}
+        </>
+      ) : (
+        <>
+          {likeButton}
+          {commentButton}
+          {saveButton}
+          {repostButton}
+          {shareButton}
+        </>
+      )}
     </div>
   );
 }
