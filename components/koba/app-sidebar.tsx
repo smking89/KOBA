@@ -60,7 +60,7 @@ export function AppSidebar({
                           : "text-muted hover:bg-white/6 hover:text-foreground",
                       )}
                     >
-                      <Hash className="h-4 w-4 shrink-0 opacity-70" aria-hidden />
+                      <Hash className="h-4 w-4 shrink-0 opacity-70" aria-hidden suppressHydrationWarning />
                       {link.label}
                     </Link>
                   </li>
@@ -80,7 +80,7 @@ export function AppSidebar({
                 : "text-muted hover:bg-white/6 hover:text-foreground",
             )}
           >
-            <Hash className="h-4 w-4 shrink-0 opacity-70" aria-hidden />
+            <Hash className="h-4 w-4 shrink-0 opacity-70" aria-hidden suppressHydrationWarning />
             Staff
           </Link>
         ) : null}
@@ -102,7 +102,7 @@ export function AppSidebar({
               aria-label="Settings"
               className="flex h-8 w-8 items-center justify-center rounded-md text-muted hover:bg-white/8 hover:text-foreground"
             >
-              <Settings className="h-4 w-4" />
+              <Settings className="h-4 w-4" aria-hidden suppressHydrationWarning />
             </Link>
             <button
               type="button"
@@ -110,7 +110,7 @@ export function AppSidebar({
               className="flex h-8 w-8 items-center justify-center rounded-md text-muted hover:bg-white/8 hover:text-foreground"
               onClick={() => void handleSignOut()}
             >
-              <LogOut className="h-4 w-4" />
+              <LogOut className="h-4 w-4" aria-hidden suppressHydrationWarning />
             </button>
           </>
         ) : (

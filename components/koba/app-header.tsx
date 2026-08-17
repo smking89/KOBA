@@ -24,7 +24,7 @@ export function AppHeader({ onOpenMenu }: { onOpenMenu?: () => void }) {
           aria-label="Open navigation"
           onClick={onOpenMenu}
         >
-          <Menu className="h-5 w-5" />
+          <Menu className="h-5 w-5" aria-hidden suppressHydrationWarning />
         </button>
       ) : null}
       <div className="flex min-w-0 flex-1 items-center gap-2">

@@ -58,7 +58,7 @@ export function IconRail() {
               )}
               aria-hidden
             />
-            <Icon className="h-5 w-5" aria-hidden />
+            <Icon className="h-5 w-5" aria-hidden suppressHydrationWarning />
           </Link>
         );
       })}

@@ -1,49 +1,84 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { KobaBadgeArt } from "@/components/koba/koba-badge-art";
+import {
+  ShoppingBag,
+  Repeat2,
+  Users,
+  Server,
+  Sparkles,
+  Zap,
+  type LucideIcon,
+} from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { HomeTour } from "@/components/koba/home-tour";
 import { cn } from "@/lib/utils";
 
-const pillars = [
+const features: {
+  title: string;
+  body: string;
+  href: string;
+  action: string;
+  icon: LucideIcon;
+  tourId?: string;
+}[] = [
   {
-    title: "Market & Trade",
-    body: "List skins, maps, kits, and cosmetics with a real rarity tier — common through relic. Sell for KOBA Coins or trade rarity-matched, item for item.",
+    title: "Marketplace",
+    body: "Skins, maps, kits, and cosmetics with a real rarity tier — Common through Relic. Buy outright, bid on live auctions, or grab a free drop.",
     href: "/market",
     action: "Browse listings",
-    mark: "M",
+    icon: ShoppingBag,
     tourId: "pillar-market",
   },
   {
-    title: "Groups, LFG & servers",
-    body: "Run a group, post an LFG, and check live player counts and maps on the server directory before you queue up.",
+    title: "Trade",
+    body: "Anything you've bought can be traded too — rarity-matched, item for item, no downgrades.",
+    href: "/trade",
+    action: "Open trades",
+    icon: Repeat2,
+  },
+  {
+    title: "Groups & LFG",
+    body: "Run a group for your community and post to the LFG board when you need a squad.",
     href: "/groups",
     action: "Find a group",
-    mark: "C",
+    icon: Users,
     tourId: "pillar-groups",
   },
   {
-    title: "Switch modes anytime",
-    body: "One account, every role — Player, Business, or Influencer. Switch modes from Settings whenever you need to.",
-    href: "/settings",
-    action: "Manage account",
-    mark: "K",
+    title: "Live servers",
+    body: "Real player counts and maps pulled straight from the server over RCON — not a guess.",
+    href: "/servers",
+    action: "Browse servers",
+    icon: Server,
+  },
+  {
+    title: "Aiden AI",
+    body: "Generate original cosmetics with Aiden using KOBA Coins, then list what you make on the Marketplace.",
+    href: "/aiden",
+    action: "Open Aiden",
+    icon: Sparkles,
+  },
+  {
+    title: "Boost",
+    body: "Push a listing, shop, or server 3x in front of more players for a short window.",
+    href: "/wallet",
+    action: "Get Boost",
+    icon: Zap,
     tourId: "pillar-kobaid",
   },
-] as const;
+];
+
+const steps = [
+  { step: "1", title: "Create your account", body: "Sign up and set your account role." },
+  { step: "2", title: "Set up your identity", body: "Player, Business, or Influencer — switch anytime from Settings." },
+  { step: "3", title: "Jump in", body: "Browse the Marketplace, join a group, or post an LFG." },
+];
 
 export default function HomePage() {
   return (
-    <div className="space-y-8">
+    <div className="space-y-14">
       <section className="space-y-4">
-        <div className="flex items-center gap-2">
-          <KobaBadgeArt mark="plus" size={28} />
-          <KobaBadgeArt mark="charge" size={28} />
-          <p className="text-[11px] font-semibold tracking-[0.16em] text-neon-lime uppercase">
-            Social marketplace
-          </p>
-        </div>
         <h1 className="max-w-2xl text-3xl font-semibold tracking-tight text-balance md:text-5xl">
           Level up your server. <span className="text-brand-gradient">Play with your people.</span>
         </h1>
@@ -69,24 +104,53 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="grid gap-3 md:grid-cols-3">
-        {pillars.map((pillar) => (
-          <Card key={pillar.title} className="flex h-full flex-col" data-tour={pillar.tourId}>
-            <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-2xl bg-brand-gradient text-sm font-bold text-background">
-              {pillar.mark}
+      <section className="space-y-4">
+        <p className="text-[11px] font-semibold tracking-[0.16em] text-neon-lime uppercase">
+          What you can do
+        </p>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {features.map((feature) => (
+            <Card
+              key={feature.title}
+              className="flex h-full flex-col"
+              data-tour={feature.tourId}
+            >
+              <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-2xl bg-brand-gradient text-background">
+                <feature.icon className="h-5 w-5" aria-hidden />
+              </div>
+              <CardTitle>{feature.title}</CardTitle>
+              <CardDescription className="flex-1">{feature.body}</CardDescription>
+              <div className="mt-4">
+                <Link
+                  href={feature.href}
+                  className="text-sm font-semibold text-neon-lime hover:underline"
+                >
+                  {feature.action} →
+                </Link>
+              </div>
+            </Card>
+          ))}
+        </div>
+      </section>
+
+      <section className="space-y-4">
+        <p className="text-[11px] font-semibold tracking-[0.16em] text-neon-lime uppercase">
+          How it works
+        </p>
+        <div className="grid gap-3 sm:grid-cols-3">
+          {steps.map((item) => (
+            <div key={item.step} className="rounded-2xl border border-border bg-surface p-5">
+              <span className="font-mono text-xs text-muted">Step {item.step}</span>
+              <p className="mt-2 text-base font-semibold">{item.title}</p>
+              <p className="mt-1 text-sm text-muted">{item.body}</p>
             </div>
-            <CardTitle>{pillar.title}</CardTitle>
-            <CardDescription className="flex-1">{pillar.body}</CardDescription>
-            <div className="mt-4">
-              <Link
-                href={pillar.href}
-                className="text-sm font-semibold text-neon-lime hover:underline"
-              >
-                {pillar.action} →
-              </Link>
-            </div>
-          </Card>
-        ))}
+          ))}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Link href="/register" className={cn(buttonVariants({ variant: "primary" }))}>
+            Create your account
+          </Link>
+        </div>
       </section>
 
       <Suspense fallback={null}>
