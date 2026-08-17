@@ -2,18 +2,36 @@ import React, { useId } from "react";
 import { KobaPlusMark } from "@/components/koba/koba-plus-mark";
 
 /**
- * KOBA Plus tenure badge — a faceted gem set in a shield bezel, with the
- * real KOBA Plus mark embossed inside. Built from the client's own hand-
- * drawn outline concepts (2026-08-17, ~/Desktop/badge examples outlines/):
- * a consistent gem-cut shield silhouette across all 8 tenure tiers, with
- * escalating ornamentation — plain (Bronze) → small notch (Silver) →
- * teardrop pendant (Gold, Platinum) → full lotus crown + side studs +
- * pendant (Diamond, Emerald, Ruby, Opal) — colored per tier's real gem
- * material. Platinum and Opal weren't in the client's example set (which
- * covered 6 of KOBA's 8 real Plus tiers); extrapolated here in the same
- * visual language — Platinum between Gold and Diamond in ornamentation,
- * Opal above Ruby with the client's own original rainbow spectrum
- * (matching the first KOBA Plus mark reference they supplied).
+ * KOBA Plus tenure badge — traced directly from the client's own 6
+ * hand-drawn outline sketches (~/Desktop/badge examples outlines/,
+ * 2026-08-17: Bronze/Silver/Gold/Emerald/Diamond/Ruby), rendered as
+ * shaded, colored gem art instead of flat black outlines. Every tier
+ * shares one gem-cut shield silhouette (apex, faceted shoulders, a
+ * rounded taper to the bottom point); what changes per tier is the
+ * accessory built onto that shield, exactly as drawn:
+ *
+ *  - Bronze:   shield alone, nothing added.
+ *  - Silver:   a small arc nested INSIDE the shield, just above the tip.
+ *  - Gold:     the shield is cut short and a rounded teardrop gem hangs
+ *              below it, plain (no tail).
+ *  - Diamond:  the full-length shield gains a 6-petal fan (3 per side)
+ *              flaring from the shoulders, plus the same plain teardrop
+ *              hanging below the tip.
+ *  - Emerald:  everything Diamond has, PLUS a marquise gem above the
+ *              apex, an arched double band connecting the shoulders over
+ *              the top, and a round gem stud at each shoulder — and the
+ *              teardrop grows a segmented chevron tail below it.
+ *  - Ruby:     identical to Emerald's marquise/arch/studs/petals, but
+ *              the teardrop stays plain like Diamond's (no chevron tail)
+ *              — exactly what the client drew.
+ *
+ * Platinum and Opal weren't in the client's 6 examples (they gave 6 of
+ * KOBA's 8 real Plus tiers). Extrapolated in the same escalating
+ * language rather than left generic: Platinum carries Silver's internal
+ * arc AND Gold's teardrop together (a real step up from Gold, a real
+ * step down from Diamond's petals). Opal reuses Emerald's full
+ * ornament set (the client's most elaborate drawing) in the original
+ * KOBA Plus rainbow spectrum, as the top tier above Ruby.
  */
 
 export type PlusGemTier =
@@ -26,13 +44,15 @@ export type PlusGemTier =
   | "ruby"
   | "opal";
 
+type Accessory = "none" | "arc" | "teardrop" | "arc-teardrop" | "petals-teardrop" | "full" | "full-tail";
+
 type GemPalette = {
   edgeLight: string;
   edgeDark: string;
   gemLight: string;
   gemMid: string;
   gemDark: string;
-  accessory: "none" | "notch" | "teardrop" | "crown";
+  accessory: Accessory;
   glow: boolean;
   rainbow: boolean;
 };
@@ -54,7 +74,7 @@ const TIER_PALETTE: Record<PlusGemTier, GemPalette> = {
     gemLight: "#eef0f3",
     gemMid: "#b8bcc4",
     gemDark: "#585b62",
-    accessory: "notch",
+    accessory: "arc",
     glow: false,
     rainbow: false,
   },
@@ -74,7 +94,7 @@ const TIER_PALETTE: Record<PlusGemTier, GemPalette> = {
     gemLight: "#eef1fa",
     gemMid: "#c9ccd6",
     gemDark: "#5d616e",
-    accessory: "teardrop",
+    accessory: "arc-teardrop",
     glow: false,
     rainbow: false,
   },
@@ -84,8 +104,8 @@ const TIER_PALETTE: Record<PlusGemTier, GemPalette> = {
     gemLight: "#eafcff",
     gemMid: "#8fe0fb",
     gemDark: "#0e5877",
-    accessory: "crown",
-    glow: true,
+    accessory: "petals-teardrop",
+    glow: false,
     rainbow: false,
   },
   emerald: {
@@ -94,7 +114,7 @@ const TIER_PALETTE: Record<PlusGemTier, GemPalette> = {
     gemLight: "#c8ffe0",
     gemMid: "#1fbf6c",
     gemDark: "#0a4a29",
-    accessory: "crown",
+    accessory: "full-tail",
     glow: true,
     rainbow: false,
   },
@@ -104,7 +124,7 @@ const TIER_PALETTE: Record<PlusGemTier, GemPalette> = {
     gemLight: "#ffd6dd",
     gemMid: "#e0396a",
     gemDark: "#6b0d2b",
-    accessory: "crown",
+    accessory: "full",
     glow: true,
     rainbow: false,
   },
@@ -114,29 +134,34 @@ const TIER_PALETTE: Record<PlusGemTier, GemPalette> = {
     gemLight: "#fff9ea",
     gemMid: "#ffb648",
     gemDark: "#5c3d7a",
-    accessory: "crown",
+    accessory: "full-tail",
     glow: true,
     rainbow: true,
   },
 };
 
-// Shield/gem silhouette shared by every tier — traced from the client's
-// reference outlines. 100x128 viewBox.
-const SHIELD_OUTER =
-  "M50 4 L84 34 L84 40 L67 40 L50 30 L33 40 L16 40 L16 34 Z " +
-  "M16 40 L33 40 C 28 62, 30 92, 50 120 C 70 92, 72 62, 67 40 L84 40 " +
-  "C 84 66, 76 100, 50 124 C 24 100, 16 66, 16 40 Z";
+// Shared shield silhouette (viewBox 0 0 100 220), traced from the
+// client's own outline sketches — apex, two roof facets down to
+// shoulder corners, then a smooth rounded taper to the bottom point.
+const APEX = { x: 50, y: 40 };
+const SHOULDER_L = { x: 15, y: 72 };
+const SHOULDER_R = { x: 85, y: 72 };
+const TIP_TALL = { x: 50, y: 168 };
+const TIP_SHORT = { x: 50, y: 140 };
 
-const SHIELD_INNER =
-  "M50 12 L76 35 L64 38 L50 26 L36 38 L24 35 Z " +
-  "M24 35 C 21 60, 26 90, 50 112 C 74 90, 79 60, 76 35 " +
-  "C 70 60, 62 88, 50 106 C 38 88, 30 60, 24 35 Z";
+function shieldPath(tip: { x: number; y: number }, inset = 0) {
+  const a = { x: APEX.x, y: APEX.y + inset };
+  const sl = { x: SHOULDER_L.x + inset * 1.4, y: SHOULDER_L.y + inset * 0.4 };
+  const sr = { x: SHOULDER_R.x - inset * 1.4, y: SHOULDER_R.y + inset * 0.4 };
+  const t = { x: tip.x, y: tip.y - inset * 2.2 };
+  return `M${a.x},${a.y} L${sr.x},${sr.y} C${sr.x + 5},${sr.y + 42} ${sr.x - 6},${t.y - 46} ${t.x},${t.y} C${sl.x + 6},${t.y - 46} ${sl.x - 5},${sr.y + 42} ${sl.x},${sl.y} Z`;
+}
 
-function Petal({ rotate }: { rotate: number }) {
+function Petal({ x, y, rotate }: { x: number; y: number; rotate: number }) {
   return (
     <path
-      d="M0 0 C -6 -10, -6 -22, 0 -30 C 6 -22, 6 -10, 0 0 Z"
-      transform={`rotate(${rotate})`}
+      d="M0,4 C-14,-14 -14,-38 0,-56 C14,-38 14,-14 0,4 Z"
+      transform={`translate(${x},${y}) rotate(${rotate})`}
     />
   );
 }
@@ -158,15 +183,34 @@ export function PlusGemBadge({
   const rainbowGrad = `pg-rainbow-${uid}`;
 
   const gemFill = palette.rainbow ? `url(#${rainbowGrad})` : `url(#${gemGrad})`;
+  const edgeFill = palette.rainbow ? `url(#${rainbowGrad})` : `url(#${edgeGrad})`;
+
+  const short = palette.accessory === "teardrop" || palette.accessory === "arc-teardrop";
+  const tip = short ? TIP_SHORT : TIP_TALL;
+  const hasPetalsOrFull = palette.accessory === "petals-teardrop" || palette.accessory === "full" || palette.accessory === "full-tail";
+  const hasFullCrown = palette.accessory === "full" || palette.accessory === "full-tail";
+  const hasTail = palette.accessory === "full-tail";
+  const hasTeardrop = short || hasPetalsOrFull;
+  const hasArc = palette.accessory === "arc" || palette.accessory === "arc-teardrop";
+
+  const teardropTop = { x: tip.x, y: tip.y - 6 };
+  const teardropBottom = teardropTop.y + 54;
 
   return (
-    <svg viewBox="0 0 100 128" width={size} height={(size * 128) / 100} className={className} role="img" aria-hidden>
+    <svg
+      viewBox="0 0 100 220"
+      width={size}
+      height={(size * 220) / 100}
+      className={className}
+      role="img"
+      aria-hidden
+    >
       <defs>
         <linearGradient id={edgeGrad} x1="15%" y1="0%" x2="85%" y2="100%">
           <stop offset="0%" stopColor={palette.edgeLight} />
           <stop offset="100%" stopColor={palette.edgeDark} />
         </linearGradient>
-        <radialGradient id={gemGrad} cx="42%" cy="22%" r="85%">
+        <radialGradient id={gemGrad} cx="42%" cy="20%" r="85%">
           <stop offset="0%" stopColor={palette.gemLight} />
           <stop offset="50%" stopColor={palette.gemMid} />
           <stop offset="100%" stopColor={palette.gemDark} />
@@ -178,103 +222,112 @@ export function PlusGemBadge({
           <stop offset="100%" stopColor="#ff4d6a" />
         </linearGradient>
         <linearGradient id={glossGrad} x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.6" />
-          <stop offset="60%" stopColor="#ffffff" stopOpacity="0" />
+          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.55" />
+          <stop offset="55%" stopColor="#ffffff" stopOpacity="0" />
         </linearGradient>
       </defs>
 
       {palette.glow ? (
-        <path
-          d={SHIELD_OUTER}
-          fill="none"
-          stroke={palette.edgeLight}
-          strokeWidth="6"
-          opacity="0.28"
-          filter="blur(2px)"
-        />
-      ) : null}
-
-      {/* Crown of petals — Diamond/Emerald/Ruby/Opal only */}
-      {palette.accessory === "crown" ? (
-        <g fill={`url(#${edgeGrad})`} stroke={palette.edgeDark} strokeWidth="0.6">
-          <g transform="translate(24,20)">
-            <Petal rotate={-35} />
-            <Petal rotate={-10} />
-          </g>
-          <g transform="translate(76,20)">
-            <Petal rotate={35} />
-            <Petal rotate={10} />
-          </g>
-        </g>
-      ) : null}
-
-      {/* Side studs — Diamond/Emerald/Ruby/Opal only */}
-      {palette.accessory === "crown" ? (
-        <>
-          <circle cx="16" cy="38" r="6" fill={gemFill} stroke={palette.edgeDark} strokeWidth="1" />
-          <circle cx="84" cy="38" r="6" fill={gemFill} stroke={palette.edgeDark} strokeWidth="1" />
-        </>
+        <path d={shieldPath(tip)} fill="none" stroke={palette.edgeLight} strokeWidth="6" opacity="0.28" filter="blur(3px)" />
       ) : null}
 
       {/* Outer bezel */}
-      <path d={SHIELD_OUTER} fill={`url(#${edgeGrad})`} stroke={palette.edgeDark} strokeWidth="1" />
+      <path d={shieldPath(tip)} fill={edgeFill} stroke={palette.edgeDark} strokeWidth="1" />
+      {/* Inner gem body (inset) */}
+      <path d={shieldPath(tip, 5)} fill={gemFill} stroke={palette.gemDark} strokeWidth="0.7" />
+      <path d={shieldPath(tip, 5)} fill={`url(#${glossGrad})`} opacity="0.7" />
 
-      {/* Gem body */}
-      <path d={SHIELD_INNER} fill={gemFill} stroke={palette.gemDark} strokeWidth="0.8" />
-      <path d={SHIELD_INNER} fill={`url(#${glossGrad})`} opacity="0.7" />
-
-      {/* Bottom accessory */}
-      {palette.accessory === "notch" ? (
-        <path
-          d="M42 108 C 42 116, 46 122, 50 124 C 54 122, 58 116, 58 108 Z"
-          fill={`url(#${edgeGrad})`}
-          stroke={palette.edgeDark}
-          strokeWidth="0.7"
-        />
-      ) : null}
-
-      {(palette.accessory === "teardrop" || palette.accessory === "crown") ? (
-        <>
-          <path
-            d="M40 106 C 40 118, 45 128, 50 132 C 55 128, 60 118, 60 106 Z"
-            fill={gemFill}
-            stroke={palette.gemDark}
-            strokeWidth="0.8"
-          />
-          {palette.accessory === "crown" ? (
-            <g stroke={palette.edgeDark} strokeWidth="1.4" fill="none" opacity="0.85">
-              <path d="M40 132 L50 138 L60 132" />
-              <path d="M38 138 L50 145 L62 138" />
-            </g>
-          ) : null}
-        </>
-      ) : null}
-
-      {/* Facet highlight lines on the gem body */}
+      {/* Top crease + shoulder facet lines */}
       <path
-        d="M50 26 L50 106 M36 38 L50 66 L64 38"
+        d={`M${APEX.x},${APEX.y + 5} L${APEX.x},${APEX.y + 30} M${SHOULDER_L.x + 6},${SHOULDER_L.y + 4} L${APEX.x},${APEX.y + 30} L${SHOULDER_R.x - 6},${SHOULDER_R.y + 4}`}
         stroke="rgba(255,255,255,0.35)"
         strokeWidth="0.6"
         fill="none"
       />
 
-      {palette.rainbow ? (
+      {/* Petal fan — Diamond, Ruby, Emerald, Opal — drawn on top of the
+          shield (not underneath it) so the full leaf shape is visible,
+          not just the tips poking out past the shield's own silhouette. */}
+      {hasPetalsOrFull ? (
+        <g fill={edgeFill} stroke={palette.edgeDark} strokeWidth="0.6">
+          <Petal x={SHOULDER_L.x} y={SHOULDER_L.y} rotate={-100} />
+          <Petal x={SHOULDER_L.x} y={SHOULDER_L.y} rotate={-68} />
+          <Petal x={SHOULDER_L.x} y={SHOULDER_L.y} rotate={-36} />
+          <Petal x={SHOULDER_R.x} y={SHOULDER_R.y} rotate={100} />
+          <Petal x={SHOULDER_R.x} y={SHOULDER_R.y} rotate={68} />
+          <Petal x={SHOULDER_R.x} y={SHOULDER_R.y} rotate={36} />
+        </g>
+      ) : null}
+
+      {/* Slim arched double band across the shoulders — Ruby &
+          Emerald/Opal only. Two stroked arcs (not a filled dome) so it
+          reads as a thin tiara band, not a solid mitre shape. */}
+      {hasFullCrown ? (
+        <g fill="none" stroke={palette.edgeDark} strokeWidth="1.4">
+          <path d={`M${SHOULDER_L.x},${SHOULDER_L.y - 2} Q${APEX.x},${APEX.y - 24} ${SHOULDER_R.x},${SHOULDER_R.y - 2}`} />
+          <path d={`M${SHOULDER_L.x + 3},${SHOULDER_L.y - 8} Q${APEX.x},${APEX.y - 17} ${SHOULDER_R.x - 3},${SHOULDER_R.y - 8}`} />
+        </g>
+      ) : null}
+
+      {/* Marquise gem above the apex — Ruby & Emerald/Opal only. */}
+      {hasFullCrown ? (
+        <path
+          d={`M${APEX.x},${APEX.y - 34} C${APEX.x + 7},${APEX.y - 23} ${APEX.x + 7},${APEX.y - 8} ${APEX.x},${APEX.y + 2} C${APEX.x - 7},${APEX.y - 8} ${APEX.x - 7},${APEX.y - 23} ${APEX.x},${APEX.y - 34} Z`}
+          fill={gemFill}
+          stroke={palette.gemDark}
+          strokeWidth="0.8"
+        />
+      ) : null}
+
+      {/* Gem studs at the shoulders — Ruby & Emerald/Opal only */}
+      {hasFullCrown ? (
         <>
-          <path d="M20 24 l1.4 3.4 3.4 1.4 -3.4 1.4 -1.4 3.4 -1.4 -3.4 -3.4 -1.4 3.4 -1.4 Z" fill="#fff9ea" />
-          <path d="M80 30 l1 2.4 2.4 1 -2.4 1 -1 2.4 -1 -2.4 -2.4 -1 2.4 -1 Z" fill="#fff9ea" />
+          <circle cx={SHOULDER_L.x} cy={SHOULDER_L.y} r="6" fill={gemFill} stroke={palette.edgeDark} strokeWidth="1" />
+          <circle cx={SHOULDER_R.x} cy={SHOULDER_R.y} r="6" fill={gemFill} stroke={palette.edgeDark} strokeWidth="1" />
         </>
       ) : null}
 
-      {/* KOBA Plus mark, engraved into the gem (client correction,
-          2026-08-17: the mark must read as "built into the actual badge
-          art", not a flat sticker) — same two-layer emboss technique as
-          the circular achievement coins: a light-tinted copy sits offset
-          under a dark-tinted main copy, both drawn from this tier's own
-          gem tones. The mask-sized <span> inside KobaPlusMark only
-          respects explicit width/height when it's a flex item (a plain
-          foreignObject child stays display:inline, where width/height are
-          no-ops), so each layer gets its own flex wrapper. */}
-      <foreignObject x="29" y="41" width="42" height="42">
+      {/* Silver's small internal arc, nested just above the tip */}
+      {hasArc ? (
+        <path
+          d={`M${tip.x - 11},${tip.y - 14} A12,10 0 0 1 ${tip.x + 11},${tip.y - 14}`}
+          fill="none"
+          stroke={palette.gemDark}
+          strokeWidth="1.6"
+          opacity="0.85"
+        />
+      ) : null}
+
+      {/* Teardrop pendant hanging below the tip — Gold, Platinum, Diamond, Ruby, Emerald, Opal */}
+      {hasTeardrop ? (
+        <path
+          d={`M${teardropTop.x - 15},${teardropTop.y + 8} C${teardropTop.x - 15},${teardropTop.y - 2} ${teardropTop.x - 8},${teardropTop.y - 8} ${teardropTop.x},${teardropTop.y - 8} C${teardropTop.x + 8},${teardropTop.y - 8} ${teardropTop.x + 15},${teardropTop.y - 2} ${teardropTop.x + 15},${teardropTop.y + 8} C${teardropTop.x + 15},${teardropBottom - 18} ${teardropTop.x + 7},${teardropBottom - 4} ${teardropTop.x},${teardropBottom} C${teardropTop.x - 7},${teardropBottom - 4} ${teardropTop.x - 15},${teardropBottom - 18} ${teardropTop.x - 15},${teardropTop.y + 8} Z`}
+          fill={gemFill}
+          stroke={palette.gemDark}
+          strokeWidth="0.8"
+        />
+      ) : null}
+
+      {/* Segmented chevron tail below the teardrop — Emerald & Opal only */}
+      {hasTail ? (
+        <g stroke={palette.edgeDark} strokeWidth="1.4" fill="none" opacity="0.85">
+          <path d={`M${teardropTop.x - 10},${teardropBottom + 2} L${teardropTop.x},${teardropBottom + 9} L${teardropTop.x + 10},${teardropBottom + 2}`} />
+          <path d={`M${teardropTop.x - 9},${teardropBottom + 10} L${teardropTop.x},${teardropBottom + 17} L${teardropTop.x + 9},${teardropBottom + 10}`} />
+          <path d={`M${teardropTop.x - 7},${teardropBottom + 18} L${teardropTop.x},${teardropBottom + 24} L${teardropTop.x + 7},${teardropBottom + 18}`} />
+        </g>
+      ) : null}
+
+      {palette.rainbow ? (
+        <>
+          <path d="M18,26 l1.4,3.4 3.4,1.4 -3.4,1.4 -1.4,3.4 -1.4,-3.4 -3.4,-1.4 3.4,-1.4 Z" fill="#fff9ea" />
+          <path d="M82,32 l1,2.4 2.4,1 -2.4,1 -1,2.4 -1,-2.4 -2.4,-1 2.4,-1 Z" fill="#fff9ea" />
+        </>
+      ) : null}
+
+      {/* KOBA Plus mark, engraved into the gem (light/dark relief from
+          this tier's own tones, same technique as the circular
+          achievement coins) — centered in the shield body. */}
+      <foreignObject x={APEX.x - 21} y={SHOULDER_L.y - 3} width="42" height="42">
         <div style={{ position: "relative", width: 42, height: 42 }}>
           <div
             style={{
