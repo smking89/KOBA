@@ -1109,7 +1109,40 @@ shipped and Phase 17's fix.
 
 ---
 
-## Phase 20 — Multi-Subdomain Architecture
+## Phase 20 — Multi-Subdomain Architecture (status: MVP done)
+
+**Option 1 (middleware-based rewrite) is shipped** —
+`lib/subdomain-routes.ts` + `middleware.ts` (2026-08-17). A request
+arriving on `developer.koba.games`, `app.koba.games`, `admin.koba.games`,
+or `aiden.koba.games` is served from the matching existing route
+(`/developers`, `/developers/apps`, `/admin`, `/aiden`) via
+`NextResponse.rewrite` — same deployment, same database connection, no
+new infra. `/api/*` is never subdomain-prefixed (all subdomains share one
+backend); unrecognized hosts (bare `koba.games`, localhost, preview
+deploys, `staging.koba.games`, etc.) pass through untouched. Auth
+redirects (`/login`, `/login/mfa`, `/kobaid`, `/enter`) issued from a
+subdomain-rewritten request target the canonical apex host
+(`koba.games`), not the subdomain, since those pages aren't themselves
+subdomain-mapped — verified `admin.koba.games/` → `307` to
+`koba.games/login?callbackUrl=%2Fadmin`.
+
+**Deployment note**: verified end-to-end against a real production build
+(`next start`), not just `next dev`. Locally, testing on a non-default
+port *without* `X-Forwarded-Host`/`X-Forwarded-Port` headers makes
+Next.js's internal rewrite loopback fail (it falls back to assuming port
+3000) — this is a `next start` self-hosting quirk, not a bug in the
+rewrite logic itself, and disappears once those headers are present
+(confirmed by testing with them set). Any reverse proxy in front of the
+real deployment (nginx, Caddy, the hosting platform's own edge) sets
+these by default, so this needs no application-level workaround — just
+confirm whatever fronts `koba.games` in production does set them (it's
+standard behavior, but worth a smoke test after the real domain is live).
+
+**Still open, per below**: `admin.koba.games` as a genuinely separate
+deployment (option 2) for its own security perimeter, and DNS/TLS
+ownership for the actual `koba.games` zone — this MVP works the instant
+DNS points those subdomains at this same deployment; it does not by
+itself provision or manage that DNS.
 
 Client-specified domain structure:
 
