@@ -2,11 +2,12 @@
 
 Full catalog of every earnable badge (`features/achievements/lib/catalog.ts`), 64 total.
 Badges are **earned only** — never bought, sold, or gifted. Every badge is an original
-circular coin medallion (`features/achievements/components/badge-frame.tsx`) — milled edge,
-glossy gradient face, richer detail at higher rarity. Ladder badges (account age, trade
-volume, game collector, Boost rank) emboss a bold rank numeral directly into the coin
-instead of a distinct icon per rung. KOBA Plus tenure badges emboss the real KOBA Plus
-mark the same way — built into the coin's own tones, not a separately-colored sticker.
+circular coin medallion (`features/achievements/components/badge-frame.tsx`) with a recessed
+emblem panel behind the glyph. Ladder badges (account age, trade volume, game collector,
+Boost rank) emboss a bold rank numeral into that panel instead of a distinct icon per rung.
+KOBA Plus tenure badges emboss the real KOBA Plus mark (`public/brand/koba-plus-mark.png`,
+client-supplied) the same way — built into the coin's own tones, not a separately-colored
+sticker glued on top.
 
 ## Special (10)
 
@@ -103,5 +104,5 @@ mark the same way — built into the coin's own tones, not a separately-colored 
 
 This sheet is generated directly from `features/achievements/lib/catalog.ts`
 (`ACHIEVEMENT_CATALOG` + `LADDER_THRESHOLDS`) and rendered through the same
-`BadgeFrame`/`KobaPlusMark` components the app itself uses — it's a snapshot, not
-live data, so regenerate it whenever the catalog changes.
+`BadgeFrame` component and real `koba-plus-mark.png` the app itself uses — it's a
+snapshot, not live data, so regenerate it whenever the catalog changes.
