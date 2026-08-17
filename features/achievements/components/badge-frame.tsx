@@ -1,24 +1,27 @@
-import { useId } from "react";
+import React, { useId } from "react";
 import type { ProductRarity } from "@/features/marketplace/lib/catalog";
 
 /**
- * Original KOBA coin badge — a circular medallion with a milled edge and
- * a glossy gradient face, tinted to KOBA's own six rarity hues. Rarity
- * tier reads through richness: Common/Uncommon are a plain flat coin;
- * Rare+ add gold rivets; Legendary/Relic add emanating rays behind the
- * coin and (Relic only) sparkle glints.
+ * Original KOBA coin badge — a circular medallion with a clean beveled
+ * rim, a glossy gradient face, and a recessed inset panel where the
+ * glyph sits. Tinted to KOBA's own six rarity hues. Rarity tier reads
+ * through richness: Common/Uncommon are a plain coin; Rare+ add gold
+ * rivets; Legendary/Relic add emanating rays and (Relic only) sparkle
+ * glints.
  *
- * Client correction, 2026-08-17: an earlier pass used mezotv/discord-
- * badges' actual SVG files as the badge art. Even MIT-licensed, shipping
- * Discord's own recognizable badge shapes as KOBA's achievement art
- * reads as "the same exact badges as Discord" — this is original
- * artwork in the same general genre (flat-gradient tiered medallion),
- * not a reuse of any specific reference asset.
+ * Client direction, 2026-08-17: reference is Discord's own real badges
+ * (the simple, clean, single-glyph style) — a busier first pass (a
+ * milled tick-mark edge borrowed from a fan-made tiered badge pack) read
+ * as noisy, not premium; simplified here. The inset panel exists
+ * specifically so an embossed glyph — especially the KOBA Plus mark —
+ * sits in its own defined recess instead of floating flat on the coin's
+ * face ("not just the KOBA Plus logo slapped on top of a flat badge").
+ * This is original artwork in the general "tiered medallion" genre, not
+ * a reuse of any specific reference asset's shapes or files.
  *
  * Pure presentation — no data. AchievementBadge layers the numeral,
  * lucide icon, or KOBA Plus mark on top of this, using an embossed
- * (engraved-in) treatment sharing this coin's own tones — never a
- * separately-colored sticker glued on top.
+ * (engraved-in) treatment sharing this coin's own tones.
  */
 
 type TierPalette = {
@@ -95,38 +98,19 @@ export function coinTones(rarity: ProductRarity): { dark: string; light: string 
   return { dark: p.faceDark, light: p.faceLight };
 }
 
-function MilledEdge({ id }: { id: string }) {
-  const ticks = Array.from({ length: 36 }, (_, i) => {
-    const angle = (i / 36) * 360;
-    return (
-      <line
-        key={i}
-        x1="50"
-        y1="4"
-        x2="50"
-        y2="8"
-        stroke={`url(#${id})`}
-        strokeWidth="1.6"
-        transform={`rotate(${angle} 50 50)`}
-      />
-    );
-  });
-  return <g opacity="0.9">{ticks}</g>;
-}
-
 function Rays({ color }: { color: string }) {
-  const rays = Array.from({ length: 12 }, (_, i) => {
-    const angle = (i / 12) * 360;
+  const rays = Array.from({ length: 10 }, (_, i) => {
+    const angle = (i / 10) * 360;
     return (
       <rect
         key={i}
-        x="49"
-        y="-6"
-        width="2"
-        height="16"
-        rx="1"
+        x="49.2"
+        y="-4"
+        width="1.6"
+        height="12"
+        rx="0.8"
         fill={color}
-        opacity="0.35"
+        opacity="0.3"
         transform={`rotate(${angle} 50 50)`}
       />
     );
@@ -148,6 +132,7 @@ export function BadgeFrame({
   const faceGrad = `face-${uid}`;
   const edgeGrad = `edge-${uid}`;
   const glossGrad = `gloss-${uid}`;
+  const insetGrad = `inset-${uid}`;
 
   return (
     <svg viewBox="0 0 100 100" width={size} height={size} className={className} role="img" aria-hidden>
@@ -162,9 +147,19 @@ export function BadgeFrame({
           <stop offset="100%" stopColor={palette.faceDark} />
         </radialGradient>
         <linearGradient id={glossGrad} x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.5" />
+          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.45" />
           <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
         </linearGradient>
+        {/* Recessed emblem panel — a soft inner-shadow ring so the glyph
+            sits in its own sunken disc rather than floating on the flat
+            face. This is what makes an embossed logo read as "engraved
+            in" instead of "pasted on top". */}
+        <radialGradient id={insetGrad} cx="50%" cy="46%" r="58%">
+          <stop offset="0%" stopColor={palette.faceDark} stopOpacity="0" />
+          <stop offset="72%" stopColor={palette.faceDark} stopOpacity="0" />
+          <stop offset="92%" stopColor={palette.faceDark} stopOpacity="0.4" />
+          <stop offset="100%" stopColor={palette.faceDark} stopOpacity="0.05" />
+        </radialGradient>
       </defs>
 
       {palette.rays ? <Rays color={palette.edgeLight} /> : null}
@@ -172,18 +167,23 @@ export function BadgeFrame({
       {/* Drop shadow */}
       <circle cx="50" cy="51.5" r="45" fill="rgba(0,0,0,0.35)" />
 
-      {/* Milled coin edge */}
+      {/* Clean bevel rim — no busy tick pattern */}
       <circle cx="50" cy="50" r="45" fill={`url(#${edgeGrad})`} />
-      <MilledEdge id={edgeGrad} />
+      <circle cx="50" cy="50" r="41.5" fill="none" stroke={palette.edgeDark} strokeWidth="0.6" opacity="0.5" />
 
       {/* Face */}
-      <circle cx="50" cy="50" r="37" fill={`url(#${faceGrad})`} stroke="rgba(0,0,0,0.25)" strokeWidth="1" />
-      <circle cx="50" cy="50" r="37" fill={`url(#${glossGrad})`} opacity="0.65" />
+      <circle cx="50" cy="50" r="38" fill={`url(#${faceGrad})`} stroke="rgba(0,0,0,0.22)" strokeWidth="1" />
+
+      {/* Recessed inset panel behind the glyph */}
+      <circle cx="50" cy="50" r="30" fill={`url(#${insetGrad})`} />
+      <circle cx="50" cy="50" r="30" fill="none" stroke="rgba(0,0,0,0.28)" strokeWidth="0.8" />
+
+      <circle cx="50" cy="50" r="38" fill={`url(#${glossGrad})`} opacity="0.55" />
 
       {rarity === "RARE" || rarity === "EPIC" || rarity === "LEGENDARY" || rarity === "RELIC" ? (
         <>
-          <circle cx="50" cy="9" r="2.4" fill="#f4d783" stroke="#8a5c07" strokeWidth="0.4" />
-          <circle cx="50" cy="91" r="2.4" fill="#f4d783" stroke="#8a5c07" strokeWidth="0.4" />
+          <circle cx="50" cy="9.5" r="2.2" fill="#f4d783" stroke="#8a5c07" strokeWidth="0.4" />
+          <circle cx="50" cy="90.5" r="2.2" fill="#f4d783" stroke="#8a5c07" strokeWidth="0.4" />
         </>
       ) : null}
 
