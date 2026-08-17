@@ -33,7 +33,14 @@ export type PublicProductCard = {
   category: { slug: string; name: string };
   seller: PublicSeller;
   thumbnailAlt: string;
+  /** First ProductMedia row (by sortOrder), or null when the seller hasn't
+   * uploaded any media yet — real data, never a stand-in image URL. */
+  thumbnailUrl: string | null;
+  thumbnailKind: "IMAGE" | "VIDEO";
   favorited: boolean;
+  /** Private wishlist state (ProductSave) for the viewing user — false for
+   * signed-out visitors, never a public count. */
+  saved: boolean;
   auction: PublicAuctionSummary | null;
   /** True while an active Boost (features/boost) targets this product. */
   boosted: boolean;

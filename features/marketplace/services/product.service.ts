@@ -101,6 +101,7 @@ function stockQty(product: NonNullable<ProductRecord>): number {
 function toCard(
   product: NonNullable<ProductRecord>,
   favorited: boolean,
+  saved: boolean,
   boosted: boolean,
 ): PublicProductCard {
   return {
@@ -116,7 +117,10 @@ function toCard(
     category: product.category,
     seller: sellerFrom(product),
     thumbnailAlt: product.media[0]?.alt ?? product.title,
+    thumbnailUrl: product.media[0]?.url ?? null,
+    thumbnailKind: (product.media[0]?.kind as "IMAGE" | "VIDEO" | undefined) ?? "IMAGE",
     favorited,
+    saved,
     boosted,
     freebiePolicy: product.freebiePolicy as FreebiePolicy,
     descriptionSnippet: descriptionSnippet(product.description),
@@ -157,16 +161,29 @@ export async function listPublicProducts(
   ]);
 
   const favoriteSlugs = new Set<string>();
+  const savedSlugs = new Set<string>();
   if (viewerUserId && rows.length > 0) {
-    const favorites = await prisma.productFavorite.findMany({
-      where: {
-        userId: viewerUserId,
-        productId: { in: rows.map((row) => row.id) },
-      },
-      select: { product: { select: { slug: true } } },
-    });
+    const [favorites, saves] = await Promise.all([
+      prisma.productFavorite.findMany({
+        where: {
+          userId: viewerUserId,
+          productId: { in: rows.map((row) => row.id) },
+        },
+        select: { product: { select: { slug: true } } },
+      }),
+      prisma.productSave.findMany({
+        where: {
+          userId: viewerUserId,
+          productId: { in: rows.map((row) => row.id) },
+        },
+        select: { product: { select: { slug: true } } },
+      }),
+    ]);
     for (const favorite of favorites) {
       favoriteSlugs.add(favorite.product.slug);
+    }
+    for (const save of saves) {
+      savedSlugs.add(save.product.slug);
     }
   }
 
@@ -177,7 +194,9 @@ export async function listPublicProducts(
   // into, not just a badge.
   const boostedIds = await activeBoostedTargetIds("PRODUCT");
   const cards = rows
-    .map((row) => toCard(row, favoriteSlugs.has(row.slug), boostedIds.has(row.id)))
+    .map((row) =>
+      toCard(row, favoriteSlugs.has(row.slug), savedSlugs.has(row.slug), boostedIds.has(row.id)),
+    )
     .sort((a, b) => Number(b.boosted) - Number(a.boosted));
 
   return {
@@ -207,11 +226,18 @@ export async function getPublicProduct(
   }
 
   let favorited = false;
+  let saved = false;
   if (viewerUserId) {
-    const favorite = await prisma.productFavorite.findUnique({
-      where: { userId_productId: { userId: viewerUserId, productId: product.id } },
-    });
+    const [favorite, save] = await Promise.all([
+      prisma.productFavorite.findUnique({
+        where: { userId_productId: { userId: viewerUserId, productId: product.id } },
+      }),
+      prisma.productSave.findUnique({
+        where: { userId_productId: { userId: viewerUserId, productId: product.id } },
+      }),
+    ]);
     favorited = Boolean(favorite);
+    saved = Boolean(save);
   }
 
   const qty = stockQty(product);
@@ -226,7 +252,7 @@ export async function getPublicProduct(
   }
 
   return {
-    ...toCard(product, favorited, boostedIds.has(product.id)),
+    ...toCard(product, favorited, saved, boostedIds.has(product.id)),
     description: product.description,
     inventoryQty: qty,
     freebieClaimed,

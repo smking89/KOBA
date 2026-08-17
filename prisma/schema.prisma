@@ -197,6 +197,7 @@ model User {
   boostsGifted   Boost[]        @relation("BoostGiftedFrom")
   products       Product[]
   favorites      ProductFavorite[]
+  productSaves   ProductSave[]
   productComments ProductComment[]
   achievements   UserAchievement[]
   ownedShop      Shop?            @relation("ShopOwner")
@@ -573,6 +574,7 @@ model Product {
   variants  ProductVariant[]
   media     ProductMedia[]
   favorites ProductFavorite[]
+  saves     ProductSave[]
   orderItems      OrderItem[]
   auction         Auction?
   referralCodes   ReferralCode[]
@@ -641,6 +643,22 @@ model ProductMedia {
 }
 
 model ProductFavorite {
+  userId    String
+  productId String
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@id([userId, productId])
+  @@index([productId])
+}
+
+/// Private wishlist/bookmark — distinct from ProductFavorite (the public
+/// "like" reaction, shown as a count). Mirrors PostSave's exact shape.
+/// Deliberately no public count exposed anywhere: a save list is for the
+/// saver, not a vanity metric.
+model ProductSave {
   userId    String
   productId String
   createdAt DateTime @default(now())
