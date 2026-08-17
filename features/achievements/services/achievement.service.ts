@@ -1,10 +1,15 @@
 import { AuditAction } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/db";
 import { writeAuditLog } from "@/features/auth/services/audit-log.service";
-import { ACHIEVEMENT_CATALOG } from "@/features/achievements/lib/catalog";
+import {
+  ACHIEVEMENT_CATALOG,
+  LADDER_THRESHOLDS,
+  type AchievementDefinition,
+} from "@/features/achievements/lib/catalog";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const MS_PER_YEAR = 365 * MS_PER_DAY;
+const MS_PER_MONTH = MS_PER_YEAR / 12;
 
 // KOBA's first production migration (20250814120000_init) landed on
 // 2025-08-14 — "founding member" is scoped to accounts created within 30
@@ -15,6 +20,60 @@ function yearsSince(date: Date, years: number): boolean {
   return Date.now() - date.getTime() >= years * MS_PER_YEAR;
 }
 
+async function completedTradeCount(userId: string): Promise<number> {
+  return prisma.tradeOffer.count({
+    where: { state: "COMPLETED", OR: [{ proposerUserId: userId }, { counterpartyUserId: userId }] },
+  });
+}
+
+async function distinctGamesOwned(userId: string): Promise<number> {
+  const rows = await prisma.inventoryItem.findMany({
+    where: { ownerUserId: userId },
+    select: { game: true },
+    distinct: ["game"],
+  });
+  return rows.length;
+}
+
+async function paidOrderCount(userId: string): Promise<number> {
+  return prisma.order.count({
+    where: { shop: { ownerUserId: userId }, status: { in: ["PAID", "FULFILLED"] } },
+  });
+}
+
+async function boostCount(userId: string): Promise<number> {
+  return prisma.boost.count({ where: { ownerUserId: userId } });
+}
+
+async function postCount(userId: string): Promise<number> {
+  return prisma.post.count({ where: { authorUserId: userId } });
+}
+
+function ownedShop(userId: string) {
+  return prisma.shop.findUnique({ where: { ownerUserId: userId }, select: { verificationStatus: true } });
+}
+
+/** Builds one evaluator per ladder slug from a shared count function and
+ * that slug's real threshold (LADDER_THRESHOLDS, exported by catalog.ts
+ * from the same ladder definitions the catalog itself is built from — the
+ * number in the badge's description and the number that unlocks it can
+ * never drift apart). */
+function ladderEvaluators(
+  slugs: string[],
+  getCount: (userId: string) => Promise<number>,
+): Record<string, (userId: string) => Promise<boolean>> {
+  const evaluators: Record<string, (userId: string) => Promise<boolean>> = {};
+  for (const slug of slugs) {
+    const threshold = LADDER_THRESHOLDS[slug] ?? Infinity;
+    evaluators[slug] = async (userId) => (await getCount(userId)) >= threshold;
+  }
+  return evaluators;
+}
+
+function slugsForPrefix(prefix: string): string[] {
+  return ACHIEVEMENT_CATALOG.filter((entry) => entry.slug.startsWith(prefix)).map((entry) => entry.slug);
+}
+
 /**
  * One evaluator per catalog slug. Each takes the userId and returns whether
  * that user currently satisfies the badge's unlock criteria — every check
@@ -23,97 +82,89 @@ function yearsSince(date: Date, years: number): boolean {
  * newly satisfied and not already unlocked.
  */
 const CRITERIA_EVALUATORS: Record<string, (userId: string) => Promise<boolean>> = {
-  "account-age-1y": async (userId) => {
+  ...ladderEvaluators(slugsForPrefix("account-age-"), async (userId) => {
     const user = await prisma.user.findUnique({ where: { id: userId }, select: { createdAt: true } });
-    return !!user && yearsSince(user.createdAt, 1);
-  },
-  "account-age-2y": async (userId) => {
-    const user = await prisma.user.findUnique({ where: { id: userId }, select: { createdAt: true } });
-    return !!user && yearsSince(user.createdAt, 2);
-  },
-  "account-age-3y": async (userId) => {
-    const user = await prisma.user.findUnique({ where: { id: userId }, select: { createdAt: true } });
-    return !!user && yearsSince(user.createdAt, 3);
-  },
-  "account-age-5y": async (userId) => {
-    const user = await prisma.user.findUnique({ where: { id: userId }, select: { createdAt: true } });
-    return !!user && yearsSince(user.createdAt, 5);
-  },
-  "account-age-10y": async (userId) => {
-    const user = await prisma.user.findUnique({ where: { id: userId }, select: { createdAt: true } });
-    return !!user && yearsSince(user.createdAt, 10);
-  },
-  "founding-member": async (userId) => {
-    const user = await prisma.user.findUnique({ where: { id: userId }, select: { createdAt: true } });
-    return !!user && user.createdAt <= FOUNDING_WINDOW_END;
-  },
-  "first-trade": async (userId) => {
-    const count = await prisma.tradeOffer.count({
-      where: { state: "COMPLETED", OR: [{ proposerUserId: userId }, { counterpartyUserId: userId }] },
+    if (!user) return 0;
+    // yearsSince is a boolean threshold check, not a count — wrap it so it
+    // slots into the generic >= comparator ladderEvaluators expects.
+    for (let years = 10; years >= 1; years--) {
+      if (yearsSince(user.createdAt, years)) return years;
+    }
+    return 0;
+  }),
+  ...ladderEvaluators(slugsForPrefix("trade-"), completedTradeCount),
+  ...ladderEvaluators(slugsForPrefix("collector-"), distinctGamesOwned),
+  ...ladderEvaluators(slugsForPrefix("boost-rank-"), boostCount),
+  ...ladderEvaluators(slugsForPrefix("plus-"), async (userId) => {
+    const sub = await prisma.plusSubscription.findFirst({
+      where: { userId, state: "ACTIVE" },
+      select: { firstActivatedAt: true },
     });
-    return count >= 1;
-  },
-  "trade-veteran": async (userId) => {
-    const count = await prisma.tradeOffer.count({
-      where: { state: "COMPLETED", OR: [{ proposerUserId: userId }, { counterpartyUserId: userId }] },
-    });
-    return count >= 10;
-  },
-  "trade-master": async (userId) => {
-    const count = await prisma.tradeOffer.count({
-      where: { state: "COMPLETED", OR: [{ proposerUserId: userId }, { counterpartyUserId: userId }] },
-    });
-    return count >= 50;
-  },
+    if (!sub) return -1; // not an active subscriber at all — fails every tier, including the 0-month one
+    if (!sub.firstActivatedAt) return 0; // active but tenure unknown — still clears the 0-month "just subscribed" tier
+    return Math.floor((Date.now() - sub.firstActivatedAt.getTime()) / MS_PER_MONTH);
+  }),
+
   "relic-collector": async (userId) => {
     const count = await prisma.inventoryItem.count({ where: { ownerUserId: userId, rarity: "RELIC" } });
     return count >= 1;
   },
-  "shop-owner": async (userId) => {
-    const shop = await prisma.shop.findUnique({ where: { ownerUserId: userId }, select: { id: true } });
-    return !!shop;
-  },
-  "first-sale": async (userId) => {
-    const count = await prisma.order.count({
-      where: { shop: { ownerUserId: userId }, status: { in: ["PAID", "FULFILLED"] } },
-    });
+  "shop-owner": async (userId) => !!(await ownedShop(userId)),
+  "first-sale": async (userId) => (await paidOrderCount(userId)) >= 1,
+  "auction-winner": async (userId) => {
+    const count = await prisma.auction.count({ where: { winnerUserId: userId } });
     return count >= 1;
   },
-  "verified-shop": async (userId) => {
-    const shop = await prisma.shop.findUnique({
-      where: { ownerUserId: userId },
-      select: { verificationStatus: true },
-    });
-    return shop?.verificationStatus === "VERIFIED";
+  "verified-shop": async (userId) => (await ownedShop(userId))?.verificationStatus === "VERIFIED",
+  "auction-champion": async (userId) => {
+    const count = await prisma.auction.count({ where: { winnerUserId: userId } });
+    return count >= 5;
   },
-  "fifty-sales": async (userId) => {
-    const count = await prisma.order.count({
-      where: { shop: { ownerUserId: userId }, status: { in: ["PAID", "FULFILLED"] } },
+  "big-spender": async (userId) => {
+    const result = await prisma.order.aggregate({
+      where: { buyerUserId: userId, status: { in: ["PAID", "FULFILLED"] } },
+      _sum: { totalCents: true },
     });
-    return count >= 50;
+    return (result._sum.totalCents ?? 0) >= 50_000; // $500
+  },
+  "century-sales": async (userId) => (await paidOrderCount(userId)) >= 100,
+  "top-seller": async (userId) => (await paidOrderCount(userId)) >= 500,
+  "whale": async (userId) => {
+    const result = await prisma.coinPurchase.aggregate({
+      where: { userId, status: "PAID" },
+      _sum: { coinAmount: true },
+    });
+    return (result._sum.coinAmount ?? 0n) >= 10_000n;
   },
   "first-comment": async (userId) => {
     const count = await prisma.productComment.count({ where: { authorUserId: userId } });
     return count >= 1;
   },
-  "social-butterfly": async (userId) => {
-    const count = await prisma.post.count({ where: { authorUserId: userId } });
-    return count >= 25;
+  "critic": async (userId) => {
+    const count = await prisma.shopReview.count({ where: { authorUserId: userId } });
+    return count >= 10;
   },
-  "community-favorite": async (userId) => {
-    const count = await prisma.userFollow.count({ where: { followingUserId: userId } });
-    return count >= 50;
-  },
-  "plus-member": async (userId) => {
-    const sub = await prisma.plusSubscription.findFirst({ where: { userId, state: "ACTIVE" } });
-    return !!sub;
-  },
-  "plus-veteran": async (userId) => {
-    const sub = await prisma.plusSubscription.findFirst({
-      where: { userId, state: "ACTIVE", firstActivatedAt: { not: null } },
-      select: { firstActivatedAt: true },
+  "social-butterfly": async (userId) => (await postCount(userId)) >= 25,
+  "prolific-poster": async (userId) => (await postCount(userId)) >= 100,
+  "trusted-seller": async (userId) => {
+    const shop = await prisma.shop.findUnique({
+      where: { ownerUserId: userId },
+      select: { reviews: { select: { rating: true } } },
     });
-    return !!sub?.firstActivatedAt && Date.now() - sub.firstActivatedAt.getTime() >= MS_PER_YEAR;
+    if (!shop || shop.reviews.length < 10) return false;
+    const avg = shop.reviews.reduce((sum, review) => sum + review.rating, 0) / shop.reviews.length;
+    return avg >= 4.5;
+  },
+  "influencer-partner": async (userId) => {
+    const profile = await prisma.influencerProfile.findUnique({
+      where: { userId },
+      select: { verificationStatus: true, suspendedAt: true },
+    });
+    return !!profile && profile.verificationStatus === "VERIFIED" && !profile.suspendedAt;
+  },
+  "founding-member": async (userId) => {
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { createdAt: true } });
+    return !!user && user.createdAt <= FOUNDING_WINDOW_END;
   },
 };
 
@@ -127,7 +178,7 @@ export async function syncAchievementCatalog(): Promise<void> {
   for (const entry of ACHIEVEMENT_CATALOG) {
     await prisma.achievement.upsert({
       where: { slug: entry.slug },
-      create: entry,
+      create: { slug: entry.slug, name: entry.name, description: entry.description, rarity: entry.rarity, category: entry.category, icon: entry.icon },
       update: {
         name: entry.name,
         description: entry.description,
@@ -139,6 +190,10 @@ export async function syncAchievementCatalog(): Promise<void> {
   }
 }
 
+function catalogEntry(slug: string): AchievementDefinition | undefined {
+  return ACHIEVEMENT_CATALOG.find((entry) => entry.slug === slug);
+}
+
 export type UnlockedAchievement = {
   slug: string;
   name: string;
@@ -146,6 +201,8 @@ export type UnlockedAchievement = {
   rarity: string;
   category: string;
   icon: string;
+  image?: string;
+  overlay?: "koba-plus";
 };
 
 /**
@@ -188,6 +245,7 @@ export async function evaluateAndGrantAchievements(userId: string): Promise<Unlo
       metadata: { slug: achievement.slug, rarity: achievement.rarity },
     });
 
+    const defined = catalogEntry(achievement.slug);
     newlyUnlocked.push({
       slug: achievement.slug,
       name: achievement.name,
@@ -195,6 +253,8 @@ export async function evaluateAndGrantAchievements(userId: string): Promise<Unlo
       rarity: achievement.rarity,
       category: achievement.category,
       icon: achievement.icon,
+      ...(defined?.image ? { image: defined.image } : {}),
+      ...(defined?.overlay ? { overlay: defined.overlay } : {}),
     });
   }
   return newlyUnlocked;
@@ -208,6 +268,8 @@ export type UserBadge = {
   category: string;
   icon: string;
   unlockedAt: Date;
+  image?: string;
+  overlay?: "koba-plus";
 };
 
 /** All badges a user currently holds, most-recently-unlocked first. */
@@ -217,13 +279,18 @@ export async function listUserAchievements(userId: string): Promise<UserBadge[]>
     include: { achievement: true },
     orderBy: { unlockedAt: "desc" },
   });
-  return rows.map((row) => ({
-    slug: row.achievement.slug,
-    name: row.achievement.name,
-    description: row.achievement.description,
-    rarity: row.achievement.rarity,
-    category: row.achievement.category,
-    icon: row.achievement.icon,
-    unlockedAt: row.unlockedAt,
-  }));
+  return rows.map((row) => {
+    const defined = catalogEntry(row.achievement.slug);
+    return {
+      slug: row.achievement.slug,
+      name: row.achievement.name,
+      description: row.achievement.description,
+      rarity: row.achievement.rarity,
+      category: row.achievement.category,
+      icon: row.achievement.icon,
+      unlockedAt: row.unlockedAt,
+      ...(defined?.image ? { image: defined.image } : {}),
+      ...(defined?.overlay ? { overlay: defined.overlay } : {}),
+    };
+  });
 }

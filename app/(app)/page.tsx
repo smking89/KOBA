@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { Suspense } from "react";
 import {
@@ -5,7 +6,6 @@ import {
   Repeat2,
   Users,
   Server,
-  Sparkles,
   Zap,
   type LucideIcon,
 } from "lucide-react";
@@ -19,7 +19,7 @@ const features: {
   body: string;
   href: string;
   action: string;
-  icon: LucideIcon;
+  icon: LucideIcon | "aiden";
   tourId?: string;
 }[] = [
   {
@@ -57,7 +57,7 @@ const features: {
     body: "Generate original cosmetics with Aiden using KOBA Coins, then list what you make on the Marketplace.",
     href: "/aiden",
     action: "Open Aiden",
-    icon: Sparkles,
+    icon: "aiden",
   },
   {
     title: "Boost",
@@ -116,7 +116,18 @@ export default function HomePage() {
               data-tour={feature.tourId}
             >
               <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-2xl bg-brand-gradient text-background">
-                <feature.icon className="h-5 w-5" aria-hidden />
+                {feature.icon === "aiden" ? (
+                  <Image
+                    src="/brand/aiden/aiden-icon.png"
+                    alt=""
+                    width={22}
+                    height={22}
+                    className="h-[22px] w-[22px] object-contain"
+                    suppressHydrationWarning
+                  />
+                ) : (
+                  <feature.icon className="h-5 w-5" aria-hidden />
+                )}
               </div>
               <CardTitle>{feature.title}</CardTitle>
               <CardDescription className="flex-1">{feature.body}</CardDescription>

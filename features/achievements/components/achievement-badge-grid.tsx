@@ -41,6 +41,8 @@ export function AchievementBadgeGrid({ unlockedSlugs }: { unlockedSlugs: string[
                 description={entry.description}
                 rarity={entry.rarity}
                 icon={entry.icon}
+                image={entry.image}
+                overlay={entry.overlay}
                 unlocked={unlocked.has(entry.slug)}
               />
             ))}

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AidenBrandMark } from "@/components/koba/aiden-brand-mark";
 import { PageHeader } from "@/components/koba/page-header";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
@@ -13,6 +14,7 @@ export default async function AidenLandingPage() {
 
   return (
     <div className="space-y-8">
+      <AidenBrandMark href="" />
       <PageHeader
         eyebrow="Aiden"
         title="AI creator workspace"

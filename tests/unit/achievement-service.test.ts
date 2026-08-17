@@ -41,7 +41,7 @@ describe("syncAchievementCatalog", () => {
     await syncAchievementCatalog();
     expect(prisma.achievement.upsert).toHaveBeenCalledTimes(ACHIEVEMENT_CATALOG.length);
     expect(prisma.achievement.upsert).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { slug: "first-trade" } }),
+      expect.objectContaining({ where: { slug: "trade-casual" } }),
     );
   });
 });
@@ -81,7 +81,7 @@ describe("evaluateAndGrantAchievements", () => {
   });
 
   it("does not grant an achievement whose criterion is unmet", async () => {
-    prisma.achievement.findMany.mockResolvedValue([achievementRow("trade-veteran")]);
+    prisma.achievement.findMany.mockResolvedValue([achievementRow("trade-committed")]);
     prisma.userAchievement.findMany.mockResolvedValue([]);
     prisma.tradeOffer.count.mockResolvedValue(3);
 
@@ -117,10 +117,11 @@ describe("evaluateAndGrantAchievements", () => {
     expect(result).toHaveLength(1);
   });
 
-  it("grants plus-veteran only once firstActivatedAt is over a year old", async () => {
-    prisma.achievement.findMany.mockResolvedValue([achievementRow("plus-veteran")]);
+  it("grants plus-diamond (24-month tenure) only once firstActivatedAt is old enough", async () => {
+    prisma.achievement.findMany.mockResolvedValue([achievementRow("plus-diamond")]);
     prisma.userAchievement.findMany.mockResolvedValue([]);
     prisma.plusSubscription.findFirst.mockResolvedValue({
+      state: "ACTIVE",
       firstActivatedAt: new Date(Date.now() - 40 * 24 * 60 * 60 * 1000),
     });
     prisma.userAchievement.create.mockResolvedValue({});
