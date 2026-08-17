@@ -107,6 +107,10 @@ export async function searchPublicProducts(query: {
   game?: string;
   platform?: string;
   pricing?: "FREE" | "PAID";
+  /** "popular" sorts by real install/download count (the storefront's
+   * "Popular" rail); default is most-recently-updated. */
+  sort?: "recent" | "popular";
+  take?: number;
 }) {
   const products = await prisma.devProduct.findMany({
     where: {
@@ -126,8 +130,8 @@ export async function searchPublicProducts(query: {
         : {}),
     },
     include: { profile: { select: { slug: true, displayName: true, verified: true } } },
-    orderBy: { updatedAt: "desc" },
-    take: 48,
+    orderBy: query.sort === "popular" ? { downloadCount: "desc" } : { updatedAt: "desc" },
+    take: query.take ?? 48,
   });
   return products.map((product) => ({
     ...toView(product),
@@ -139,6 +143,9 @@ export async function searchPublicProducts(query: {
     verifiedPublisher: product.profile?.verified ?? false,
     publisherSlug: product.profile?.slug ?? null,
     publisherName: product.profile?.displayName ?? null,
+    iconUrl: product.iconUrl,
+    downloadCount: product.downloadCount,
+    ratingCount: product.ratingCount,
     rating:
       product.ratingCount > 0 ? Number((product.ratingSum / product.ratingCount).toFixed(2)) : null,
   }));

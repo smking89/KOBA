@@ -362,6 +362,20 @@ left unmentioned.
 
 ## Phase 9 — Developer Portal
 
+**App Store storefront rebuilt (2026-08-17)** — `app.koba.games` (`/apps`,
+`/apps/[slug]`) needed its own genuinely distinct GUI/UI/UX, not KOBA's
+dark AppShell sidebar (client, 2026-08-17). Moved to a new `(store)`
+route group with its own standalone layout (no shared sidebar) and a
+real light theme scoped to a `.koba-store` CSS class
+(`app/globals.css`) — the rest of KOBA stays dark-only, this is a
+genuine second visual identity, not a global theme toggle. Card grid,
+category tabs, search, a real "Popular this week" rail (sorted by actual
+`downloadCount`, not editorial picks), and the detail page (hero,
+screenshots, versions, reviews, similar apps) all keep the exact same
+business logic as before (`PurchaseButton`, entitlement checks, version
+downloads) — this was a visual rebuild, not a logic rewrite. Verified
+against real seeded data (inserted and cleaned up after screenshot
+verification, not left in the dev DB) and a real production build.
 **Scope, as engineering deliverables**
 
 - Access gate: Business-mode only (reuses Phase 2's mode gating).
@@ -1115,16 +1129,22 @@ shipped and Phase 17's fix.
 `lib/subdomain-routes.ts` + `middleware.ts` (2026-08-17). A request
 arriving on `developer.koba.games`, `app.koba.games`, `admin.koba.games`,
 or `aiden.koba.games` is served from the matching existing route
-(`/developers`, `/developers/apps`, `/admin`, `/aiden`) via
-`NextResponse.rewrite` — same deployment, same database connection, no
-new infra. `/api/*` is never subdomain-prefixed (all subdomains share one
-backend); unrecognized hosts (bare `koba.games`, localhost, preview
-deploys, `staging.koba.games`, etc.) pass through untouched. Auth
-redirects (`/login`, `/login/mfa`, `/kobaid`, `/enter`) issued from a
-subdomain-rewritten request target the canonical apex host
-(`koba.games`), not the subdomain, since those pages aren't themselves
-subdomain-mapped — verified `admin.koba.games/` → `307` to
-`koba.games/login?callbackUrl=%2Fadmin`.
+(`/developers`, `/apps`, `/admin`, `/aiden`) via `NextResponse.rewrite` —
+same deployment, same database connection, no new infra. `/api/*` is
+never subdomain-prefixed (all subdomains share one backend); unrecognized
+hosts (bare `koba.games`, localhost, preview deploys, `staging.koba.games`,
+etc.) pass through untouched. Auth redirects (`/login`, `/login/mfa`,
+`/kobaid`, `/enter`) issued from a subdomain-rewritten request target the
+canonical apex host (`koba.games`), not the subdomain, since those pages
+aren't themselves subdomain-mapped — verified `admin.koba.games/` → `307`
+to `koba.games/login?callbackUrl=%2Fadmin`.
+
+**Correction (2026-08-17)**: `app.koba.games` originally mapped to
+`/developers/apps` per this section's own table below — that path turned
+out to be the *developer's own* app-management dashboard (submit for
+review, revoke), not the public storefront. The real public catalog was
+already `/apps` (the marketplace's "Browse apps" link, confirmed via
+`grep`, already pointed there). Fixed to map `app` → `/apps`.
 
 **Deployment note**: verified end-to-end against a real production build
 (`next start`), not just `next dev`. Locally, testing on a non-default
@@ -1150,7 +1170,7 @@ Client-specified domain structure:
 | ---------------------- | ------------------------------ | -------------------------------------- |
 | `koba.games`           | Main site                      | This app, path-based routing           |
 | `developer.koba.games` | Developer portal               | Exists at `/developers` (mock/UI-only) |
-| `app.koba.games`       | App store                      | Exists at `/developers/apps` (mock)    |
+| `app.koba.games`       | App store                      | Real storefront at `/apps` (2026-08-17) |
 | `admin.koba.games`     | Staff admin backend login      | Exists at `/admin`                     |
 | `aiden.koba.games`     | AI generation suite (Phase 14) | Exists at `/aiden` (UI shell)          |
 

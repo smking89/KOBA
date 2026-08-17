@@ -9,9 +9,9 @@ describe("resolveSubdomainRewrite", () => {
     );
   });
 
-  it("rewrites app.koba.games to /developers/apps", () => {
-    expect(resolveSubdomainRewrite("app.koba.games", "/")).toBe("/developers/apps");
-    expect(resolveSubdomainRewrite("app.koba.games", "/foo")).toBe("/developers/apps/foo");
+  it("rewrites app.koba.games to /apps (the public storefront, not /developers/apps)", () => {
+    expect(resolveSubdomainRewrite("app.koba.games", "/")).toBe("/apps");
+    expect(resolveSubdomainRewrite("app.koba.games", "/some-plugin")).toBe("/apps/some-plugin");
   });
 
   it("rewrites admin.koba.games to /admin", () => {

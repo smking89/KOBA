@@ -14,7 +14,7 @@
  */
 const SUBDOMAIN_PREFIX: Record<string, string> = {
   developer: "/developers",
-  app: "/developers/apps",
+  app: "/apps",
   admin: "/admin",
   aiden: "/aiden",
 };
