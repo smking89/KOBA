@@ -24,10 +24,10 @@ const pillars = [
     tourId: "pillar-groups",
   },
   {
-    title: "KOBAID",
-    body: "One identity per account role — Player, Business, or Influencer. Switch modes from Settings; your KOBAID stays yours.",
+    title: "Switch modes anytime",
+    body: "One account, every role — Player, Business, or Influencer. Switch modes from Settings whenever you need to.",
     href: "/settings",
-    action: "View KOBAID",
+    action: "Manage account",
     mark: "K",
     tourId: "pillar-kobaid",
   },
@@ -45,11 +45,11 @@ export default function HomePage() {
           </p>
         </div>
         <h1 className="max-w-2xl text-3xl font-semibold tracking-tight text-balance md:text-5xl">
-          Trade what you build. <span className="text-brand-gradient">Play with your people.</span>
+          Level up your server. <span className="text-brand-gradient">Play with your people.</span>
         </h1>
         <p className="max-w-xl text-sm leading-relaxed text-muted md:text-base">
-          KOBA is where your server&apos;s community buys, sells, and hangs out. Sign up, get your
-          KOBAID, and switch between Player, Business, and Influencer whenever you need to.
+          The ultimate marketplace for console and PC game servers. Grab custom skins, monuments,
+          and kits, then find your crew.
         </p>
         <div className="flex flex-wrap gap-2">
           <Link
@@ -57,7 +57,7 @@ export default function HomePage() {
             data-tour="explore-market"
             className={cn(buttonVariants({ variant: "primary" }))}
           >
-            Explore Market
+            Explore Marketplace
           </Link>
           <Link
             href="/lfg"

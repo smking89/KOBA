@@ -10,30 +10,6 @@ export type NavSection = {
   links: readonly NavLink[];
 };
 
-/** Always-visible desktop destinations (core product). */
-export const DESKTOP_PRIMARY_LINKS: readonly NavLink[] = [
-  { href: "/", label: "Home" },
-  { href: "/market", label: "Market" },
-  { href: "/trade", label: "Trade" },
-  { href: "/servers", label: "Servers" },
-  { href: "/groups", label: "Groups" },
-  { href: "/feed", label: "Feed" },
-  { href: "/messages", label: "Messages" },
-] as const;
-
-/** Secondary desktop destinations (overflow / utility). */
-export const DESKTOP_MORE_LINKS: readonly NavLink[] = [
-  { href: "/lfg", label: "LFG" },
-  { href: "/aiden", label: "Aiden" },
-  { href: "/plus", label: "KOBA Plus" },
-  { href: "/influencer", label: "Promo" },
-  { href: "/seller/promotions", label: "Campaigns" },
-  { href: "/wallet", label: "Wallet" },
-  { href: "/developers", label: "Developers" },
-  { href: "/apps", label: "Apps" },
-  { href: "/enter", label: "Dashboard" },
-] as const;
-
 /** Discord-style icon rail (host shortcuts). */
 export const RAIL_LINKS: readonly NavLink[] = [
   { href: "/", label: "Home" },

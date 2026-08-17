@@ -30,7 +30,6 @@ export function AppHeader({ onOpenMenu }: { onOpenMenu?: () => void }) {
       <div className="flex min-w-0 flex-1 items-center gap-2">
         <Hash className="hidden h-5 w-5 text-muted sm:block" aria-hidden />
         <p className="truncate text-base font-semibold">{title}</p>
-        <BetaBadge className="shrink-0" />
       </div>
       <div className="flex shrink-0 items-center gap-1">
         {isLoggedIn ? (
@@ -45,6 +44,7 @@ export function AppHeader({ onOpenMenu }: { onOpenMenu?: () => void }) {
           </Link>
         ) : (
           <>
+            <BetaBadge className="mr-1" />
             <Link
               href="/login"
               className="inline-flex h-8 items-center rounded-md px-2 text-sm text-muted hover:bg-white/8 hover:text-foreground"

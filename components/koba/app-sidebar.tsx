@@ -4,7 +4,6 @@ import Link from "next/link";
 import { signOut, useSession } from "next-auth/react";
 import { usePathname } from "next/navigation";
 import { Hash, LogOut, Settings } from "lucide-react";
-import { BetaBadge } from "@/components/koba/beta-badge";
 import { cn } from "@/lib/utils";
 import { isNavActive, SIDEBAR_SECTIONS } from "@/features/navigation/lib/nav";
 import { clearPageCaches } from "@/lib/pwa/clear-caches";
@@ -39,7 +38,6 @@ export function AppSidebar({
     <div className={cn("flex h-full min-h-0 w-60 shrink-0 flex-col bg-surface", className)}>
       <div className="flex h-12 items-center gap-2 border-b border-border px-4">
         <p className="truncate text-sm font-semibold tracking-wide">KOBA</p>
-        <BetaBadge />
       </div>
       <nav aria-label="Channels" className="min-h-0 flex-1 overflow-y-auto px-2 py-3">
         {SIDEBAR_SECTIONS.map((section) => (

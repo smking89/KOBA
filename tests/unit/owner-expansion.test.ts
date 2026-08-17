@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
-  DESKTOP_MORE_LINKS,
-  DESKTOP_PRIMARY_LINKS,
   isMoreSectionActive,
   isNavActive,
   MOBILE_MORE_LINKS,
   MOBILE_PRIMARY_HREFS,
+  RAIL_LINKS,
+  SIDEBAR_SECTIONS,
 } from "@/features/navigation/lib/nav";
 import { sameRarityTier, tradeStateLabel } from "@/features/trade/lib/types";
 import { MOCK_TRADES } from "@/features/trade/lib/catalog";
@@ -28,9 +28,11 @@ describe("expansion navigation", () => {
     expect(MOBILE_MORE_LINKS.map((link) => link.href)).toEqual(
       expect.arrayContaining(["/trade", "/servers", "/aiden", "/plus", "/wallet", "/developers"]),
     );
-    expect(DESKTOP_PRIMARY_LINKS.some((link) => link.href === "/trade")).toBe(true);
-    expect(DESKTOP_MORE_LINKS.some((link) => link.href === "/aiden")).toBe(true);
-    expect(DESKTOP_MORE_LINKS.some((link) => link.href === "/influencer")).toBe(true);
+    const sidebarLinks = SIDEBAR_SECTIONS.flatMap((section) => section.links);
+    expect(sidebarLinks.some((link) => link.href === "/trade")).toBe(true);
+    expect(sidebarLinks.some((link) => link.href === "/aiden")).toBe(true);
+    expect(sidebarLinks.some((link) => link.href === "/influencer")).toBe(true);
+    expect(RAIL_LINKS.some((link) => link.href === "/market")).toBe(true);
     expect(isNavActive("/trade/KOBA-TRD-DEMO0001", "/trade")).toBe(true);
     expect(isMoreSectionActive("/aiden/generate")).toBe(true);
   });

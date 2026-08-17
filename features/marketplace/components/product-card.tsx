@@ -69,7 +69,7 @@ export function ProductCard({
         </div>
       </div>
       <div className="flex flex-1 flex-col gap-2 p-4">
-        <RarityChip rarity={product.rarity} />
+        <RarityChip rarity={product.rarity} size="lg" />
         <Link
           href={`/market/${product.slug}`}
           className="text-base font-semibold hover:text-neon-lime"
