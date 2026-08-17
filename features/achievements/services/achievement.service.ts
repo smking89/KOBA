@@ -201,8 +201,7 @@ export type UnlockedAchievement = {
   rarity: string;
   category: string;
   icon: string;
-  image?: string;
-  overlay?: "koba-plus";
+  numeral?: number;
 };
 
 /**
@@ -253,8 +252,7 @@ export async function evaluateAndGrantAchievements(userId: string): Promise<Unlo
       rarity: achievement.rarity,
       category: achievement.category,
       icon: achievement.icon,
-      ...(defined?.image ? { image: defined.image } : {}),
-      ...(defined?.overlay ? { overlay: defined.overlay } : {}),
+      ...(defined?.numeral !== undefined ? { numeral: defined.numeral } : {}),
     });
   }
   return newlyUnlocked;
@@ -268,8 +266,7 @@ export type UserBadge = {
   category: string;
   icon: string;
   unlockedAt: Date;
-  image?: string;
-  overlay?: "koba-plus";
+  numeral?: number;
 };
 
 /** All badges a user currently holds, most-recently-unlocked first. */
@@ -289,8 +286,7 @@ export async function listUserAchievements(userId: string): Promise<UserBadge[]>
       category: row.achievement.category,
       icon: row.achievement.icon,
       unlockedAt: row.unlockedAt,
-      ...(defined?.image ? { image: defined.image } : {}),
-      ...(defined?.overlay ? { overlay: defined.overlay } : {}),
+      ...(defined?.numeral !== undefined ? { numeral: defined.numeral } : {}),
     };
   });
 }

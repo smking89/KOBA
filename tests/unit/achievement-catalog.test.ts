@@ -1,5 +1,3 @@
-import { existsSync } from "node:fs";
-import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { ACHIEVEMENT_CATALOG, LADDER_THRESHOLDS } from "@/features/achievements/lib/catalog";
 import { ICON_MAP } from "@/features/achievements/components/achievement-badge";
@@ -35,7 +33,16 @@ describe("ACHIEVEMENT_CATALOG", () => {
 
   it("has a registered lucide icon for every catalog entry (no silent Award fallback)", () => {
     for (const entry of ACHIEVEMENT_CATALOG) {
+      if (entry.icon === "koba-plus") continue; // sentinel, not a lucide icon — see AchievementBadge
       expect(ICON_MAP[entry.icon], `catalog icon "${entry.icon}" (${entry.slug}) not in ICON_MAP`).toBeDefined();
+    }
+  });
+
+  it("never shows a numeral alongside the koba-plus mark (it would compete for space)", () => {
+    for (const entry of ACHIEVEMENT_CATALOG) {
+      if (entry.icon === "koba-plus") {
+        expect(entry.numeral, `${entry.slug} is koba-plus but also sets numeral`).toBeUndefined();
+      }
     }
   });
 
@@ -81,12 +88,13 @@ describe("ACHIEVEMENT_CATALOG", () => {
     }
   });
 
-  it("has every real badge art asset present on disk", () => {
-    const entriesWithImage = ACHIEVEMENT_CATALOG.filter((entry) => entry.image);
-    expect(entriesWithImage.length).toBeGreaterThan(0);
-    for (const entry of entriesWithImage) {
-      const onDisk = path.join(process.cwd(), "public", entry.image!);
-      expect(existsSync(onDisk), `missing badge art for ${entry.slug}: ${entry.image}`).toBe(true);
+  it("gives every ladder-generated badge a numeral matching its rank (except the Plus mark)", () => {
+    const ladderPrefixes = ["account-age-", "trade-", "collector-", "boost-rank-"];
+    for (const prefix of ladderPrefixes) {
+      const entries = ACHIEVEMENT_CATALOG.filter((entry) => entry.slug.startsWith(prefix));
+      entries.forEach((entry, index) => {
+        expect(entry.numeral, `${entry.slug} missing its ladder numeral`).toBe(index + 1);
+      });
     }
   });
 

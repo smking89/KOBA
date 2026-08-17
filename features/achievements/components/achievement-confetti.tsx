@@ -50,8 +50,7 @@ export function AchievementConfetti({ unlocked }: { unlocked: UnlockedAchievemen
             description={badge.description}
             rarity={badge.rarity as ProductRarity}
             icon={badge.icon}
-            image={badge.image}
-            overlay={badge.overlay}
+            numeral={badge.numeral}
             unlocked
             size="sm"
           />
