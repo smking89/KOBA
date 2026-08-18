@@ -1,13 +1,14 @@
 /**
  * Source of truth for the KOBA API catalog page (developer.koba.games /
- * /developers/apis). Per ROADMAP.md Phase 9: "KOBA APIs exposed to
- * developers: AI Behavior, Faction Simulation, Event Trigger, Logistics,
- * NPC Personality, Pack Metadata. Each is effectively its own mini-
- * product — recommend treating each as a separately versioned API
- * surface with its own docs/sandbox rather than one monolithic 'dev
- * API.'"
+ * /developers/apis). Per ROADMAP.md Phase 9, originally: "KOBA APIs
+ * exposed to developers: AI Behavior, Faction Simulation, Event Trigger,
+ * Logistics, NPC Personality, Pack Metadata." NPC Personality removed
+ * from scope for now (client, 2026-08-17) — 5 surfaces remain. Each is
+ * effectively its own mini-product — treated as a separately versioned
+ * API surface with its own docs/sandbox rather than one monolithic "dev
+ * API."
  *
- * None of these 6 surfaces have real backing endpoints yet — this is a
+ * None of these have real backing endpoints yet — this is a
  * documentation/catalog page describing what's planned, not a live API
  * reference. `status: "planned"` everywhere reflects that honestly;
  * flip an entry to `"sandbox"` or `"live"` only once it actually has a
@@ -107,25 +108,6 @@ export const API_CATALOG: ApiSurface[] = [
       "Trigger an item delivery to a specific player on a specific server",
       "Query delivery status/history for a purchase",
       "Idempotent delivery requests (safe to retry without double-granting)",
-    ],
-    status: "planned",
-  },
-  {
-    slug: "npc-personality",
-    name: "NPC Personality",
-    tagline: "Dialogue tone, voice, and character consistency.",
-    description:
-      "Keep an NPC's dialogue and tone consistent across a server — a merchant that's always " +
-      "gruff, a quest-giver with a fixed voice — driven by a personality profile a plugin can read " +
-      "instead of hand-authoring every line.",
-    useCases: [
-      "A quest-mod that generates flavor dialogue matching an NPC's established personality.",
-      "A voice-line plugin that keeps tone consistent across dynamically generated content.",
-    ],
-    capabilities: [
-      "Read a stored personality profile (tone, vocabulary constraints, voice) for an NPC",
-      "Request dialogue generation constrained to a given profile",
-      "Version personality profiles per server/game",
     ],
     status: "planned",
   },

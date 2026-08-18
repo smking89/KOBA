@@ -149,14 +149,14 @@ export function ProductCard({
                 className="flex items-center gap-1.5 truncate text-lg font-bold text-white"
               >
                 {product.seller.verified ? (
-                  <BadgeCheck className="h-5 w-5 shrink-0 fill-[#33c1f0] text-white" aria-hidden />
+                  <BadgeCheck className="h-5 w-5 shrink-0 fill-white text-black" aria-hidden />
                 ) : null}
                 @{sellerHandle}
               </Link>
             ) : (
               <span className="flex items-center gap-1.5 truncate text-lg font-bold text-white">
                 {product.seller.verified ? (
-                  <BadgeCheck className="h-5 w-5 shrink-0 fill-[#33c1f0] text-white" aria-hidden />
+                  <BadgeCheck className="h-5 w-5 shrink-0 fill-white text-black" aria-hidden />
                 ) : null}
                 @{sellerHandle}
               </span>

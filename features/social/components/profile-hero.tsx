@@ -48,20 +48,19 @@ function memberSince(iso: string): string {
   return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
+// Deterministic per-user banner shade (client, 2026-08-17: "let's forget
+// the gradients, and use black and white color scheme") — a flat gray
+// whose lightness varies by handle instead of a hue-based gradient, so
+// profiles stay visually distinct from each other without any color.
+// KOBA Plus members get a slightly lighter shade, a subtle status cue
+// rather than a colored one.
 function bannerStyle(handle: string, plus: boolean): CSSProperties {
   let hash = 0;
   for (const ch of handle) {
     hash = (hash * 33 + ch.charCodeAt(0)) >>> 0;
   }
-  const hue = hash % 360;
-  if (plus) {
-    return {
-      background: `linear-gradient(135deg, hsl(${hue} 42% 14%) 0%, #3a2208 52%, #4a1408 100%)`,
-    };
-  }
-  return {
-    background: `linear-gradient(135deg, hsl(${hue} 16% 16%) 0%, hsl(${(hue + 38) % 360} 12% 10%) 100%)`,
-  };
+  const lightness = 10 + (hash % 10) + (plus ? 4 : 0);
+  return { background: `hsl(0 0% ${lightness}%)` };
 }
 
 function Stat({ label, value }: { label: string; value: number }) {
@@ -83,7 +82,7 @@ export function ProfileHero({
   return (
     <section className="overflow-hidden rounded-xl border border-white/[0.06] bg-surface-3 shadow-soft">
       <div className="relative h-40" style={bannerStyle(profile.handle, profile.plusBadge)}>
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_18%_85%,rgba(184,255,0,0.2),transparent_58%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_18%_85%,rgba(255,255,255,0.12),transparent_58%)]" />
         {profile.plusBadge ? (
           <div className="absolute top-4 right-4">
             <KobaBadgeArt mark="plus" size={56} />

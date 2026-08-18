@@ -34,58 +34,64 @@ type TierPalette = {
   sparkle: boolean;
 };
 
+// Grayscale value ramp (client, 2026-08-17: "let's forget the gradients,
+// and use black and white color scheme") — same escalating-lightness
+// logic as app/globals.css's --color-rarity-* tokens (common closest to
+// mid-gray/least distinct, relic at maximum brightness/most distinct),
+// applied to the coin's own light/mid/dark facets instead of a single
+// flat value so the medallion keeps its beveled, embossed depth.
 const TIER_PALETTE: Record<ProductRarity, TierPalette> = {
   COMMON: {
-    faceLight: "#c7c8d1",
-    faceMid: "#9a9ca6",
-    faceDark: "#54565f",
-    edgeLight: "#8b8a9c",
-    edgeDark: "#3d3e46",
+    faceLight: "#d4d4d8",
+    faceMid: "#a8a8b0",
+    faceDark: "#5c5c62",
+    edgeLight: "#9a9aa2",
+    edgeDark: "#3a3a40",
     rays: false,
     sparkle: false,
   },
   UNCOMMON: {
-    faceLight: "#7ce8a4",
-    faceMid: "#2fa568",
-    faceDark: "#0e6b3c",
-    edgeLight: "#1fbf6c",
-    edgeDark: "#0a4a29",
+    faceLight: "#e0e0e4",
+    faceMid: "#b8b8be",
+    faceDark: "#6a6a70",
+    edgeLight: "#a8a8b0",
+    edgeDark: "#444448",
     rays: false,
     sparkle: false,
   },
   RARE: {
-    faceLight: "#8fe0fb",
-    faceMid: "#2a9dc4",
-    faceDark: "#12678a",
-    edgeLight: "#33c1f0",
-    edgeDark: "#0c4a63",
+    faceLight: "#ececee",
+    faceMid: "#c8c8cc",
+    faceDark: "#7a7a80",
+    edgeLight: "#b8b8be",
+    edgeDark: "#4e4e54",
     rays: false,
     sparkle: false,
   },
   EPIC: {
-    faceLight: "#d59bff",
-    faceMid: "#9245c9",
-    faceDark: "#6c1fa3",
-    edgeLight: "#b451f0",
-    edgeDark: "#3f1266",
+    faceLight: "#f2f2f4",
+    faceMid: "#d8d8dc",
+    faceDark: "#8c8c92",
+    edgeLight: "#c8c8cc",
+    edgeDark: "#58585e",
     rays: false,
     sparkle: false,
   },
   LEGENDARY: {
-    faceLight: "#ffe08a",
-    faceMid: "#e0952a",
-    faceDark: "#b6650a",
-    edgeLight: "#ffb648",
-    edgeDark: "#6b3a04",
+    faceLight: "#f8f8f9",
+    faceMid: "#e8e8ea",
+    faceDark: "#a0a0a6",
+    edgeLight: "#d8d8dc",
+    edgeDark: "#64646a",
     rays: true,
     sparkle: false,
   },
   RELIC: {
-    faceLight: "#ff8fa3",
-    faceMid: "#d61f4f",
-    faceDark: "#8f0a35",
-    edgeLight: "#ff2469",
-    edgeDark: "#560720",
+    faceLight: "#ffffff",
+    faceMid: "#f0f0f2",
+    faceDark: "#b4b4ba",
+    edgeLight: "#e8e8ea",
+    edgeDark: "#70707a",
     rays: true,
     sparkle: true,
   },
@@ -182,15 +188,15 @@ export function BadgeFrame({
 
       {rarity === "RARE" || rarity === "EPIC" || rarity === "LEGENDARY" || rarity === "RELIC" ? (
         <>
-          <circle cx="50" cy="9.5" r="2.2" fill="#f4d783" stroke="#8a5c07" strokeWidth="0.4" />
-          <circle cx="50" cy="90.5" r="2.2" fill="#f4d783" stroke="#8a5c07" strokeWidth="0.4" />
+          <circle cx="50" cy="9.5" r="2.2" fill="#e8e8ec" stroke="#5a5a60" strokeWidth="0.4" />
+          <circle cx="50" cy="90.5" r="2.2" fill="#e8e8ec" stroke="#5a5a60" strokeWidth="0.4" />
         </>
       ) : null}
 
       {palette.sparkle ? (
         <>
-          <path d="M18 20 l1.2 3 3 1.2 -3 1.2 -1.2 3 -1.2 -3 -3 -1.2 3 -1.2 Z" fill="#fff3d0" />
-          <path d="M82 78 l0.9 2.2 2.2 0.9 -2.2 0.9 -0.9 2.2 -0.9 -2.2 -2.2 -0.9 2.2 -0.9 Z" fill="#fff3d0" />
+          <path d="M18 20 l1.2 3 3 1.2 -3 1.2 -1.2 3 -1.2 -3 -3 -1.2 3 -1.2 Z" fill="#ffffff" />
+          <path d="M82 78 l0.9 2.2 2.2 0.9 -2.2 0.9 -0.9 2.2 -0.9 -2.2 -2.2 -0.9 2.2 -0.9 Z" fill="#ffffff" />
         </>
       ) : null}
     </svg>

@@ -35,8 +35,7 @@ export default function DevelopersPage() {
         <Card>
           <CardTitle>API catalog</CardTitle>
           <CardDescription>
-            AI Behavior, Faction Simulation, Event Trigger, Logistics, NPC Personality, Pack
-            Metadata.
+            AI Behavior, Faction Simulation, Event Trigger, Logistics, Pack Metadata.
           </CardDescription>
           <Link
             href="/developers/apis"
