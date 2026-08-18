@@ -4,6 +4,16 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import {
+  DataTable,
+  DataTableBody,
+  DataTableEmpty,
+  DataTableHead,
+  DataTableRow,
+  DataTableTd,
+  DataTableTh,
+} from "@/components/dashboard/data-table";
 
 type AdminPlusRow = {
   publicRef: string | null;
@@ -99,37 +109,54 @@ export function PlusSubscriptionsPanel() {
           Search
         </Button>
       </form>
-      {rows.length === 0 ? (
-        <p className="text-sm text-muted">No subscriptions loaded.</p>
-      ) : (
-        <ul className="space-y-3 text-sm">
-          {rows.map((row) => (
-            <li key={row.publicRef ?? row.kobaId} className="rounded-xl border border-border p-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="font-mono text-xs">{row.publicRef}</span>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="secondary"
-                  disabled={busy || !row.publicRef}
-                  onClick={() => row.publicRef && void reconcile(row.publicRef)}
-                >
-                  Reconcile from Stripe
-                </Button>
-              </div>
-              <p className="mt-2 text-muted">
-                {row.state}
-                {row.cancelAtPeriodEnd ? " · cancels at period end" : ""}
-                {row.planCode ? ` · ${row.planCode}` : ""} · {row.accountType} · {row.kobaId}
-              </p>
-              <p className="mt-1 font-mono text-xs text-muted">
-                {row.email} · sub {row.stripeSubscriptionId ?? "—"} · event{" "}
-                {row.lastStripeEventId ?? "—"}
-              </p>
-            </li>
-          ))}
-        </ul>
-      )}
+      <DataTable>
+        <DataTableHead>
+          <DataTableTh>Subscription</DataTableTh>
+          <DataTableTh>State</DataTableTh>
+          <DataTableTh>Account</DataTableTh>
+          <DataTableTh>Stripe</DataTableTh>
+          <DataTableTh className="text-right">Action</DataTableTh>
+        </DataTableHead>
+        <DataTableBody>
+          {rows.length === 0 ? (
+            <DataTableEmpty colSpan={5}>No subscriptions loaded.</DataTableEmpty>
+          ) : (
+            rows.map((row) => (
+              <DataTableRow key={row.publicRef ?? row.kobaId}>
+                <DataTableTd className="font-mono text-xs text-foreground">
+                  {row.publicRef ?? "—"}
+                </DataTableTd>
+                <DataTableTd>
+                  <Badge tone={row.state === "ACTIVE" ? "live" : "default"}>{row.state}</Badge>
+                  {row.cancelAtPeriodEnd ? (
+                    <span className="ml-2 text-xs text-muted">cancels at period end</span>
+                  ) : null}
+                </DataTableTd>
+                <DataTableTd className="text-xs text-muted">
+                  {row.planCode ? `${row.planCode} · ` : ""}
+                  {row.accountType} · {row.kobaId}
+                  {row.email ? <div>{row.email}</div> : null}
+                </DataTableTd>
+                <DataTableTd className="font-mono text-xs text-muted">
+                  sub {row.stripeSubscriptionId ?? "—"}
+                  <div>event {row.lastStripeEventId ?? "—"}</div>
+                </DataTableTd>
+                <DataTableTd className="text-right">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    disabled={busy || !row.publicRef}
+                    onClick={() => row.publicRef && void reconcile(row.publicRef)}
+                  >
+                    Reconcile
+                  </Button>
+                </DataTableTd>
+              </DataTableRow>
+            ))
+          )}
+        </DataTableBody>
+      </DataTable>
     </div>
   );
 }

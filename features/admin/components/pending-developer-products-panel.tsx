@@ -3,6 +3,13 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
+import {
+  ListPanel,
+  ListPanelEmpty,
+  ListRow,
+  ListRowActions,
+  ListRowTitle,
+} from "@/components/dashboard/list-panel";
 
 type PendingDevProduct = {
   publicRef: string;
@@ -50,16 +57,20 @@ export function PendingDeveloperProductsPanel({ products }: { products: PendingD
   }
 
   if (products.length === 0) {
-    return <p className="text-sm text-muted">No developer products waiting for review.</p>;
+    return <ListPanelEmpty>No developer products waiting for review.</ListPanelEmpty>;
   }
 
   return (
     <div className="space-y-3">
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
-      <ul className="divide-y divide-border rounded-md border border-border">
+      <ListPanel>
         {products.map((product) => (
-          <li key={product.publicRef} className="space-y-2 px-4 py-3">
-            <p className="font-medium">{product.name}</p>
+          // Variable-height version list per row — kept stacked at every
+          // width rather than ListRow's default sm:flex-row, since a
+          // side-by-side actions column would squeeze awkwardly against
+          // however many versions this product has.
+          <ListRow key={product.publicRef} className="sm:flex-col sm:items-start">
+            <ListRowTitle>{product.name}</ListRowTitle>
             <p className="font-mono text-xs text-muted">
               {product.publicRef} · {product.reviewState} · {product.category}
               {product.publisher ? ` · ${product.publisher}` : ""}
@@ -72,7 +83,7 @@ export function PendingDeveloperProductsPanel({ products }: { products: PendingD
                   .join(", ")}
               </p>
             ))}
-            <div className="flex flex-wrap gap-2">
+            <ListRowActions>
               <Button
                 size="sm"
                 disabled={pending}
@@ -103,10 +114,10 @@ export function PendingDeveloperProductsPanel({ products }: { products: PendingD
               >
                 Reject
               </Button>
-            </div>
-          </li>
+            </ListRowActions>
+          </ListRow>
         ))}
-      </ul>
+      </ListPanel>
     </div>
   );
 }

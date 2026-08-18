@@ -3,6 +3,14 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
+import {
+  ListPanel,
+  ListPanelEmpty,
+  ListRow,
+  ListRowActions,
+  ListRowMain,
+  ListRowMeta,
+} from "@/components/dashboard/list-panel";
 
 type DisputedOrder = {
   publicRef: string;
@@ -28,7 +36,7 @@ export function DisputedOrdersPanel({
   const [error, setError] = useState<string | null>(null);
 
   if (!canResolve) {
-    return <p className="text-sm text-muted">Only Admin or Superadmin can resolve disputes.</p>;
+    return <ListPanelEmpty>Only Admin or Superadmin can resolve disputes.</ListPanelEmpty>;
   }
 
   async function resolve(publicRef: string, resolution: "RELEASE" | "REFUND") {
@@ -50,27 +58,27 @@ export function DisputedOrdersPanel({
   }
 
   if (orders.length === 0) {
-    return <p className="text-sm text-muted">No disputed orders.</p>;
+    return <ListPanelEmpty>No disputed orders.</ListPanelEmpty>;
   }
 
   return (
     <div className="space-y-3">
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
-      <ul className="divide-y divide-border rounded-md border border-border">
+      <ListPanel>
         {orders.map((order) => (
-          <li key={order.publicRef} className="space-y-2 px-4 py-3">
-            <div className="space-y-1">
+          <ListRow key={order.publicRef}>
+            <ListRowMain>
               <p className="font-mono text-xs text-neon-lime">{order.publicRef}</p>
               <p className="text-sm text-foreground">
                 {order.shopName} · {(order.totalCents / 100).toFixed(2)} {order.currency}
               </p>
-              <p className="text-sm text-muted">{order.disputeReason}</p>
-              <p className="text-xs text-muted">
+              <ListRowMeta className="text-sm">{order.disputeReason}</ListRowMeta>
+              <ListRowMeta>
                 {order.disputedByHandle ? `@${order.disputedByHandle}` : "buyer"}
                 {order.disputedAt ? ` · ${new Date(order.disputedAt).toLocaleString()}` : ""}
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
+              </ListRowMeta>
+            </ListRowMain>
+            <ListRowActions>
               <Button
                 size="sm"
                 disabled={pending}
@@ -86,10 +94,10 @@ export function DisputedOrdersPanel({
               >
                 Refund buyer
               </Button>
-            </div>
-          </li>
+            </ListRowActions>
+          </ListRow>
         ))}
-      </ul>
+      </ListPanel>
     </div>
   );
 }
