@@ -1,6 +1,17 @@
 import { redirect } from "next/navigation";
+import { Flag, Package, Receipt, Sparkles, Code2, Store } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
+import { StatCard, StatCardGrid } from "@/components/dashboard/stat-card";
+import {
+  DataTable,
+  DataTableBody,
+  DataTableEmpty,
+  DataTableHead,
+  DataTableRow,
+  DataTableTd,
+  DataTableTh,
+} from "@/components/dashboard/data-table";
 import { DisputedOrdersPanel } from "@/features/admin/components/disputed-orders-panel";
 import { IssueStaffForm } from "@/features/admin/components/issue-staff-form";
 import { PendingAidenPanel } from "@/features/admin/components/pending-aiden-panel";
@@ -153,38 +164,39 @@ export default async function AdminPage() {
         </ul>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardTitle className="text-2xl tabular-nums">{overview.counts.pendingProducts}</CardTitle>
-          <CardDescription>Pending listings</CardDescription>
-        </Card>
-        <Card>
-          <CardTitle className="text-2xl tabular-nums">{overview.counts.pendingShops}</CardTitle>
-          <CardDescription>Pending shops</CardDescription>
-        </Card>
-        <Card>
-          <CardTitle className="text-2xl tabular-nums">{overview.counts.openReports}</CardTitle>
-          <CardDescription>Open reports</CardDescription>
-        </Card>
-        <Card>
-          <CardTitle className="text-2xl tabular-nums">
-            {overview.counts.refundableOrders}
-          </CardTitle>
-          <CardDescription>Paid / fulfilled orders</CardDescription>
-        </Card>
-        <Card>
-          <CardTitle className="text-2xl tabular-nums">
-            {overview.counts.pendingAidenAssets}
-          </CardTitle>
-          <CardDescription>Aiden review queue</CardDescription>
-        </Card>
-        <Card>
-          <CardTitle className="text-2xl tabular-nums">
-            {overview.counts.pendingDevProducts}
-          </CardTitle>
-          <CardDescription>Developer product queue</CardDescription>
-        </Card>
-      </div>
+      <StatCardGrid>
+        <StatCard
+          label="Pending listings"
+          value={overview.counts.pendingProducts}
+          icon={Package}
+          tone={overview.counts.pendingProducts > 0 ? "warning" : "default"}
+        />
+        <StatCard
+          label="Pending shops"
+          value={overview.counts.pendingShops}
+          icon={Store}
+          tone={overview.counts.pendingShops > 0 ? "warning" : "default"}
+        />
+        <StatCard
+          label="Open reports"
+          value={overview.counts.openReports}
+          icon={Flag}
+          tone={overview.counts.openReports > 0 ? "danger" : "default"}
+        />
+        <StatCard label="Paid / fulfilled orders" value={overview.counts.refundableOrders} icon={Receipt} />
+        <StatCard
+          label="Aiden review queue"
+          value={overview.counts.pendingAidenAssets}
+          icon={Sparkles}
+          tone={overview.counts.pendingAidenAssets > 0 ? "warning" : "default"}
+        />
+        <StatCard
+          label="Developer product queue"
+          value={overview.counts.pendingDevProducts}
+          icon={Code2}
+          tone={overview.counts.pendingDevProducts > 0 ? "warning" : "default"}
+        />
+      </StatCardGrid>
 
       <Card>
         <CardTitle>Listing queue</CardTitle>
@@ -395,22 +407,35 @@ export default async function AdminPage() {
       <Card>
         <CardTitle>Recent audit</CardTitle>
         <CardDescription>Latest staff-relevant and platform actions.</CardDescription>
-        <ul className="mt-4 space-y-2 font-mono text-xs text-muted">
-          {overview.recentAudit.length === 0 ? (
-            <li>No audit entries yet.</li>
-          ) : (
-            overview.recentAudit.map((entry) => (
-              <li key={entry.id} className="border-b border-border/60 pb-2 last:border-0">
-                <span className="text-foreground">{entry.action}</span>
-                {entry.targetType ? ` · ${entry.targetType}` : ""}
-                {entry.targetId ? ` · ${entry.targetId.slice(0, 12)}` : ""}
-                <span className="ml-2 text-muted">
-                  {new Date(entry.createdAt).toLocaleString()}
-                </span>
-              </li>
-            ))
-          )}
-        </ul>
+        <div className="mt-4">
+          <DataTable>
+            <DataTableHead>
+              <DataTableTh>Action</DataTableTh>
+              <DataTableTh>Target</DataTableTh>
+              <DataTableTh className="text-right">When</DataTableTh>
+            </DataTableHead>
+            <DataTableBody>
+              {overview.recentAudit.length === 0 ? (
+                <DataTableEmpty colSpan={3}>No audit entries yet.</DataTableEmpty>
+              ) : (
+                overview.recentAudit.map((entry) => (
+                  <DataTableRow key={entry.id}>
+                    <DataTableTd className="font-mono text-xs text-foreground">
+                      {entry.action}
+                    </DataTableTd>
+                    <DataTableTd className="font-mono text-xs text-muted">
+                      {entry.targetType ?? "—"}
+                      {entry.targetId ? ` · ${entry.targetId.slice(0, 12)}` : ""}
+                    </DataTableTd>
+                    <DataTableTd className="text-right font-mono text-xs text-muted whitespace-nowrap">
+                      {new Date(entry.createdAt).toLocaleString()}
+                    </DataTableTd>
+                  </DataTableRow>
+                ))
+              )}
+            </DataTableBody>
+          </DataTable>
+        </div>
       </Card>
     </div>
   );

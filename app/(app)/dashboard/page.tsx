@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { Gavel, Package, Users } from "lucide-react";
 import { PageHeader } from "@/components/koba/page-header";
-import { Card, CardDescription, CardTitle } from "@/components/ui/card";
+import { StatCard, StatCardGrid } from "@/components/dashboard/stat-card";
 import { auth } from "@/lib/auth";
 import { getAccountSnapshot } from "@/features/accounts/services/account.service";
 import { countActiveBids } from "@/features/auctions/services/auction.service";
@@ -44,23 +45,21 @@ export default async function PlayerDashboardPage() {
         }
       />
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardTitle>Inventory value</CardTitle>
-          <p className="mt-2 font-mono text-2xl">—</p>
-          <CardDescription>Marketplace inventory lands in Phase 5.</CardDescription>
-        </Card>
-        <Card>
-          <CardTitle>Active bids</CardTitle>
-          <p className="mt-2 font-mono text-2xl">{activeBids}</p>
-          <CardDescription>Live auctions where you are the leading bid.</CardDescription>
-        </Card>
-        <Card>
-          <CardTitle>Groups joined</CardTitle>
-          <p className="mt-2 font-mono text-2xl">{groupsJoined}</p>
-          <CardDescription>Public and private groups you belong to.</CardDescription>
-        </Card>
-      </div>
+      <StatCardGrid className="sm:grid-cols-3 lg:grid-cols-3">
+        <StatCard label="Inventory value" value="—" icon={Package} hint="Coming soon" />
+        <StatCard
+          label="Active bids"
+          value={activeBids}
+          icon={Gavel}
+          hint="Live auctions where you're the leading bid"
+        />
+        <StatCard
+          label="Groups joined"
+          value={groupsJoined}
+          icon={Users}
+          hint="Public and private groups you belong to"
+        />
+      </StatCardGrid>
 
       <div className="flex flex-wrap gap-3">
         <Link href={`/u/${snapshot.handle}`} className={cn(buttonVariants({ variant: "primary" }))}>

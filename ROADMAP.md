@@ -2196,6 +2196,27 @@ Flagging rather than guessing on anything with real product/cost/legal consequen
 18. **User interests / tag taxonomy** (Phase 1 → Phase 8) — Phase 1's outline named a mandatory "minimum 4 hashtags/interest tags" registration step feeding Phase 8's ranking, but neither the capture step nor a tag taxonomy was ever built. Phase 8's feed ranking now ships with an `interestMatch` signal deliberately held at weight 0 pending this.
 19. **Reactive/Progressive Skins** (Phase 14 + Phase 21) — trigger signal, stage count/thresholds, whether a non-live "static multi-stage" v1 is acceptable while Phase 21 (KOBA PC Plugin) doesn't exist, and which games can even expose live kill/score events for KOBA to react to. See Phase 14's dedicated subsection — this is a genuinely new capability split across a buildable half (multi-stage generation) and a fully-blocked half (live in-match trigger + apply).
 
+**Dashboard reskin (client, 2026-08-18) — phase 1 shipped.** Client supplied
+`tailadmin-free-tailwind-dashboard-template-main.zip` (TailAdmin's free tier —
+static HTML/Tailwind, not React) as a reference for superadmin/admin/moderator/
+shop-owner/influencer/player dashboards, confirmed via `AskUserQuestion` to
+restyle to KOBA's existing dark-first brand rather than adopt TailAdmin's own
+look. Scope note: KOBA already has a real app shell with sidebar/topbar
+navigation (`components/koba/app-shell.tsx`) — the actual gap versus TailAdmin
+wasn't chrome, it was the *content-area* visual language (metric cards, tables)
+inside that shell, which is what this shipped. New `components/dashboard/`
+kit — `StatCard`/`StatCardGrid` (icon chip + tabular-nums number + label,
+KOBA tokens) and `DataTable` (sticky header, hover rows) — genuinely
+componentized, not a port of TailAdmin's markup. Applied to all four
+data-driven dashboard surfaces this pass: `/admin` (superadmin/staff — also
+gained a real audit-log DataTable, replacing a plain `<ul>`), `/business`
+(shop owner **and** moderator — `ShopMemberRole` only has OWNER/MODERATOR, no
+separate moderator route), `/influencer`, `/dashboard` (player). "Moderator"
+in this codebase is a shop-level role sharing `/business`, not a separate
+surface. Not yet done: rolling the same kit onto the many nested feature
+panels *within* those pages (queue tables, forms) — this pass only reskinned
+each dashboard's own top-level metrics/summary layer.
+
 ---
 
 _Phases 0–13 above are the original client outline and are now fully built (see README.md for ground truth). Phases 14–23 are newer client direction, captured here as planning — not yet built except where individually noted (Phase 19, and the Aiden Studio OS pipeline scaffolding in Phase 14)._

@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { BadgeCheck, Megaphone, Wallet } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
+import { StatCard, StatCardGrid } from "@/components/dashboard/stat-card";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { requireInfluencerDashboard } from "@/features/influencer/lib/require-influencer";
@@ -51,25 +53,25 @@ export default async function InfluencerDashboardPage() {
         Pending commissions are not guaranteed money. External payouts stay deferred unless a
         compliant Connect transfer already exists for legacy codes.
       </p>
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardTitle>Verification</CardTitle>
-          <p className="mt-2 font-mono text-xl">{profile.verificationStatus}</p>
-          <CardDescription>Staff verifies profiles. You cannot self-verify.</CardDescription>
-        </Card>
-        <Card>
-          <CardTitle>Active campaigns</CardTitle>
-          <p className="mt-2 font-mono text-2xl">
-            {participations.filter((row) => row.status === "ACTIVE").length}
-          </p>
-        </Card>
-        <Card>
-          <CardTitle>Available (not withdrawable)</CardTitle>
-          <p className="mt-2 font-mono text-2xl">
-            {totals[0] ? dollars(totals[0].available, totals[0].currency) : dollars(0)}
-          </p>
-        </Card>
-      </div>
+      <StatCardGrid className="sm:grid-cols-3 lg:grid-cols-3">
+        <StatCard
+          label="Verification"
+          value={profile.verificationStatus}
+          icon={BadgeCheck}
+          tone={profile.verificationStatus === "VERIFIED" ? "success" : "default"}
+          hint="Staff verifies profiles — you cannot self-verify"
+        />
+        <StatCard
+          label="Active campaigns"
+          value={participations.filter((row) => row.status === "ACTIVE").length}
+          icon={Megaphone}
+        />
+        <StatCard
+          label="Available (not withdrawable)"
+          value={totals[0] ? dollars(totals[0].available, totals[0].currency) : dollars(0)}
+          icon={Wallet}
+        />
+      </StatCardGrid>
       <Card>
         <CardTitle>Legacy HANDLE-PRODUCT codes</CardTitle>
         <CardDescription>Existing shop promo codes remain supported.</CardDescription>

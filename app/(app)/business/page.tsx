@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { Boxes, Package, Receipt, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
+import { StatCard, StatCardGrid } from "@/components/dashboard/stat-card";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { CreateShopForm } from "@/features/shops/components/create-shop-form";
@@ -76,27 +78,27 @@ export default async function BusinessDashboardPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardTitle>Live listings</CardTitle>
-          <p className="mt-2 font-mono text-2xl">{data.listings.approved}</p>
-          <CardDescription>
-            {data.listings.pending} pending · {data.listings.draft} drafts
-          </CardDescription>
-        </Card>
-        <Card>
-          <CardTitle>Followers</CardTitle>
-          <p className="mt-2 font-mono text-2xl">{data.followers}</p>
-          <CardDescription>{data.reviews} shop reviews</CardDescription>
-        </Card>
-        <Card>
-          <CardTitle>Orders</CardTitle>
-          <p className="mt-2 font-mono text-2xl">{shop._count.orders}</p>
-          <CardDescription>
-            {data.orders.PAID + data.orders.FULFILLED} paid · {data.orders.PENDING} pending
-          </CardDescription>
-        </Card>
-      </div>
+      <StatCardGrid>
+        <StatCard
+          label="Live listings"
+          value={data.listings.approved}
+          icon={Package}
+          hint={`${data.listings.pending} pending · ${data.listings.draft} drafts`}
+        />
+        <StatCard label="Followers" value={data.followers} icon={Users} hint={`${data.reviews} shop reviews`} />
+        <StatCard
+          label="Orders"
+          value={shop._count.orders}
+          icon={Receipt}
+          hint={`${data.orders.PAID + data.orders.FULFILLED} paid · ${data.orders.PENDING} pending`}
+        />
+        <StatCard
+          label="Inventory"
+          value={data.inventoryQty}
+          icon={Boxes}
+          hint="Units across all shop listings, including drafts"
+        />
+      </StatCardGrid>
 
       <Card>
         <CardTitle>Influencer promos</CardTitle>
@@ -171,12 +173,6 @@ export default async function BusinessDashboardPage() {
           initial={shop.taggingAllowed}
           label="Allow shop tags"
         />
-      </Card>
-
-      <Card>
-        <CardTitle>Inventory</CardTitle>
-        <p className="mt-2 font-mono text-2xl">{data.inventoryQty}</p>
-        <CardDescription>Units across all shop listings, including drafts.</CardDescription>
       </Card>
 
       <ShopRarityDistributionCard distribution={data.rarityDistribution} />
