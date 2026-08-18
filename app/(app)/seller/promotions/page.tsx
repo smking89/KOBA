@@ -1,9 +1,15 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { requireSellerPromotions } from "@/features/promotions/lib/require-seller";
 import { listSellerCampaigns } from "@/features/promotions/services/campaign.service";
 import { SellerPromotionsNav } from "@/features/promotions/components/seller-promotions-nav";
+import {
+  ListPanel,
+  ListPanelEmpty,
+  ListRowMain,
+  ListRowMeta,
+  ListRow,
+} from "@/components/dashboard/list-panel";
 
 export const metadata = { title: "Seller promotions" };
 
@@ -14,23 +20,28 @@ export default async function SellerPromotionsPage() {
     <div className="space-y-6">
       <h1 className="text-3xl font-semibold tracking-tight">Affiliate campaigns</h1>
       <SellerPromotionsNav current="/seller/promotions" />
-      <ul className="grid gap-4">
-        {campaigns.map((row) => (
-          <li key={row.id}>
-            <Card>
-              <CardTitle>
-                <Link href={`/seller/promotions/${row.id}`} className="hover:text-neon-lime">
+      {campaigns.length === 0 ? (
+        <ListPanelEmpty>No affiliate campaigns yet.</ListPanelEmpty>
+      ) : (
+        <ListPanel>
+          {campaigns.map((row) => (
+            <ListRow key={row.id}>
+              <ListRowMain>
+                <Link
+                  href={`/seller/promotions/${row.id}`}
+                  className="font-medium text-foreground hover:text-neon-lime"
+                >
                   {row.name}
                 </Link>
-              </CardTitle>
-              <CardDescription>
-                <Badge>{row.status}</Badge> · remaining {row.remainingBudgetCents} cents ·{" "}
-                {row._count.participations} influencers
-              </CardDescription>
-            </Card>
-          </li>
-        ))}
-      </ul>
+                <ListRowMeta>
+                  <Badge>{row.status}</Badge> · remaining {row.remainingBudgetCents} cents ·{" "}
+                  {row._count.participations} influencers
+                </ListRowMeta>
+              </ListRowMain>
+            </ListRow>
+          ))}
+        </ListPanel>
+      )}
     </div>
   );
 }

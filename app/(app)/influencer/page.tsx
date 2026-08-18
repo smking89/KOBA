@@ -3,6 +3,7 @@ import { BadgeCheck, Megaphone, Wallet } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { StatCard, StatCardGrid } from "@/components/dashboard/stat-card";
+import { ListPanel, ListPanelEmpty, ListRow, ListRowActions } from "@/components/dashboard/list-panel";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { requireInfluencerDashboard } from "@/features/influencer/lib/require-influencer";
@@ -79,14 +80,22 @@ export default async function InfluencerDashboardPage() {
           <InfluencerPayoutButton onboarded={dashboard.onboarded} />
         </div>
         <CreateReferralCodeForm />
-        <ul className="mt-4 space-y-2">
-          {dashboard.codes.map((code) => (
-            <li key={code.publicRef} className="flex flex-wrap items-center justify-between gap-2">
-              <span className="font-mono text-sm">{code.code}</span>
-              <RevokeReferralButton code={code.code} />
-            </li>
-          ))}
-        </ul>
+        <div className="mt-4">
+          {dashboard.codes.length === 0 ? (
+            <ListPanelEmpty>No referral codes yet.</ListPanelEmpty>
+          ) : (
+            <ListPanel>
+              {dashboard.codes.map((code) => (
+                <ListRow key={code.publicRef}>
+                  <span className="font-mono text-sm text-foreground">{code.code}</span>
+                  <ListRowActions>
+                    <RevokeReferralButton code={code.code} />
+                  </ListRowActions>
+                </ListRow>
+              ))}
+            </ListPanel>
+          )}
+        </div>
       </Card>
     </div>
   );

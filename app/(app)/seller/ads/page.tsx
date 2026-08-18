@@ -1,9 +1,17 @@
 import { Badge } from "@/components/ui/badge";
-import { Card, CardDescription, CardTitle } from "@/components/ui/card";
+import { Card, CardTitle } from "@/components/ui/card";
 import { requireSellerPromotions } from "@/features/promotions/lib/require-seller";
 import { listSellerAds } from "@/features/promotions/services/ads.service";
 import { SellerPromotionsNav } from "@/features/promotions/components/seller-promotions-nav";
 import { ActionButton, AdCreateForm } from "@/features/promotions/components/promotion-forms";
+import {
+  ListPanel,
+  ListPanelEmpty,
+  ListRow,
+  ListRowActions,
+  ListRowMain,
+  ListRowMeta,
+} from "@/components/dashboard/list-panel";
 
 export const metadata = { title: "Sponsored ads" };
 
@@ -21,16 +29,20 @@ export default async function SellerAdsPage() {
         <CardTitle>Create draft</CardTitle>
         <AdCreateForm />
       </Card>
-      <ul className="space-y-3">
-        {campaigns.map((row) => (
-          <li key={row.id}>
-            <Card>
-              <CardTitle className="font-mono">{row.publicRef}</CardTitle>
-              <CardDescription>
-                <Badge>{row.status}</Badge> · spend {row.spendCoins.toString()} /{" "}
-                {row.totalBudgetCoins.toString()} coins · {row.clickCount} clicks
-              </CardDescription>
-              <div className="mt-3 flex flex-wrap gap-2">
+      {campaigns.length === 0 ? (
+        <ListPanelEmpty>No sponsored placements yet.</ListPanelEmpty>
+      ) : (
+        <ListPanel>
+          {campaigns.map((row) => (
+            <ListRow key={row.id}>
+              <ListRowMain>
+                <p className="font-mono text-sm text-foreground">{row.publicRef}</p>
+                <ListRowMeta>
+                  <Badge>{row.status}</Badge> · spend {row.spendCoins.toString()} /{" "}
+                  {row.totalBudgetCoins.toString()} coins · {row.clickCount} clicks
+                </ListRowMeta>
+              </ListRowMain>
+              <ListRowActions>
                 <ActionButton
                   url={`/api/seller/ads/${row.id}`}
                   body={{ action: "submit" }}
@@ -46,11 +58,11 @@ export default async function SellerAdsPage() {
                   body={{ action: "pause" }}
                   label="Pause"
                 />
-              </div>
-            </Card>
-          </li>
-        ))}
-      </ul>
+              </ListRowActions>
+            </ListRow>
+          ))}
+        </ListPanel>
+      )}
     </div>
   );
 }

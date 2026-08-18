@@ -5,6 +5,15 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { TargetSearchInput, type TargetCandidate } from "@/features/blacklist/components/target-search-input";
+import {
+  ListPanel,
+  ListPanelEmpty,
+  ListRow,
+  ListRowActions,
+  ListRowMain,
+  ListRowMeta,
+  ListRowTitle,
+} from "@/components/dashboard/list-panel";
 
 type BlacklistEntry = {
   id: string;
@@ -130,23 +139,23 @@ export function ShopBlacklistPanel({ initialEntries }: { initialEntries: Blackli
           placeholder="Search blacklist by @username"
         />
         {visibleEntries.length === 0 ? (
-          <p className="text-sm text-muted">Nobody on this shop&apos;s blacklist yet.</p>
+          <ListPanelEmpty>Nobody on this shop&apos;s blacklist yet.</ListPanelEmpty>
         ) : (
-          <ul className="space-y-2">
+          <ListPanel>
             {visibleEntries.map((entry) => (
-              <li key={entry.id} className="rounded-md border border-white/10 p-3 text-sm">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="font-medium">
-                      @{entry.targetUser.profile?.handle ?? entry.targetUser.email}
+              <ListRow key={entry.id}>
+                <ListRowMain>
+                  <ListRowTitle>
+                    @{entry.targetUser.profile?.handle ?? entry.targetUser.email}
+                  </ListRowTitle>
+                  <ListRowMeta>{entry.reason}</ListRowMeta>
+                  {entry.hashtags.length > 0 ? (
+                    <p className="text-xs text-muted">
+                      {entry.hashtags.map((tag) => `#${tag}`).join(" ")}
                     </p>
-                    <p className="mt-1 text-muted">{entry.reason}</p>
-                    {entry.hashtags.length > 0 ? (
-                      <p className="mt-1 text-xs text-muted">
-                        {entry.hashtags.map((tag) => `#${tag}`).join(" ")}
-                      </p>
-                    ) : null}
-                  </div>
+                  ) : null}
+                </ListRowMain>
+                <ListRowActions>
                   <Button
                     type="button"
                     variant="ghost"
@@ -156,10 +165,10 @@ export function ShopBlacklistPanel({ initialEntries }: { initialEntries: Blackli
                   >
                     {removingId === entry.id ? "Removing…" : "Remove"}
                   </Button>
-                </div>
-              </li>
+                </ListRowActions>
+              </ListRow>
             ))}
-          </ul>
+          </ListPanel>
         )}
       </div>
     </div>

@@ -7,6 +7,7 @@ import {
   SOCIAL_PROVIDERS,
   type SocialProviderKey,
 } from "@/features/social-connections/lib/providers";
+import { ListPanel, ListRow, ListRowActions, ListRowMain } from "@/components/dashboard/list-panel";
 
 export type SocialConnectionSummary = {
   provider: SocialProviderKey;
@@ -54,18 +55,15 @@ export function SocialConnectionsPanel({ configured, connections, shopId }: Prop
   }
 
   return (
-    <ul className="space-y-2">
+    <ListPanel>
       {PROVIDER_ORDER.map((key) => {
         const config = SOCIAL_PROVIDERS[key];
         const connection = byProvider.get(key);
         const canConnect = configured[key];
 
         return (
-          <li
-            key={key}
-            className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-white/10 px-3 py-2"
-          >
-            <div className="min-w-0">
+          <ListRow key={key}>
+            <ListRowMain>
               <p className="text-sm font-medium">{config.label}</p>
               {connection ? (
                 <p className="truncate text-xs text-muted">
@@ -88,32 +86,34 @@ export function SocialConnectionsPanel({ configured, connections, shopId }: Prop
                   {canConnect ? "Not connected." : "Not available yet."}
                 </p>
               )}
-            </div>
+            </ListRowMain>
 
-            {connection ? (
-              <button
-                type="button"
-                onClick={() => disconnect(key)}
-                disabled={disconnecting === key || pending}
-                className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}
-              >
-                {disconnecting === key ? "Disconnecting…" : "Disconnect"}
-              </button>
-            ) : (
-              <a
-                href={canConnect ? connectHref(key) : undefined}
-                aria-disabled={!canConnect}
-                className={cn(
-                  buttonVariants({ variant: "secondary", size: "sm" }),
-                  !canConnect && "pointer-events-none opacity-45",
-                )}
-              >
-                Connect
-              </a>
-            )}
-          </li>
+            <ListRowActions>
+              {connection ? (
+                <button
+                  type="button"
+                  onClick={() => disconnect(key)}
+                  disabled={disconnecting === key || pending}
+                  className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}
+                >
+                  {disconnecting === key ? "Disconnecting…" : "Disconnect"}
+                </button>
+              ) : (
+                <a
+                  href={canConnect ? connectHref(key) : undefined}
+                  aria-disabled={!canConnect}
+                  className={cn(
+                    buttonVariants({ variant: "secondary", size: "sm" }),
+                    !canConnect && "pointer-events-none opacity-45",
+                  )}
+                >
+                  Connect
+                </a>
+              )}
+            </ListRowActions>
+          </ListRow>
         );
       })}
-    </ul>
+    </ListPanel>
   );
 }
