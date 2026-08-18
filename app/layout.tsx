@@ -35,6 +35,12 @@ export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
   icons: {
     icon: [
+      // OS-level dark/light favicon variants (client, 2026-08-18 —
+      // updated logo/favicon art). Only responds to the OS preference,
+      // not KOBA's own in-page toggle — theme-script.tsx / theme-toggle.tsx
+      // swap the live <link> href to track the manual toggle too.
+      { url: "/favicon-dark.png", sizes: "64x64", type: "image/png", media: "(prefers-color-scheme: dark)" },
+      { url: "/favicon-light.png", sizes: "64x64", type: "image/png", media: "(prefers-color-scheme: light)" },
       { url: "/icons/icon-192x192.png", sizes: "192x192", type: "image/png" },
       { url: "/icons/icon-512x512.png", sizes: "512x512", type: "image/png" },
     ],

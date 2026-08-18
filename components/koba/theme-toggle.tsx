@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Moon, Sun } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { applyFaviconForTheme } from "@/lib/theme/favicon";
 
 /**
  * Global light/dark toggle (client, 2026-08-17: "we need the toggle for
@@ -26,6 +27,7 @@ export function ThemeToggle({ className }: { className?: string }) {
     document.documentElement.classList.toggle("dark", next === "dark");
     localStorage.setItem("koba-theme", next);
     document.cookie = `koba-theme=${next};path=/;max-age=31536000;samesite=lax`;
+    applyFaviconForTheme(next);
   }
 
   return (
