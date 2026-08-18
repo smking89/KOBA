@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
@@ -13,13 +13,49 @@ import { AuthAlert } from "@/features/auth/components/auth-alert";
 import { FormField } from "@/features/auth/components/form-field";
 import { loginSchema, type LoginInput } from "@/features/auth/schemas/auth.schemas";
 import { safeInternalPath } from "@/lib/security/safe-redirect";
+import { OAuthLoginButtons } from "@/features/auth-oauth/components/oauth-login-buttons";
+import { cn } from "@/lib/utils";
+
+const OAUTH_ERROR_MESSAGE: Record<string, string> = {
+  not_configured: "That sign-in method isn't available yet.",
+  denied: "Sign-in was cancelled.",
+  email_exists:
+    "An account with this email already exists. Sign in with your password, then connect that account from Settings.",
+};
+const OAUTH_ERROR_FALLBACK = "Something went wrong signing you in. Try again.";
 
 export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = safeInternalPath(searchParams.get("callbackUrl"));
   const verified = searchParams.get("verified") === "1";
+  const oauthTicket = searchParams.get("oauthTicket");
+  const oauthError = searchParams.get("oauthError");
   const [formError, setFormError] = useState<string | null>(null);
+  const [oauthPending, setOauthPending] = useState(Boolean(oauthTicket));
+
+  // The OAuth callback (features/auth-oauth) redirects here with a
+  // one-time ticket instead of an email/password — the Credentials
+  // provider stays the only thing that mints a session either way.
+  useEffect(() => {
+    if (!oauthTicket) return;
+    let cancelled = false;
+    void (async () => {
+      const result = await signIn("credentials", { oauthTicket, redirect: false });
+      if (cancelled) return;
+      if (result?.error) {
+        setFormError(OAUTH_ERROR_FALLBACK);
+        setOauthPending(false);
+        return;
+      }
+      router.push(callbackUrl);
+      router.refresh();
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [oauthTicket]);
 
   const {
     register,
@@ -102,6 +138,11 @@ export function LoginForm() {
       {verified ? (
         <AuthAlert variant="success">Email verified. You can sign in now.</AuthAlert>
       ) : null}
+      {oauthError ? (
+        <AuthAlert variant="error">
+          {OAUTH_ERROR_MESSAGE[oauthError] ?? OAUTH_ERROR_FALLBACK}
+        </AuthAlert>
+      ) : null}
       {formError ? <AuthAlert variant="error">{formError}</AuthAlert> : null}
       {resendState === "sent" ? (
         <AuthAlert variant="info">
@@ -110,7 +151,20 @@ export function LoginForm() {
         </AuthAlert>
       ) : null}
 
-      <form onSubmit={onSubmit} className="space-y-4">
+      {oauthPending ? (
+        <p className="py-6 text-center text-sm text-muted">Signing you in…</p>
+      ) : (
+        <>
+          <OAuthLoginButtons callbackUrl={callbackUrl} className="mb-4" />
+          <div className="mb-4 flex items-center gap-3 text-xs text-muted">
+            <span className="h-px flex-1 bg-white/10" />
+            or
+            <span className="h-px flex-1 bg-white/10" />
+          </div>
+        </>
+      )}
+
+      <form onSubmit={onSubmit} className={cn("space-y-4", oauthPending && "hidden")}>
         <FormField id="email" label="Email" error={errors.email?.message}>
           <Input id="email" type="email" autoComplete="email" {...register("email")} />
         </FormField>

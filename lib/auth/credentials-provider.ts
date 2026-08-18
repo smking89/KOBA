@@ -15,6 +15,10 @@ const mfaTicketSchema = z.object({
   mfaTicket: z.string().min(16).max(128),
 });
 
+const oauthTicketSchema = z.object({
+  oauthTicket: z.string().min(16).max(128),
+});
+
 async function sessionUserFromId(userId: string) {
   const user = await prisma.user.findUnique({
     where: { id: userId },
@@ -48,6 +52,7 @@ export const credentialsProvider = Credentials({
     email: { label: "Email", type: "email" },
     password: { label: "Password", type: "password" },
     mfaTicket: { label: "MFA ticket", type: "text" },
+    oauthTicket: { label: "OAuth ticket", type: "text" },
   },
   authorize: async (credentials, request) => {
     const ticketParsed = mfaTicketSchema.safeParse(credentials);
@@ -55,6 +60,18 @@ export const credentialsProvider = Credentials({
       const { consumeSessionTicket } =
         await import("@/features/staff-mfa/services/staff-mfa.service");
       const userId = await consumeSessionTicket(ticketParsed.data.mfaTicket);
+      if (!userId) return null;
+      return sessionUserFromId(userId);
+    }
+
+    // "Continue with Discord/Steam/Google" — the OAuth callback route
+    // already verified the provider identity and minted this one-time
+    // ticket; the Credentials provider stays the single place a KOBA
+    // session gets minted (features/auth-oauth/lib/login-ticket.ts).
+    const oauthParsed = oauthTicketSchema.safeParse(credentials);
+    if (oauthParsed.success) {
+      const { consumeLoginTicket } = await import("@/features/auth-oauth/lib/login-ticket");
+      const userId = await consumeLoginTicket(oauthParsed.data.oauthTicket);
       if (!userId) return null;
       return sessionUserFromId(userId);
     }

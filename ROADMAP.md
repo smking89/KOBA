@@ -1775,8 +1775,58 @@ Not built yet: real Discord bot-ownership verification (the App Store
 Discord-bot submission flow still just validates invite-link format —
 `features/developers/lib/discord-invite.ts` — full ownership proof via
 this same OAuth registry is a natural follow-up but wasn't requested).
-Login-page OAuth itself (Discord/Steam/Google sign-in) is the next
-confirmed piece of work, not started.
+
+---
+
+## Login OAuth — "Continue with Discord / Steam / Google" (2026-08-17, status: done)
+
+The second half of the client's OAuth request, built right after bio
+social connections per the confirmed order.
+
+- `features/auth-oauth/` — deliberately a separate registry/lib from
+  `features/social-connections` (bio badges) even though Discord is
+  configured identically in both: one Discord app now serves three
+  purposes (bot-owner identity, bio badge, login), each tracked in its
+  own table, never unified.
+- `LoginOAuthProvider` enum + `UserLoginIdentity` model — one row per
+  (provider, providerUserId), unique both ways, so a provider identity
+  maps to exactly one KOBA user and vice versa.
+- **No auto-linking by email** — the confirmed policy (`AskUserQuestion`:
+  "Block it, ask them to log in with password first"). A provider
+  identity that isn't already in `UserLoginIdentity`, whose email
+  matches an existing password account, is refused outright
+  (`OAuthLoginError`) with a message pointing back to password sign-in +
+  the existing "connect from Settings" flow, never silently merged.
+  First-time sign-ins with no email conflict auto-create a full account
+  (User + AccountProfile + handle, defaulting to PLAYER) exactly like
+  registerUser() does for password signup.
+- Discord and Google are real OAuth2 (`features/auth-oauth/lib/oauth.ts`
+  + `providers.ts`); Google needs its own app registration
+  (`GOOGLE_CLIENT_ID`/`_SECRET`, unset — fails soft, button shows but
+  redirects with `?oauthError=not_configured`).
+- **Steam is OpenID 2.0, not OAuth2** — handled entirely separately in
+  `features/auth-oauth/lib/steam.ts` (redirect to
+  steamcommunity.com/openid/login, verify the signed assertion by
+  re-posting it back with `openid.mode=check_authentication`). Keyless —
+  no app registration exists for "Sign in with Steam," so the button
+  always works with zero config. `STEAM_API_KEY` is optional, used only
+  to look up a display name afterward (`GetPlayerSummaries`); missing
+  key just falls back to a generic `SteamUser<id>` handle seed. Steam
+  gives no email, so those accounts get a synthetic
+  `steam-<id>@users.koba.games` placeholder with `emailVerified: null`
+  (same as an unverified password signup) — flagged as a real UX gap:
+  Steam-only users have no way to receive password-reset or order-receipt
+  email until they add a real one, and there's no nudge built yet asking
+  them to.
+- The actual session is still only ever minted by the existing
+  Credentials provider (`lib/auth/credentials-provider.ts`) — the OAuth
+  callback verifies identity, then hands off a one-time
+  `OAuthLoginTicket` (mirrors `StaffMfaChallenge`'s session-issue ticket
+  pattern) that the client exchanges via `signIn("credentials", {
+  oauthTicket })`. No second code path mints a NextAuth session.
+- UI: `OAuthLoginButtons` on both `/login` and `/register`; `/login`'s
+  client effect auto-consumes `?oauthTicket=` on landing and shows
+  `?oauthError=` messages (not_configured / denied / email_exists).
 
 ---
 

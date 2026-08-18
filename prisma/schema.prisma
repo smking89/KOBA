@@ -268,6 +268,8 @@ model User {
   sponsoredCampaigns      SponsoredCampaign[]
   promotionNotices        PromotionNotice[]
   socialConnections       UserSocialConnection[]
+  loginIdentities         UserLoginIdentity[]
+  oauthLoginTickets       OAuthLoginTicket[]
 }
 
 model Account {
@@ -294,6 +296,52 @@ model Session {
   userId       String
   expires      DateTime
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+/** "Continue with Discord/Steam/Google" sign-in identities (client,
+ * 2026-08-17: "for the login and register pages, we need oauth").
+ * Deliberately separate from `Account` above (the unused Auth.js-Adapter
+ * shape already in this schema) and from `UserSocialConnection` (bio
+ * badges) — this table's only job is "which User does this provider
+ * identity log in as," enforced one-to-one both ways. No auto-linking by
+ * email: a provider identity not already in this table, whose email
+ * matches an existing User, is refused (features/auth-oauth), not
+ * silently merged. */
+enum LoginOAuthProvider {
+  DISCORD
+  GOOGLE
+  STEAM
+}
+
+model UserLoginIdentity {
+  id             String             @id @default(cuid())
+  userId         String
+  provider       LoginOAuthProvider
+  providerUserId String
+  createdAt      DateTime           @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerUserId])
+  @@unique([userId, provider])
+  @@index([userId])
+}
+
+/** One-time ticket handing an OAuth callback (no client-side password) off
+ * to the existing Credentials provider, which is the only thing allowed
+ * to mint a NextAuth session — mirrors StaffMfaChallenge's
+ * session-issue ticket pattern in features/staff-mfa. */
+model OAuthLoginTicket {
+  id         String    @id @default(cuid())
+  tokenHash  String    @unique
+  userId     String
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model VerificationToken {

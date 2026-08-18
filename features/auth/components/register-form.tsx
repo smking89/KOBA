@@ -17,6 +17,7 @@ import {
   type PublicAccountType,
 } from "@/features/koba-id/lib/format";
 import { cn } from "@/lib/utils";
+import { OAuthLoginButtons } from "@/features/auth-oauth/components/oauth-login-buttons";
 
 export function RegisterForm() {
   const router = useRouter();
@@ -60,6 +61,13 @@ export function RegisterForm() {
       description="Choose Player, Business, or Influencer."
     >
       {formError ? <AuthAlert variant="error">{formError}</AuthAlert> : null}
+
+      <OAuthLoginButtons callbackUrl="/dashboard" className="mb-4" />
+      <div className="mb-4 flex items-center gap-3 text-xs text-muted">
+        <span className="h-px flex-1 bg-white/10" />
+        or
+        <span className="h-px flex-1 bg-white/10" />
+      </div>
 
       <form onSubmit={onSubmit} className="space-y-4">
         <div className="space-y-1.5">
