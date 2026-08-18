@@ -78,6 +78,7 @@ export default async function MarketPage({
           href={sponsoredCreative.href}
           title={sponsoredCreative.title}
           subtitle={sponsoredCreative.subtitle}
+          actionLabel={sponsoredCreative.actionLabel}
         />
       ) : null}
 

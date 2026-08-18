@@ -31,6 +31,17 @@ import {
 } from "@/features/social/lib/feed-ranking";
 import { getCachedRankedIds, setCachedRankedIds } from "@/features/social/lib/feed-cache";
 import { activeBoostedTargetIds, BOOST_MULTIPLIER } from "@/features/boost/services/boost.service";
+import {
+  pickSponsoredPlacement,
+  resolveSponsoredCreative,
+} from "@/features/promotions/services/ads.service";
+import { getAccountSnapshot } from "@/features/accounts/services/account.service";
+
+/** Client, 2026-08-18 (KOBA Ads / Phase 7): native ad interleaved into
+ * the ranked feed, not pinned to the top — 0-indexed position within
+ * each page's post entries (a page shorter than this just gets the ad
+ * appended at the end, see listFeed). */
+const AD_FEED_POSITION = 3;
 
 const authorSelect = {
   id: true,
@@ -229,6 +240,56 @@ function toPostDto(
   };
 }
 
+export type PostDto = ReturnType<typeof toPostDto>;
+
+export type FeedAdDto = {
+  campaignId: string;
+  title: string;
+  subtitle: string;
+  href: string;
+  actionLabel: string;
+};
+
+/** Discriminated union so a native ad can sit inline among organic
+ * posts without forking every feed consumer into "posts, plus a
+ * separate ads array to splice in yourself" — features/social/
+ * components/feed-list.tsx branches on `kind` to render PostCard vs.
+ * SponsoredPlacementCard. */
+export type FeedEntry = { kind: "post"; post: PostDto } | { kind: "ad"; ad: FeedAdDto };
+
+async function fetchFeedAdEntry(
+  viewerUserId: string | undefined,
+  ip: string | null | undefined,
+): Promise<FeedEntry | null> {
+  if (viewerUserId) {
+    const snapshot = await getAccountSnapshot(viewerUserId);
+    // Client, 2026-08-18: "Ads pause entirely in Player mode — this is
+    // a hard business rule (ads are a Business-mode monetization
+    // surface; Player mode should never render sponsored KCUs)."
+    // Enforced here at the query layer, not left to client-side hiding.
+    if (snapshot?.activeAccountType === "PLAYER") return null;
+  }
+  const campaign = await pickSponsoredPlacement({
+    placement: "FEED",
+    context: {},
+    viewerUserId: viewerUserId ?? null,
+    ip: ip ?? null,
+  }).catch(() => null);
+  if (!campaign) return null;
+  const creative = await resolveSponsoredCreative(campaign).catch(() => null);
+  if (!creative) return null;
+  return {
+    kind: "ad",
+    ad: {
+      campaignId: campaign.id,
+      title: creative.title,
+      subtitle: creative.subtitle,
+      href: creative.href,
+      actionLabel: creative.actionLabel,
+    },
+  };
+}
+
 export async function createPost(
   userId: string,
   input: CreatePostInput,
@@ -289,6 +350,7 @@ export async function listFeed(input: {
   cursor?: string | undefined;
   pageSize?: number | undefined;
   groupSlug?: string | undefined;
+  ip?: string | null | undefined;
 }) {
   const pageSize = input.pageSize ?? PAGE_SIZE;
   const cursor = decodeFeedCursor(input.cursor);
@@ -436,13 +498,30 @@ export async function listFeed(input: {
   const lastEntry = pageEntries[pageIds.length - 1];
   const nextCursor = hasMore && lastEntry ? encodeFeedCursor(lastEntry) : null;
 
+  const postEntries: FeedEntry[] = orderedRows.map((post) => ({
+    kind: "post",
+    post: toPostDto(post, {
+      liked: Array.isArray(post.reactions) && post.reactions.length > 0,
+      saved: Array.isArray(post.saves) && post.saves.length > 0,
+    }),
+  }));
+  // Scoped to the main feed only (no groupId) — a group's own feed
+  // isn't "the feed" in the sense Phase 7 means, and ads would be an
+  // odd surprise mixed into a specific community's posts. AD_FEED_
+  // POSITION picks where in the page the ad lands (native interleave,
+  // not a top banner); pushed to the end if the page is shorter.
+  const adEntry =
+    groupId || postEntries.length === 0 ? null : await fetchFeedAdEntry(input.viewerUserId, input.ip);
+  const items = adEntry
+    ? [
+        ...postEntries.slice(0, AD_FEED_POSITION),
+        adEntry,
+        ...postEntries.slice(AD_FEED_POSITION),
+      ]
+    : postEntries;
+
   return {
-    items: orderedRows.map((post) =>
-      toPostDto(post, {
-        liked: Array.isArray(post.reactions) && post.reactions.length > 0,
-        saved: Array.isArray(post.saves) && post.saves.length > 0,
-      }),
-    ),
+    items,
     hasMore,
     nextCursor,
   };
@@ -473,7 +552,7 @@ export async function listProfilePosts(input: {
       })
     : null;
   if (blocked) {
-    return { items: [], hasMore: false, nextCursor: null };
+    return { items: [] as FeedEntry[], hasMore: false, nextCursor: null };
   }
   const viewerFollows =
     input.viewerUserId === profile.userId
@@ -524,10 +603,17 @@ export async function listProfilePosts(input: {
   );
   const pageItems = visible.slice(0, pageSize);
   return {
-    items: pageItems.map((post) =>
-      toPostDto(post, {
-        liked: Array.isArray(post.reactions) && post.reactions.length > 0,
-        saved: Array.isArray(post.saves) && post.saves.length > 0,
+    // No ads on a profile's own post history — Phase 7 scopes native
+    // feed interleaving to the main/group feed (listFeed), so this is
+    // always {kind: "post"} entries, but wrapped the same way so
+    // FeedList only ever needs one prop shape.
+    items: pageItems.map(
+      (post): FeedEntry => ({
+        kind: "post",
+        post: toPostDto(post, {
+          liked: Array.isArray(post.reactions) && post.reactions.length > 0,
+          saved: Array.isArray(post.saves) && post.saves.length > 0,
+        }),
       }),
     ),
     hasMore: visible.length > pageSize,

@@ -83,9 +83,18 @@ export const validatePromoSchema = z.object({
 });
 
 export const createSponsoredCampaignSchema = z.object({
-  entityType: z.enum(["PRODUCT", "SHOP", "DEV_PRODUCT", "GAME_SERVER"]),
+  entityType: z.enum([
+    "PRODUCT",
+    "SHOP",
+    "DEV_PRODUCT",
+    "GAME_SERVER",
+    "GROUP",
+    "INFLUENCER",
+    "LFG",
+    "COSMETIC",
+  ]),
   entityId: z.string().trim().min(1).max(96),
-  placement: z.enum(["MARKETPLACE", "SHOP", "APPS", "SERVERS"]),
+  placement: z.enum(["MARKETPLACE", "SHOP", "APPS", "SERVERS", "FEED"]),
   targetGameId: z.string().trim().max(64).optional().nullable(),
   targetCategoryId: z.string().trim().max(64).optional().nullable(),
   targetPlatform: z.string().trim().max(32).optional().nullable(),

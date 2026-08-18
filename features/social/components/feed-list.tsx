@@ -4,6 +4,10 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/koba/empty-state";
 import { PostCard, type FeedPost } from "@/features/social/components/post-card";
+import { SponsoredFeedCard } from "@/features/social/components/sponsored-feed-card";
+import type { FeedAdDto } from "@/features/social/services/post.service";
+
+type FeedItem = { kind: "post"; post: FeedPost } | { kind: "ad"; ad: FeedAdDto };
 
 export function FeedList({
   initial,
@@ -12,7 +16,7 @@ export function FeedList({
   authorHandle,
   empty = "No posts yet. Follow people or publish the first one.",
 }: {
-  initial: { items: FeedPost[]; hasMore: boolean; nextCursor: string | null };
+  initial: { items: FeedItem[]; hasMore: boolean; nextCursor: string | null };
   signedIn: boolean;
   groupSlug?: string;
   authorHandle?: string;
@@ -51,7 +55,13 @@ export function FeedList({
       {items.length === 0 ? (
         <EmptyState>{empty}</EmptyState>
       ) : (
-        items.map((post) => <PostCard key={post.publicRef} post={post} signedIn={signedIn} />)
+        items.map((entry, index) =>
+          entry.kind === "ad" ? (
+            <SponsoredFeedCard key={`ad-${entry.ad.campaignId}-${index}`} ad={entry.ad} />
+          ) : (
+            <PostCard key={entry.post.publicRef} post={entry.post} signedIn={signedIn} />
+          ),
+        )
       )}
       {hasMore ? (
         <Button variant="secondary" onClick={() => void more()} disabled={busy}>

@@ -1515,18 +1515,38 @@ enum PromotionCommissionStatus {
   UNDER_REVIEW
 }
 
+/// Client, 2026-08-18 (KOBA Ads / Phase 7): "native rendering must be
+/// visually/structurally identical to organic content across every ad
+/// type: product, shop, group, creator, LFG, and cosmetic ads." Four
+/// values (PRODUCT/SHOP/DEV_PRODUCT/GAME_SERVER) already existed from
+/// this system's original browse-page-placement build; the last four
+/// close the gap against that full list — GROUP/LFG map onto Group/
+/// LfgPost, CREATOR maps onto InfluencerProfile (named INFLUENCER here
+/// to match this schema's own naming, not the spec's prose), COSMETIC
+/// onto the KOBA Shop's Cosmetic model.
 enum SponsoredEntityType {
   PRODUCT
   SHOP
   DEV_PRODUCT
   GAME_SERVER
+  GROUP
+  INFLUENCER
+  LFG
+  COSMETIC
 }
 
+/// FEED added for Phase 7 (client, 2026-08-18) — native ad interleaved
+/// into the ranked social feed (features/social/services/post.service.ts
+/// #listFeed), gated off entirely for viewers in Player mode ("ads are
+/// a Business-mode monetization surface; Player mode should never
+/// render sponsored KCUs" — enforced at the feed query layer, not
+/// client-side). The four browse-page placements already existed.
 enum SponsoredPlacement {
   MARKETPLACE
   SHOP
   APPS
   SERVERS
+  FEED
 }
 
 enum SponsoredCampaignStatus {

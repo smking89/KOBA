@@ -243,24 +243,80 @@ transactional and permission-heavy (orders, bids, payouts, RBAC), and
 
 ---
 
-## Phase 7 — KOBA Ads (native)
+## Phase 7 — KOBA Ads (native) (status: done, 2026-08-18)
 
-**Scope, as engineering deliverables**
+**Discovery that reshaped this phase**: a full sponsored-ads system
+already existed (`features/promotions/services/ads.service.ts`,
+`SponsoredCampaign`/`SponsoredEvent` models) — CPC billing with
+self-click/duplicate-click fraud checks, daily+total budget caps,
+staff approval workflow (DRAFT→SUBMITTED→APPROVED→ACTIVE→COMPLETED),
+reserve/settle KOBA Coin flow, and browse-page placements
+(MARKETPLACE/SHOP/APPS/SERVERS). It predates this session and wasn't
+named "KcuUnit"/"AdCampaign" as this doc's original spec (below)
+described, and wasn't wired into the social feed — only one page
+(`/market`) actually consumed it; SHOP/APPS/SERVERS placements were
+schema-ready but not rendered anywhere. Confirmed via `AskUserQuestion`
+to extend this existing system rather than build a second, parallel
+one — building the spec's `KcuUnit`/`AdCampaign`/`AdImpressionLog`/
+`AdClickLog` tables fresh would have meant two competing ad systems
+with separate billing/fraud logic.
 
-- KOBA Content Unit (KCU) spec: a formal schema for "a piece of content that can appear in the feed," shared by organic content and ads so rendering code doesn't fork.
-- `sponsored` flag on KCUs; native rendering must be visually/structurally identical to organic content across every ad type: product, shop, group, creator, LFG, and cosmetic ads.
-- Ads respect the same tagging permission rules as organic content (Phase 6) and expose the _correct_ action buttons per ad type (e.g., a product ad gets "Buy"/"View listing," a group ad gets "Join," etc. — enumerate this mapping explicitly during implementation).
-- Ads pause entirely in Player mode — this is a hard business rule (ads are a Business-mode monetization surface; Player mode should never render sponsored KCUs), enforce it at the feed query layer, not just client-side hiding.
+**What shipped this pass:**
 
-**Data models / entities**
+- `SponsoredEntityType` gained `GROUP`, `INFLUENCER`, `LFG`, `COSMETIC`
+  — closing the gap against the client's full list (product/shop/
+  group/creator/lfg/cosmetic; `DEV_PRODUCT`/`GAME_SERVER` already
+  existed as bonus types beyond the spec). `assertEntityOwned`
+  (ownership check at campaign creation) and `resolveSponsoredCreative`
+  (creative resolution for rendering) both extended with real branches
+  for each — GROUP/LFG map onto `Group.ownerUserId`/`LfgPost.
+  authorUserId`, INFLUENCER onto the advertiser's own
+  `InfluencerProfile` (self-promotion only, not a paid endorsement
+  slot for someone else's profile), COSMETIC onto `Cosmetic` via its
+  owning Shop.
+- **Action-button-per-type mapping** — client: "expose the correct
+  action buttons per ad type (e.g., a product ad gets 'Buy'/'View
+  listing,' a group ad gets 'Join,' etc. — enumerate this mapping
+  explicitly)." `resolveSponsoredCreative` now returns an
+  `actionLabel` for every entity type (View listing / Visit shop /
+  View app / View server / Join / View profile / View / View), and
+  `SponsoredPlacementCard` (the existing browse-page ad card) renders
+  it as a real button, not just a title link.
+- **`SponsoredPlacement.FEED`** — the actual native-feed-interleaving
+  half of the spec, wired into `features/social/services/post.service.ts
+  #listFeed`. Each page of the feed with at least one post gets one ad
+  inserted at a fixed in-page position (native interleave, not a
+  top banner) using the exact same `SponsoredPlacementCard` visual
+  language, reusing `PostCard`'s card shell so it reads as one more
+  feed item. Scoped to the main feed only (no `groupSlug`) — a
+  specific group's own feed isn't "the feed" Phase 7 means, ads there
+  would be an odd surprise inside a community's own posts.
+- **Player-mode pause rule** — client, verbatim: "Ads pause entirely
+  in Player mode — this is a hard business rule (ads are a
+  Business-mode monetization surface; Player mode should never render
+  sponsored KCUs)." Enforced at the feed *query* layer
+  (`fetchFeedAdEntry` checks `getAccountSnapshot(viewerUserId).
+  activeAccountType !== "PLAYER"` before ever calling
+  `pickSponsoredPlacement`), not client-side hiding. Anonymous/
+  signed-out viewers aren't "Player mode" (no account at all), so
+  they're still eligible.
+- `listFeed`'s return shape changed from a flat post array to a
+  discriminated union (`{kind:"post", post} | {kind:"ad", ad}`) so an
+  ad can sit inline without forking every consumer into "posts, plus a
+  separate ads array to splice in yourself." `listProfilePosts`
+  (profile-page post history — no ads there) normalized to the same
+  shape so `FeedList` only ever needs one prop type.
 
-- `KcuUnit` (id, content_type [product|shop|group|creator|lfg|cosmetic], sponsored boolean, source_ref_id, created_by_kobaid_id, targeting JSONB)
-- `AdCampaign` (kcu_id, shop_or_influencer_id, budget, spend_to_date, targeting_criteria, status, start_at, end_at)
-- `AdImpressionLog` / `AdClickLog` (for billing and Phase 8 ranking signal input)
-
-**Dependencies**
-
-- Phase 3/4 (products/shops being advertised), Phase 5 (groups/LFG being advertised), Phase 6 (tag permission enforcement), and functionally precedes/parallels Phase 8 (feed engine is what actually interleaves KCUs — build the KCU spec here, wire ranking in Phase 8).
+**Original spec** (for the record — superseded by the above, not
+built as separately-named tables): `KcuUnit` (id, content_type
+[product|shop|group|creator|lfg|cosmetic], sponsored boolean,
+source_ref_id, created_by_kobaid_id, targeting JSONB), `AdCampaign`
+(kcu_id, shop_or_influencer_id, budget, spend_to_date,
+targeting_criteria, status, start_at, end_at), `AdImpressionLog`/
+`AdClickLog`. Dependencies were Phase 3/4 (products/shops), Phase 5
+(groups/LFG), Phase 6 (tag permissions), Phase 8 (feed engine
+interleaving) — all satisfied by extending the existing system
+instead.
 
 ---
 

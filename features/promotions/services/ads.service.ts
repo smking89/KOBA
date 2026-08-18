@@ -58,11 +58,41 @@ async function assertEntityOwned(
     if (!product) throw new PromotionError("You do not own that app listing.", "FORBIDDEN");
     return product.id;
   }
-  const server = await prisma.gameServer.findFirst({
-    where: { OR: [{ id: entityId }, { publicRef: entityId }], ownerUserId: userId },
+  if (entityType === "GAME_SERVER") {
+    const server = await prisma.gameServer.findFirst({
+      where: { OR: [{ id: entityId }, { publicRef: entityId }], ownerUserId: userId },
+    });
+    if (!server) throw new PromotionError("You do not own that server.", "FORBIDDEN");
+    return server.id;
+  }
+  if (entityType === "GROUP") {
+    const group = await prisma.group.findFirst({
+      where: { OR: [{ id: entityId }, { slug: entityId }], ownerUserId: userId },
+    });
+    if (!group) throw new PromotionError("You do not own that group.", "FORBIDDEN");
+    return group.id;
+  }
+  if (entityType === "INFLUENCER") {
+    // An advertiser can only sponsor their own creator profile — this
+    // is self-promotion, not a paid endorsement/spot for someone else.
+    const profile = await prisma.influencerProfile.findFirst({
+      where: { OR: [{ id: entityId }, { slug: entityId }], userId },
+    });
+    if (!profile) throw new PromotionError("That isn't your creator profile.", "FORBIDDEN");
+    return profile.id;
+  }
+  if (entityType === "LFG") {
+    const post = await prisma.lfgPost.findFirst({
+      where: { OR: [{ id: entityId }, { publicRef: entityId }], authorUserId: userId },
+    });
+    if (!post) throw new PromotionError("You do not own that LFG post.", "FORBIDDEN");
+    return post.id;
+  }
+  const cosmetic = await prisma.cosmetic.findFirst({
+    where: { OR: [{ id: entityId }, { slug: entityId }], ownerShop: { ownerUserId: userId } },
   });
-  if (!server) throw new PromotionError("You do not own that server.", "FORBIDDEN");
-  return server.id;
+  if (!cosmetic) throw new PromotionError("You do not own that cosmetic.", "FORBIDDEN");
+  return cosmetic.id;
 }
 
 export async function createSponsoredCampaign(
@@ -216,7 +246,7 @@ function toCandidate(
 }
 
 export async function pickSponsoredPlacement(input: {
-  placement: "MARKETPLACE" | "SHOP" | "APPS" | "SERVERS";
+  placement: "MARKETPLACE" | "SHOP" | "APPS" | "SERVERS" | "FEED";
   context: Omit<AdContext, "now">;
   viewerUserId?: string | null;
   ip?: string | null;
@@ -386,6 +416,14 @@ export async function billSponsoredClick(input: {
   return billed;
 }
 
+/**
+ * Client, 2026-08-18 (KOBA Ads / Phase 7): "expose the correct action
+ * buttons per ad type (e.g., a product ad gets 'Buy'/'View listing,'
+ * a group ad gets 'Join,' etc. — enumerate this mapping explicitly
+ * during implementation)." This is that mapping — every branch below
+ * returns an actionLabel alongside href/title/subtitle now, not just
+ * the four already-wired browse-page types.
+ */
 export async function resolveSponsoredCreative(campaign: {
   entityType: string;
   entityId: string;
@@ -401,6 +439,7 @@ export async function resolveSponsoredCreative(campaign: {
       href: `/market/${product.slug}`,
       title: product.title,
       subtitle: "Marketplace listing",
+      actionLabel: "View listing",
     };
   }
   if (campaign.entityType === "SHOP") {
@@ -409,7 +448,12 @@ export async function resolveSponsoredCreative(campaign: {
       select: { slug: true, name: true },
     });
     if (!shop) return null;
-    return { href: `/shops/${shop.slug}`, title: shop.name, subtitle: "Shop" };
+    return {
+      href: `/shops/${shop.slug}`,
+      title: shop.name,
+      subtitle: "Shop",
+      actionLabel: "Visit shop",
+    };
   }
   if (campaign.entityType === "DEV_PRODUCT") {
     const product = await prisma.devProduct.findFirst({
@@ -417,20 +461,77 @@ export async function resolveSponsoredCreative(campaign: {
       select: { slug: true, name: true },
     });
     if (!product) return null;
-    return { href: `/apps/${product.slug}`, title: product.name, subtitle: "App" };
+    return {
+      href: `/apps/${product.slug}`,
+      title: product.name,
+      subtitle: "App",
+      actionLabel: "View app",
+    };
   }
-  const server = await prisma.gameServer.findFirst({
-    where: {
-      OR: [
-        { id: campaign.entityId },
-        { publicRef: campaign.entityId },
-        { slug: campaign.entityId },
-      ],
-    },
+  if (campaign.entityType === "GAME_SERVER") {
+    const server = await prisma.gameServer.findFirst({
+      where: {
+        OR: [
+          { id: campaign.entityId },
+          { publicRef: campaign.entityId },
+          { slug: campaign.entityId },
+        ],
+      },
+      select: { slug: true, name: true },
+    });
+    if (!server) return null;
+    return {
+      href: `/servers/${server.slug}`,
+      title: server.name,
+      subtitle: "Game server",
+      actionLabel: "View server",
+    };
+  }
+  if (campaign.entityType === "GROUP") {
+    const group = await prisma.group.findFirst({
+      where: { OR: [{ id: campaign.entityId }, { slug: campaign.entityId }] },
+      select: { slug: true, name: true },
+    });
+    if (!group) return null;
+    return { href: `/groups/${group.slug}`, title: group.name, subtitle: "Group", actionLabel: "Join" };
+  }
+  if (campaign.entityType === "INFLUENCER") {
+    const profile = await prisma.influencerProfile.findFirst({
+      where: { OR: [{ id: campaign.entityId }, { slug: campaign.entityId }] },
+      select: { slug: true, displayName: true },
+    });
+    if (!profile) return null;
+    return {
+      href: `/i/${profile.slug}`,
+      title: profile.displayName,
+      subtitle: "Creator",
+      actionLabel: "View profile",
+    };
+  }
+  if (campaign.entityType === "LFG") {
+    const post = await prisma.lfgPost.findFirst({
+      where: { OR: [{ id: campaign.entityId }, { publicRef: campaign.entityId }] },
+      select: { publicRef: true, title: true },
+    });
+    if (!post) return null;
+    return {
+      href: `/lfg/${post.publicRef}`,
+      title: post.title,
+      subtitle: "Looking for group",
+      actionLabel: "View",
+    };
+  }
+  const cosmetic = await prisma.cosmetic.findFirst({
+    where: { OR: [{ id: campaign.entityId }, { slug: campaign.entityId }] },
     select: { slug: true, name: true },
   });
-  if (!server) return null;
-  return { href: `/servers/${server.slug}`, title: server.name, subtitle: "Game server" };
+  if (!cosmetic) return null;
+  return {
+    href: `/koba-shop/${cosmetic.slug}`,
+    title: cosmetic.name,
+    subtitle: "KOBA Shop cosmetic",
+    actionLabel: "View",
+  };
 }
 
 export async function settleCompletedAds(limit = 25) {

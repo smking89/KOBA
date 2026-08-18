@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { clientIp } from "@/lib/http/client-ip";
 import { jsonSocialError } from "@/features/social/lib/http";
 import { parseFeedQuery } from "@/features/social/schemas/social.schemas";
 import { listFeed, listProfilePosts } from "@/features/social/services/post.service";
@@ -21,6 +22,7 @@ export async function GET(request: Request) {
           cursor: query.cursor,
           pageSize: query.pageSize,
           groupSlug: query.group,
+          ip: clientIp(request),
         });
     return NextResponse.json(feed);
   } catch (error) {

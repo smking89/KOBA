@@ -388,6 +388,10 @@ export function AdCreateForm() {
           <option value="SHOP">Shop</option>
           <option value="DEV_PRODUCT">Developer product</option>
           <option value="GAME_SERVER">Game server</option>
+          <option value="GROUP">Group</option>
+          <option value="INFLUENCER">Creator profile</option>
+          <option value="LFG">LFG post</option>
+          <option value="COSMETIC">KOBA Shop cosmetic</option>
         </select>
       </label>
       <label className="grid gap-1 text-sm">
@@ -405,6 +409,7 @@ export function AdCreateForm() {
           <option value="SHOP">Shop</option>
           <option value="APPS">Apps</option>
           <option value="SERVERS">Servers</option>
+          <option value="FEED">Social feed</option>
         </select>
       </label>
       <label className="grid gap-1 text-sm">
