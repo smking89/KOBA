@@ -16,6 +16,7 @@ import type {
   CreateApiKeyInput,
   CreateDeveloperAppInput,
   CreateDeveloperProfileInput,
+  UpdateDeveloperSocialsInput,
 } from "@/features/developers/schemas/developer.schemas";
 
 function publicProfile(profile: {
@@ -28,6 +29,12 @@ function publicProfile(profile: {
   supportUrl: string | null;
   privacyUrl: string | null;
   termsUrl: string | null;
+  twitterUrl: string | null;
+  githubUrl: string | null;
+  youtubeUrl: string | null;
+  discordServerUrl: string | null;
+  discordUsername: string | null;
+  discordConnectedAt: Date | null;
   verified: boolean;
   suspendedAt: Date | null;
   games: string[];
@@ -43,6 +50,12 @@ function publicProfile(profile: {
     supportUrl: profile.supportUrl,
     privacyUrl: profile.privacyUrl,
     termsUrl: profile.termsUrl,
+    twitterUrl: profile.twitterUrl,
+    githubUrl: profile.githubUrl,
+    youtubeUrl: profile.youtubeUrl,
+    discordServerUrl: profile.discordServerUrl,
+    discordUsername: profile.discordUsername,
+    discordConnected: Boolean(profile.discordConnectedAt),
     verified: profile.verified,
     suspended: Boolean(profile.suspendedAt),
     games: profile.games,
@@ -93,6 +106,64 @@ export async function createDeveloperProfile(
     targetId: profile.id,
     metadata: { slug: profile.slug },
     ipAddress: ipAddress ?? null,
+  });
+
+  return publicProfile(profile);
+}
+
+/** Publisher socials bio block (App Store submission flow, 2026-08-18:
+ * "they can input there website and socials via there app store bio"). */
+export async function updateDeveloperSocials(userId: string, input: UpdateDeveloperSocialsInput) {
+  const member = await prisma.developerMember.findFirst({ where: { userId } });
+  if (!member) throw new DeveloperError("No developer profile for this account.", "NOT_FOUND");
+
+  const profile = await prisma.developerProfile.update({
+    where: { id: member.profileId },
+    data: {
+      twitterUrl: input.twitterUrl ?? null,
+      githubUrl: input.githubUrl ?? null,
+      youtubeUrl: input.youtubeUrl ?? null,
+      discordServerUrl: input.discordServerUrl ?? null,
+    },
+  });
+
+  return publicProfile(profile);
+}
+
+/** Links a Discord identity to the developer's profile ("Connect
+ * Discord", features/developers/lib/discord-oauth.ts) — proves the
+ * publisher controls a real Discord account. See discord-oauth.ts's
+ * docblock: this is NOT yet proof of ownership of any specific bot. */
+export async function connectDiscordAccount(
+  userId: string,
+  discordUserId: string,
+  discordUsername: string,
+) {
+  const member = await prisma.developerMember.findFirst({ where: { userId } });
+  if (!member) throw new DeveloperError("No developer profile for this account.", "NOT_FOUND");
+
+  const takenByOther = await prisma.developerProfile.findFirst({
+    where: { discordUserId, NOT: { id: member.profileId } },
+  });
+  if (takenByOther) {
+    throw new DeveloperError(
+      "That Discord account is already connected to a different KOBA publisher.",
+      "CONFLICT",
+    );
+  }
+
+  const profile = await prisma.developerProfile.update({
+    where: { id: member.profileId },
+    data: { discordUserId, discordUsername, discordConnectedAt: new Date() },
+  });
+
+  await writeAuditLog({
+    actorUserId: userId,
+    action: AuditAction.DEV_PROFILE_UPDATED,
+    targetType: "DeveloperProfile",
+    targetId: profile.id,
+    metadata: { event: "discord_connected", discordUsername },
+    ipAddress: null,
   });
 
   return publicProfile(profile);

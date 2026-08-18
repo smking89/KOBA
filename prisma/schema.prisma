@@ -3005,6 +3005,14 @@ model DeveloperProfile {
   supportUrl      String?
   privacyUrl      String?
   termsUrl        String?
+  // Socials bio block (App Store submission flow, 2026-08-18: "they can
+  // input there website and socials via there app store bio") — website/
+  // support above already existed; these are the additional public
+  // profile links shown on the App Store publisher page.
+  twitterUrl      String?
+  githubUrl       String?
+  youtubeUrl      String?
+  discordServerUrl String?
   contactEmail    String
   verified        Boolean   @default(false)
   verifiedAt      DateTime?
@@ -3013,6 +3021,14 @@ model DeveloperProfile {
   platforms       String[]
   ownerUserId     String
   kobaIdentityId  String?
+  // The publisher's own connected Discord identity (OAuth "identify"
+  // scope, features/developers/lib/discord-oauth.ts) — proves they
+  // control a real Discord account. Foundation for bot-ownership
+  // verification (still open: proving THIS Discord user owns a specific
+  // bot's application ID — see ROADMAP.md Phase 9 App Store section).
+  discordUserId      String?   @unique
+  discordUsername    String?
+  discordConnectedAt DateTime?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
@@ -3158,6 +3174,15 @@ model DevProduct {
   docsUrl            String?
   supportUrl         String?
   privacyUrl         String?
+  // DISCORD_BOT submissions only (features/developers/lib/discord-invite.ts):
+  // the bot's own OAuth2 invite URL, and its Discord application/client
+  // ID parsed out of that URL at submission time. discordVerifiedAt is
+  // deliberately unpopulated for now — proving the submitting KOBAID
+  // actually owns this specific application ID (not just that the link
+  // is well-formed) is a follow-up increment, not yet built.
+  discordInviteUrl   String?
+  discordClientId    String?
+  discordVerifiedAt  DateTime?
   changelog          String              @default("") @db.Text
   reviewState        DevReviewState      @default(DRAFT)
   publishedAt        DateTime?

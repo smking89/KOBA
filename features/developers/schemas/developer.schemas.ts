@@ -26,6 +26,18 @@ export const createDeveloperProfileSchema = z
   })
   .strict();
 
+// Socials bio block (App Store submission flow, 2026-08-18) — a separate,
+// smaller schema so it can be PATCHed independently of the full profile
+// creation form.
+export const updateDeveloperSocialsSchema = z
+  .object({
+    twitterUrl: z.string().url().max(300).optional(),
+    githubUrl: z.string().url().max(300).optional(),
+    youtubeUrl: z.string().url().max(300).optional(),
+    discordServerUrl: z.string().url().max(300).optional(),
+  })
+  .strict();
+
 export const createDeveloperAppSchema = z
   .object({
     name: z.string().trim().min(2).max(80),
@@ -94,10 +106,14 @@ export const createDevProductSchema = z.object({
   docsUrl: z.string().url().optional(),
   supportUrl: z.string().url().optional(),
   privacyUrl: z.string().url().optional(),
+  // DISCORD_BOT submissions: the bot's own OAuth2 invite URL (parsed +
+  // format-validated in developer.service.ts via discord-invite.ts).
+  discordInviteUrl: z.string().url().max(500).optional(),
 });
 
 export type CreateDevProductInput = z.infer<typeof createDevProductSchema>;
 export type CreateDeveloperProfileInput = z.infer<typeof createDeveloperProfileSchema>;
+export type UpdateDeveloperSocialsInput = z.infer<typeof updateDeveloperSocialsSchema>;
 export type CreateDeveloperAppInput = z.infer<typeof createDeveloperAppSchema>;
 export type CreateApiKeyInput = z.infer<typeof createApiKeySchema>;
 export type CreateWebhookInput = z.infer<typeof createWebhookSchema>;

@@ -108,6 +108,16 @@ export default async function AppDetailPage({ params }: { params: Promise<{ slug
             {!owned ? (
               <span className="text-sm font-semibold text-foreground">{priceLabel}</span>
             ) : null}
+            {product.discordInviteUrl ? (
+              <a
+                href={product.discordInviteUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-full border border-border px-5 py-2 text-sm font-semibold text-foreground hover:bg-surface-2"
+              >
+                Add to Discord →
+              </a>
+            ) : null}
           </div>
         </div>
       </div>

@@ -9,6 +9,7 @@ import {
   isAllowedArtifact,
   sanitizeArtifactFilename,
 } from "@/features/developers/lib/artifacts";
+import { parseDiscordInviteUrl } from "@/features/developers/lib/discord-invite";
 import { DeveloperError } from "@/features/developers/lib/errors";
 import { requireRole } from "@/features/developers/lib/identity";
 import { scanDeveloperArtifact } from "@/features/developers/lib/malware-scan";
@@ -177,6 +178,23 @@ export async function createProduct(
   if (input.pricing === "PAID" && priceCoins <= 0n) {
     throw new DeveloperError("Paid products need a KOBA Coin price.", "INVALID");
   }
+
+  // Discord bots submit their own OAuth2 invite link instead of an
+  // uploaded artifact (features/developers/lib/discord-invite.ts) — the
+  // bot's application/client ID is parsed out of it here so the listing
+  // can show/filter on it without re-parsing the raw URL everywhere.
+  let discordClientId: string | null = null;
+  if (input.category === "DISCORD_BOT" && input.discordInviteUrl) {
+    const parsed = parseDiscordInviteUrl(input.discordInviteUrl);
+    if (!parsed) {
+      throw new DeveloperError(
+        "That doesn't look like a real Discord bot invite link (expected discord.com/oauth2/authorize?client_id=...).",
+        "INVALID",
+      );
+    }
+    discordClientId = parsed.clientId;
+  }
+
   const baseSlug = input.slug ?? slugify(input.name);
   let slug = baseSlug;
   if (await prisma.devProduct.findUnique({ where: { slug } })) {
@@ -205,6 +223,8 @@ export async function createProduct(
       docsUrl: input.docsUrl ?? null,
       supportUrl: input.supportUrl ?? null,
       privacyUrl: input.privacyUrl ?? null,
+      discordInviteUrl: input.discordInviteUrl ?? null,
+      discordClientId,
       reviewState: "DRAFT",
     },
     include: { _count: { select: { installs: true } } },

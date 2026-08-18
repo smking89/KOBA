@@ -238,6 +238,7 @@ export function CreateApiKeyForm({
 export function CreateProductForm() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
+  const [category, setCategory] = useState("GAME_SERVER_PLUGIN");
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -257,6 +258,8 @@ export function CreateProductForm() {
           .split(",")
           .map((item) => item.trim())
           .filter(Boolean),
+        discordInviteUrl:
+          form.get("category") === "DISCORD_BOT" ? form.get("discordInviteUrl") || undefined : undefined,
       });
       router.push("/developers/products");
       router.refresh();
@@ -289,6 +292,8 @@ export function CreateProductForm() {
           <select
             id="category"
             name="category"
+            value={category}
+            onChange={(event) => setCategory(event.target.value)}
             className="h-10 w-full rounded-md border border-border bg-surface-2 px-3 text-sm"
           >
             <option value="GAME_SERVER_PLUGIN">Game-server plugin</option>
@@ -302,6 +307,21 @@ export function CreateProductForm() {
           </select>
         </div>
       </div>
+      {category === "DISCORD_BOT" ? (
+        <div className="space-y-2">
+          <Label htmlFor="discordInviteUrl">Bot invite link</Label>
+          <Input
+            id="discordInviteUrl"
+            name="discordInviteUrl"
+            placeholder="https://discord.com/oauth2/authorize?client_id=...&scope=bot"
+            required
+          />
+          <p className="text-xs text-muted">
+            The real OAuth2 invite link from your bot&rsquo;s Discord Developer Portal page — this
+            is what users click to add it to their own server.
+          </p>
+        </div>
+      ) : null}
       <div className="space-y-2">
         <Label htmlFor="shortDescription">Short description</Label>
         <Input id="shortDescription" name="shortDescription" maxLength={160} />
@@ -381,5 +401,74 @@ export function PurchaseButton({
         {pricing === "FREE" ? "Get free" : `Buy for ${priceLabel}`}
       </Button>
     </div>
+  );
+}
+
+/** Publisher socials bio block (App Store submission flow, 2026-08-18:
+ * "they can input there website and socials via there app store bio"). */
+export function SocialsForm({
+  twitterUrl,
+  githubUrl,
+  youtubeUrl,
+  discordServerUrl,
+}: {
+  twitterUrl: string | null;
+  githubUrl: string | null;
+  youtubeUrl: string | null;
+  discordServerUrl: string | null;
+}) {
+  const router = useRouter();
+  const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+
+  async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSaved(false);
+    const form = new FormData(event.currentTarget);
+    try {
+      await postJson("/api/developers/socials", {
+        twitterUrl: form.get("twitterUrl") || undefined,
+        githubUrl: form.get("githubUrl") || undefined,
+        youtubeUrl: form.get("youtubeUrl") || undefined,
+        discordServerUrl: form.get("discordServerUrl") || undefined,
+      });
+      setSaved(true);
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save socials.");
+    }
+  }
+
+  return (
+    <form onSubmit={onSubmit} className="space-y-3">
+      {error ? <p className="text-sm text-destructive">{error}</p> : null}
+      {saved ? <p className="text-sm text-neon-mint">Saved.</p> : null}
+      <div className="grid gap-3 md:grid-cols-2">
+        <div className="space-y-1.5">
+          <Label htmlFor="twitterUrl">X / Twitter</Label>
+          <Input id="twitterUrl" name="twitterUrl" defaultValue={twitterUrl ?? ""} placeholder="https://x.com/..." />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="githubUrl">GitHub</Label>
+          <Input id="githubUrl" name="githubUrl" defaultValue={githubUrl ?? ""} placeholder="https://github.com/..." />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="youtubeUrl">YouTube</Label>
+          <Input id="youtubeUrl" name="youtubeUrl" defaultValue={youtubeUrl ?? ""} placeholder="https://youtube.com/..." />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="discordServerUrl">Discord server</Label>
+          <Input
+            id="discordServerUrl"
+            name="discordServerUrl"
+            defaultValue={discordServerUrl ?? ""}
+            placeholder="https://discord.gg/..."
+          />
+        </div>
+      </div>
+      <Button type="submit" variant="secondary" size="sm">
+        Save socials
+      </Button>
+    </form>
   );
 }
