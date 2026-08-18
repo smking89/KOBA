@@ -17,15 +17,20 @@ export async function GET(request: Request, { params }: { params: Promise<{ prov
   if (!isValidLoginOAuthProvider(provider)) {
     return NextResponse.json({ error: "Unknown provider." }, { status: 404 });
   }
-  if (!isLoginOAuthConfigured(provider)) {
-    return NextResponse.redirect(
-      new URL(`/login?oauthError=not_configured&provider=${provider.toLowerCase()}`, APP_URL),
-    );
-  }
 
   const { searchParams } = new URL(request.url);
+  const popup = searchParams.get("popup") === "1";
+  const errorPath = popup ? "/login/oauth-complete" : "/login";
+
+  if (!isLoginOAuthConfigured(provider)) {
+    const url = new URL(errorPath, APP_URL);
+    url.searchParams.set("oauthError", "not_configured");
+    url.searchParams.set("provider", provider.toLowerCase());
+    return NextResponse.redirect(url);
+  }
+
   const callbackUrl = safeInternalPath(searchParams.get("callbackUrl"), "/dashboard");
 
-  const state = await signLoginOAuthState({ provider, callbackUrl });
+  const state = await signLoginOAuthState({ provider, callbackUrl, popup });
   return NextResponse.redirect(buildLoginAuthorizeUrl(LOGIN_OAUTH_PROVIDERS[provider], state));
 }

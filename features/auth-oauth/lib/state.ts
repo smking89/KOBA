@@ -6,7 +6,7 @@ import { resolveAuthSecret } from "@/lib/auth/secret";
  * (Steam's OpenID response is self-verifying against steamcommunity.com,
  * no server-side secret needed beyond this anti-CSRF nonce). Reuses
  * AUTH_SECRET like features/social-connections does, not a new key. */
-export type LoginOAuthState = { provider: string; callbackUrl: string };
+export type LoginOAuthState = { provider: string; callbackUrl: string; popup: boolean };
 
 export async function signLoginOAuthState(state: LoginOAuthState): Promise<string> {
   const secret = new TextEncoder().encode(resolveAuthSecret());
@@ -25,6 +25,7 @@ export async function verifyLoginOAuthState(state: string): Promise<LoginOAuthSt
     return {
       provider: payload.provider,
       callbackUrl: typeof payload.callbackUrl === "string" ? payload.callbackUrl : "/dashboard",
+      popup: payload.popup === true,
     };
   } catch {
     return null;

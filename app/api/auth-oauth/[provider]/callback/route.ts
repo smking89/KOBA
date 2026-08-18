@@ -14,8 +14,8 @@ export const dynamic = "force-dynamic";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
-function loginError(code: string, provider: string) {
-  const url = new URL("/login", APP_URL);
+function errorRedirect(code: string, provider: string, popup: boolean) {
+  const url = new URL(popup ? "/login/oauth-complete" : "/login", APP_URL);
   url.searchParams.set("oauthError", code);
   url.searchParams.set("provider", provider);
   return NextResponse.redirect(url);
@@ -28,25 +28,30 @@ export async function GET(request: Request, { params }: { params: Promise<{ prov
     return NextResponse.json({ error: "Unknown provider." }, { status: 404 });
   }
   const config = LOGIN_OAUTH_PROVIDERS[provider];
+  const providerSlug = provider.toLowerCase();
 
   const { searchParams } = new URL(request.url);
   const code = searchParams.get("code");
   const state = searchParams.get("state");
   const oauthError = searchParams.get("error");
 
-  if (oauthError) return loginError("denied", provider.toLowerCase());
-  if (!code || !state) return loginError("missing_params", provider.toLowerCase());
+  // Parsed before the code/error checks below so every error redirect —
+  // not just the happy path — can tell whether it should close a popup
+  // (postMessage) or navigate a full tab.
+  const parsedState = state ? await verifyLoginOAuthState(state) : null;
+  const popup = parsedState?.popup === true;
 
-  const parsedState = await verifyLoginOAuthState(state);
+  if (oauthError) return errorRedirect("denied", providerSlug, popup);
+  if (!code || !state) return errorRedirect("missing_params", providerSlug, popup);
   if (!parsedState || parsedState.provider !== provider) {
-    return loginError("invalid_state", provider.toLowerCase());
+    return errorRedirect("invalid_state", providerSlug, popup);
   }
 
   const token = await exchangeLoginCode(config, code);
-  if (!token) return loginError("token_exchange_failed", provider.toLowerCase());
+  if (!token) return errorRedirect("token_exchange_failed", providerSlug, popup);
 
   const providerUser = await fetchLoginProviderUser(config, token.access_token);
-  if (!providerUser) return loginError("fetch_user_failed", provider.toLowerCase());
+  if (!providerUser) return errorRedirect("fetch_user_failed", providerSlug, popup);
 
   try {
     const userId = await findOrCreateUserForOAuthLogin({
@@ -56,18 +61,21 @@ export async function GET(request: Request, { params }: { params: Promise<{ prov
       displayName: providerUser.username,
     });
     const ticket = await issueLoginTicket(userId);
-    // Land back on /login itself — its client-side effect exchanges the
-    // ticket for a real session, then forwards to the original
-    // callbackUrl. Keeps ticket-consumption in one place instead of
-    // needing every possible callbackUrl destination to know about it.
-    const url = new URL("/login", APP_URL);
+    // Non-popup: land back on /login, whose client-side effect exchanges
+    // the ticket and forwards to callbackUrl. Popup: land on the tiny
+    // oauth-complete page, which postMessages the ticket to the opener
+    // and closes itself — the opener (wherever OAuthLoginButtons is
+    // rendered) does the actual session exchange.
+    const url = new URL(popup ? "/login/oauth-complete" : "/login", APP_URL);
     url.searchParams.set("oauthTicket", ticket);
-    url.searchParams.set("callbackUrl", safeInternalPath(parsedState.callbackUrl, "/dashboard"));
+    if (!popup) {
+      url.searchParams.set("callbackUrl", safeInternalPath(parsedState.callbackUrl, "/dashboard"));
+    }
     return NextResponse.redirect(url);
   } catch (err) {
     if (err instanceof OAuthLoginError) {
-      return loginError("email_exists", provider.toLowerCase());
+      return errorRedirect("email_exists", providerSlug, popup);
     }
-    return loginError("failed", provider.toLowerCase());
+    return errorRedirect("failed", providerSlug, popup);
   }
 }

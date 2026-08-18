@@ -80,16 +80,24 @@ describe("LOGIN_OAUTH_PROVIDERS parseUser", () => {
 });
 
 describe("signLoginOAuthState / verifyLoginOAuthState", () => {
-  it("round-trips provider and callbackUrl", async () => {
+  it("round-trips provider, callbackUrl, and popup", async () => {
     vi.stubEnv("AUTH_SECRET", "a".repeat(40));
-    const token = await signLoginOAuthState({ provider: "DISCORD", callbackUrl: "/dashboard" });
+    const token = await signLoginOAuthState({
+      provider: "DISCORD",
+      callbackUrl: "/dashboard",
+      popup: true,
+    });
     const parsed = await verifyLoginOAuthState(token);
-    expect(parsed).toEqual({ provider: "DISCORD", callbackUrl: "/dashboard" });
+    expect(parsed).toEqual({ provider: "DISCORD", callbackUrl: "/dashboard", popup: true });
   });
 
   it("rejects a tampered token", async () => {
     vi.stubEnv("AUTH_SECRET", "a".repeat(40));
-    const token = await signLoginOAuthState({ provider: "DISCORD", callbackUrl: "/dashboard" });
+    const token = await signLoginOAuthState({
+      provider: "DISCORD",
+      callbackUrl: "/dashboard",
+      popup: false,
+    });
     const parsed = await verifyLoginOAuthState(`${token}tampered`);
     expect(parsed).toBeNull();
   });

@@ -12,8 +12,8 @@ export const dynamic = "force-dynamic";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
-function loginError(code: string) {
-  const url = new URL("/login", APP_URL);
+function errorRedirect(code: string, popup: boolean) {
+  const url = new URL(popup ? "/login/oauth-complete" : "/login", APP_URL);
   url.searchParams.set("oauthError", code);
   url.searchParams.set("provider", "steam");
   return NextResponse.redirect(url);
@@ -23,12 +23,14 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
 
   const state = searchParams.get("state");
-  if (!state) return loginError("missing_params");
-  const parsedState = await verifyLoginOAuthState(state);
-  if (!parsedState || parsedState.provider !== "STEAM") return loginError("invalid_state");
+  const parsedState = state ? await verifyLoginOAuthState(state) : null;
+  const popup = parsedState?.popup === true;
+
+  if (!state) return errorRedirect("missing_params", popup);
+  if (!parsedState || parsedState.provider !== "STEAM") return errorRedirect("invalid_state", popup);
 
   const steamId = await verifySteamCallback(searchParams);
-  if (!steamId) return loginError("token_exchange_failed");
+  if (!steamId) return errorRedirect("token_exchange_failed", popup);
 
   const personaName = await fetchSteamPersonaName(steamId);
 
@@ -40,12 +42,14 @@ export async function GET(request: Request) {
       displayName: personaName ?? `SteamUser${steamId.slice(-6)}`,
     });
     const ticket = await issueLoginTicket(userId);
-    const url = new URL("/login", APP_URL);
+    const url = new URL(popup ? "/login/oauth-complete" : "/login", APP_URL);
     url.searchParams.set("oauthTicket", ticket);
-    url.searchParams.set("callbackUrl", safeInternalPath(parsedState.callbackUrl, "/dashboard"));
+    if (!popup) {
+      url.searchParams.set("callbackUrl", safeInternalPath(parsedState.callbackUrl, "/dashboard"));
+    }
     return NextResponse.redirect(url);
   } catch (err) {
-    if (err instanceof OAuthLoginError) return loginError("email_exists");
-    return loginError("failed");
+    if (err instanceof OAuthLoginError) return errorRedirect("email_exists", popup);
+    return errorRedirect("failed", popup);
   }
 }

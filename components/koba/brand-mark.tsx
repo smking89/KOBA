@@ -26,8 +26,11 @@ export function BrandMark({ href = "/", className, showWordmark = true, size = 3
         role="img"
         aria-label="KOBA"
         style={{
-          width: size,
-          height: size,
+          // Explicit "px" strings, not bare numbers — React's own
+          // unitless-number-to-px conversion for inline styles is where
+          // the dev overlay's "32 vs 32px" hydration diff came from.
+          width: `${size}px`,
+          height: `${size}px`,
           WebkitMaskImage: "url(/brand/koba-logo.png)",
           maskImage: "url(/brand/koba-logo.png)",
           WebkitMaskSize: "contain",

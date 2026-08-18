@@ -13,16 +13,12 @@ import { AuthAlert } from "@/features/auth/components/auth-alert";
 import { FormField } from "@/features/auth/components/form-field";
 import { loginSchema, type LoginInput } from "@/features/auth/schemas/auth.schemas";
 import { safeInternalPath } from "@/lib/security/safe-redirect";
-import { OAuthLoginButtons } from "@/features/auth-oauth/components/oauth-login-buttons";
+import {
+  OAUTH_ERROR_FALLBACK,
+  OAUTH_ERROR_MESSAGE,
+  OAuthLoginButtons,
+} from "@/features/auth-oauth/components/oauth-login-buttons";
 import { cn } from "@/lib/utils";
-
-const OAUTH_ERROR_MESSAGE: Record<string, string> = {
-  not_configured: "That sign-in method isn't available yet.",
-  denied: "Sign-in was cancelled.",
-  email_exists:
-    "An account with this email already exists. Sign in with your password, then connect that account from Settings.",
-};
-const OAUTH_ERROR_FALLBACK = "Something went wrong signing you in. Try again.";
 
 export function LoginForm() {
   const router = useRouter();

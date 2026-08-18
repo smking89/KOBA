@@ -11,7 +11,8 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const callbackUrl = safeInternalPath(searchParams.get("callbackUrl"), "/dashboard");
+  const popup = searchParams.get("popup") === "1";
 
-  const state = await signLoginOAuthState({ provider: "STEAM", callbackUrl });
+  const state = await signLoginOAuthState({ provider: "STEAM", callbackUrl, popup });
   return NextResponse.redirect(buildSteamAuthorizeUrl(state));
 }
