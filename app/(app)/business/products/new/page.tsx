@@ -2,6 +2,7 @@ import { ProductForm } from "@/features/shops/components/product-form";
 import { requireBusinessDashboard } from "@/features/shops/lib/require-business";
 import { listCategories, listGames } from "@/features/marketplace/services/product.service";
 import { getOwnedShop } from "@/features/shops/services/shop.service";
+import { listAccountServers } from "@/features/servers/services/server.service";
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -24,7 +25,11 @@ export default async function NewProductPage() {
     );
   }
 
-  const [games, categories] = await Promise.all([listGames(), listCategories()]);
+  const [games, categories, servers] = await Promise.all([
+    listGames(),
+    listCategories(),
+    listAccountServers(userId),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -34,7 +39,12 @@ export default async function NewProductPage() {
           Saved as a draft. It will not appear on the market until staff approve it.
         </p>
       </div>
-      <ProductForm games={games} categories={categories} mode="create" />
+      <ProductForm
+        games={games}
+        categories={categories}
+        servers={servers.map((server) => ({ id: server.slug, name: server.name }))}
+        mode="create"
+      />
     </div>
   );
 }

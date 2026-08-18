@@ -128,6 +128,7 @@ export default async function ProductDetailPage({
                 signedIn={signedIn}
                 label={sold ? "Sold" : "Buy now"}
                 disabled={sold}
+                requiresGameHandle={product.requiresGameHandle}
               />
             )}
             <FavoriteButton

@@ -65,6 +65,11 @@ export type PublicProductDetail = PublicProductCard & {
   media: { url: string; alt: string; kind: "IMAGE" | "VIDEO" }[];
   /** True when the signed-in viewer has already claimed this freebie. */
   freebieClaimed: boolean;
+  /** True when the seller configured direct-RCON auto-delivery
+   * (Product.rconKitName set) — the buyer needs to enter their in-game
+   * gamertag at checkout for it to work. Never exposes the actual
+   * server/kit name publicly. */
+  requiresGameHandle: boolean;
 };
 
 export type PublicProductComment = {

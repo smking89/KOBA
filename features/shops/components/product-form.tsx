@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
@@ -22,6 +23,7 @@ import {
 } from "@/features/shops/schemas/shop.schemas";
 
 type CatalogOption = { slug: string; name: string };
+type ServerOption = { id: string; name: string };
 
 const FREEBIE_POLICY_LABEL: Record<(typeof FREEBIE_POLICIES)[number], string> = {
   NONE: "Not a freebie",
@@ -32,12 +34,14 @@ const FREEBIE_POLICY_LABEL: Record<(typeof FREEBIE_POLICIES)[number], string> = 
 export function ProductForm({
   games,
   categories,
+  servers,
   mode,
   slug,
   defaultValues,
 }: {
   games: CatalogOption[];
   categories: CatalogOption[];
+  servers: ServerOption[];
   mode: "create" | "edit";
   slug?: string;
   defaultValues?: Partial<UpsertProductFormValues>;
@@ -72,6 +76,7 @@ export function ProductForm({
 
   const listingType = watch("listingType");
   const freebiePolicy = watch("freebiePolicy");
+  const rconServerId = watch("rconServerId");
 
   async function generateDescription() {
     const { title, gameSlug, categorySlug } = getValues();
@@ -282,6 +287,44 @@ export function ProductForm({
           </FormField>
         ) : null}
       </div>
+      <fieldset className="space-y-2 rounded-md border border-white/10 p-4">
+        <legend className="px-1 text-sm font-medium">Auto-deliver via RCON (optional)</legend>
+        <p className="text-xs text-muted">
+          Instantly runs a kit-give command on one of your servers the moment payment clears —
+          buyers enter their in-game gamertag at checkout. Leave both blank for manual fulfillment.
+        </p>
+        {servers.length === 0 ? (
+          <p className="text-xs text-muted">
+            No servers linked yet — add one in{" "}
+            <Link href="/servers/manage" className="text-neon-lime hover:underline">
+              Server Manage
+            </Link>{" "}
+            first.
+          </p>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2">
+            <FormField id="rconServerId" label="Server" error={errors.rconServerId?.message}>
+              <select
+                id="rconServerId"
+                className="flex h-10 w-full rounded-md border border-border bg-surface-2 px-3 text-sm"
+                {...register("rconServerId")}
+              >
+                <option value="">None</option>
+                {servers.map((server) => (
+                  <option key={server.id} value={server.id}>
+                    {server.name}
+                  </option>
+                ))}
+              </select>
+            </FormField>
+            {rconServerId ? (
+              <FormField id="rconKitName" label="Kit name" error={errors.rconKitName?.message}>
+                <Input id="rconKitName" placeholder="starter_kit" {...register("rconKitName")} />
+              </FormField>
+            ) : null}
+          </div>
+        )}
+      </fieldset>
       <Button type="submit" disabled={isSubmitting}>
         {isSubmitting ? "Saving…" : mode === "create" ? "Save draft" : "Save changes"}
       </Button>

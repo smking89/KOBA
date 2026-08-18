@@ -33,6 +33,26 @@ function assertGameAllowsListing(
   }
 }
 
+/** A seller can only wire auto-delivery to a GameServer they actually
+ * own — the schema only checks shape, not ownership, since
+ * rconServerId arrives as a plain string from a form select. */
+async function assertOwnsRconServer(ownerUserId: string, rconServerId: string | undefined) {
+  if (!rconServerId) return;
+  // Stored value is whatever the seller's server picker sends (this
+  // repo's convention elsewhere: server.service.ts's loadServer accepts
+  // id, slug, or publicRef interchangeably) — match all three here too.
+  const server = await prisma.gameServer.findFirst({
+    where: {
+      ownerUserId,
+      OR: [{ id: rconServerId }, { slug: rconServerId }, { publicRef: rconServerId }],
+    },
+    select: { id: true },
+  });
+  if (!server) {
+    throw new ShopError("That server isn't yours.", "NOT_FOUND");
+  }
+}
+
 async function requireOwnedShop(userId: string) {
   const shop = await prisma.shop.findFirst({
     where: {
@@ -86,6 +106,7 @@ export async function createSellerProduct(userId: string, input: UpsertProductIn
     throw new ShopError("Unknown game or category.", "NOT_FOUND");
   }
   assertGameAllowsListing(game, category.kind);
+  await assertOwnsRconServer(shop.ownerUserId, input.rconServerId);
 
   const product = await prisma.product.create({
     data: {
@@ -107,6 +128,8 @@ export async function createSellerProduct(userId: string, input: UpsertProductIn
       freebiePolicy: input.freebiePolicy,
       freebieQuantityRemaining:
         input.freebiePolicy === "LIMITED_QUANTITY" ? (input.freebieQuantity ?? 0) : null,
+      rconServerId: input.rconServerId ?? null,
+      rconKitName: input.rconKitName ?? null,
     },
   });
 
@@ -137,6 +160,7 @@ export async function updateSellerProduct(userId: string, slug: string, input: U
     throw new ShopError("Unknown game or category.", "NOT_FOUND");
   }
   assertGameAllowsListing(game, category.kind);
+  await assertOwnsRconServer(shop.ownerUserId, input.rconServerId);
 
   const updated = await prisma.product.update({
     where: { id: product.id },
@@ -160,6 +184,8 @@ export async function updateSellerProduct(userId: string, slug: string, input: U
       // to that value rather than trying to diff against prior claims.
       freebieQuantityRemaining:
         input.freebiePolicy === "LIMITED_QUANTITY" ? (input.freebieQuantity ?? 0) : null,
+      rconServerId: input.rconServerId ?? null,
+      rconKitName: input.rconKitName ?? null,
     },
   });
 

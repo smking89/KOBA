@@ -34,10 +34,17 @@ export const upsertProductSchema = z
     freebiePolicy: z.enum(FREEBIE_POLICIES).default("NONE"),
     /// Meaningful only when freebiePolicy = LIMITED_QUANTITY.
     freebieQuantity: z.number().int().min(1).max(100_000).optional(),
+    /// Direct-RCON auto-delivery — both set together or both omitted.
+    rconServerId: z.string().trim().min(1).max(64).optional(),
+    rconKitName: z.string().trim().min(1).max(120).optional(),
   })
   .refine((value) => value.freebiePolicy !== "LIMITED_QUANTITY" || value.freebieQuantity != null, {
     message: "A limited-quantity freebie needs a free quantity.",
     path: ["freebieQuantity"],
+  })
+  .refine((value) => Boolean(value.rconServerId) === Boolean(value.rconKitName), {
+    message: "Pick a server and a kit name together, or leave both blank.",
+    path: ["rconKitName"],
   });
 
 export type UpsertProductInput = z.infer<typeof upsertProductSchema>;

@@ -8,6 +8,7 @@ import { actorIsStaff } from "@/features/payments/lib/staff";
 import { getOrderReceipt } from "@/features/payments/services/checkout.service";
 import { PaymentConfirming } from "@/features/payments/components/payment-confirming";
 import { DisputeFlagForm } from "@/features/payments/components/dispute-flag-form";
+import { RconDeliveryStatus } from "@/features/payments/components/rcon-delivery-status";
 
 export const metadata = { title: "Receipt" };
 
@@ -72,6 +73,14 @@ export default async function OrderReceiptPage({ params }: { params: Promise<{ r
             </p>
           ) : null}
         </div>
+        {receipt.rconDeliveryStatus !== "NOT_APPLICABLE" ? (
+          <RconDeliveryStatus
+            publicRef={receipt.publicRef}
+            status={receipt.rconDeliveryStatus}
+            error={receipt.rconDeliveryError}
+            canRetry={receipt.viewerIsSeller}
+          />
+        ) : null}
         {receipt.escrow?.status === "HOLDING" ? (
           <div className="rounded-lg border border-border bg-surface p-5">
             <p className="text-sm">

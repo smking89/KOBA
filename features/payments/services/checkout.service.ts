@@ -4,6 +4,7 @@ import { writeAuditLog } from "@/features/auth/services/audit-log.service";
 import { getPublicEnv } from "@/lib/env";
 import { PaymentError } from "@/features/payments/lib/errors";
 import { generateOrderRef } from "@/features/payments/lib/order-ref";
+import { deliverRconKitForOrder } from "@/features/payments/services/rcon-delivery.service";
 import {
   canCheckoutListing,
   canPayReservedAuction,
@@ -156,6 +157,13 @@ export async function createCheckoutSession(
     (await isUserBlacklistedByShop(shop.id, buyerUserId))
   ) {
     throw new PaymentError("This purchase is not available to your account.", "BLACKLISTED");
+  }
+
+  if (product.rconKitName && !input.buyerGameHandle) {
+    throw new PaymentError(
+      "Enter your in-game gamertag to receive this automatically.",
+      "INVALID",
+    );
   }
 
   const shopMemberUserIds = shop.members.map((row) => row.userId);
@@ -329,6 +337,8 @@ export async function createCheckoutSession(
         currency: product.currency,
         idempotencyKey: input.idempotencyKey,
         auctionId: product.auction?.id ?? null,
+        buyerGameHandle: product.rconKitName ? (input.buyerGameHandle ?? null) : null,
+        rconDeliveryStatus: product.rconKitName ? "PENDING" : "NOT_APPLICABLE",
         items: {
           create: {
             productId: product.id,
@@ -480,6 +490,23 @@ export async function markOrderPaid(input: {
           error,
         );
       });
+      // Self-healing: if a prior webhook attempt marked the order PAID
+      // but never got to trigger delivery (e.g. the process died between
+      // the two steps), a duplicate event is a free chance to catch up.
+      // No-ops via deliverRconKitForOrder's own PENDING guard otherwise.
+      if (order.rconDeliveryStatus === "PENDING") {
+        await deliverRconKitForOrder(order.id).catch((error) => {
+          logger.error(
+            "Direct-RCON auto-delivery after duplicate paid event failed",
+            {
+              event: "payment_side_effect_failure",
+              operation: "rcon_kit_delivery",
+              outcome: "failure",
+            },
+            error,
+          );
+        });
+      }
     }
     return order;
   }
@@ -544,6 +571,20 @@ export async function markOrderPaid(input: {
     );
   });
 
+  if (paid.rconDeliveryStatus === "PENDING") {
+    await deliverRconKitForOrder(paid.id).catch((error) => {
+      logger.error(
+        "Direct-RCON auto-delivery after order paid failed",
+        {
+          event: "payment_side_effect_failure",
+          operation: "rcon_kit_delivery",
+          outcome: "failure",
+        },
+        error,
+      );
+    });
+  }
+
   return paid;
 }
 
@@ -598,6 +639,9 @@ export async function getOrderReceipt(publicRef: string, viewerUserId: string, i
     })),
     confirming: order.status === "PENDING",
     viewerIsBuyer: isBuyer,
+    viewerIsSeller: isSeller,
+    rconDeliveryStatus: order.rconDeliveryStatus,
+    rconDeliveryError: isSeller || isStaff ? order.rconDeliveryError : null,
     escrow: order.escrow
       ? {
           status: order.escrow.status,

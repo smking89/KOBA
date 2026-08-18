@@ -255,6 +255,7 @@ export async function getPublicProduct(
     ...toCard(product, favorited, saved, boostedIds.has(product.id)),
     description: product.description,
     freebieClaimed,
+    requiresGameHandle: Boolean(product.rconKitName),
     variants: product.variants.map((variant) => ({
       sku: variant.sku,
       name: variant.name,

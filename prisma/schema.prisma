@@ -707,6 +707,15 @@ model Product {
   /// Decrements independently of inventoryQty, which also decrements on
   /// a free claim (a free claim still consumes real stock).
   freebieQuantityRemaining Int?
+  /// Direct-RCON auto-delivery (client, 2026-08-18: "we need a system
+  /// like tip4serv" — direct-RCON channel confirmed first via
+  /// AskUserQuestion). Both null = no auto-delivery, manual fulfillment
+  /// like any other listing. Set together: which of the seller's own
+  /// GameServers receives the command, and the Oxide/uMod kit name
+  /// (features/servers/lib/rcon/kit-commands.ts) it runs
+  /// `kit givetoplayer` for.
+  rconServerId       String?
+  rconKitName        String?
   createdAt          DateTime         @default(now())
   updatedAt          DateTime         @updatedAt
 
@@ -714,6 +723,7 @@ model Product {
   shop      Shop?             @relation(fields: [shopId], references: [id], onDelete: SetNull)
   game      Game              @relation(fields: [gameId], references: [id], onDelete: Restrict)
   category  Category          @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  rconServer GameServer?      @relation("ProductRconServer", fields: [rconServerId], references: [id], onDelete: SetNull)
   variants  ProductVariant[]
   media     ProductMedia[]
   favorites ProductFavorite[]
@@ -892,6 +902,17 @@ enum OrderStatus {
   FULFILLED
   CANCELLED
   REFUNDED
+}
+
+/// Direct-RCON auto-delivery outcome, set the instant an order with an
+/// rconKitName product is marked PAID (markOrderPaid) — not a manual
+/// seller "fulfill" action. FAILED is retryable by the seller
+/// (POST /api/business/orders/[publicRef]/redeliver).
+enum RconDeliveryStatus {
+  NOT_APPLICABLE
+  PENDING
+  DELIVERED
+  FAILED
 }
 
 model Shop {
@@ -1159,6 +1180,16 @@ model Order {
   auctionId               String?
   paidAt                  DateTime?
   refundedAt              DateTime?
+  /// Captured at checkout only when the purchased Product has
+  /// rconKitName set — the in-game identifier (Steam persona, Xbox
+  /// gamertag, PSN username; the `kit givetoplayer` command takes
+  /// whatever string the game itself uses, see kit-commands.ts) the
+  /// auto-delivery command targets. Same "identify yourself at purchase
+  /// time" pattern Tip4Serv itself uses, not a separately pre-linked
+  /// profile.
+  buyerGameHandle         String?
+  rconDeliveryStatus      RconDeliveryStatus @default(NOT_APPLICABLE)
+  rconDeliveryError       String?     @db.Text
   createdAt               DateTime    @default(now())
   updatedAt               DateTime    @updatedAt
 
@@ -2731,6 +2762,7 @@ model GameServer {
   idempotency  IntegrationIdempotency[]
   bios         ServerBio[]
   activeMapInventoryItem InventoryItem? @relation(fields: [activeMapInventoryItemId], references: [id], onDelete: SetNull)
+  rconDeliveryProducts   Product[]      @relation("ProductRconServer")
 
   @@index([ownerUserId])
   @@index([game, region])

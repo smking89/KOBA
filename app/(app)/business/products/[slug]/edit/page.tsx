@@ -4,6 +4,7 @@ import { requireBusinessDashboard } from "@/features/shops/lib/require-business"
 import { listCategories, listGames } from "@/features/marketplace/services/product.service";
 import { getSellerProduct } from "@/features/shops/services/product-admin.service";
 import { ShopError } from "@/features/shops/services/shop.service";
+import { listAccountServers } from "@/features/servers/services/server.service";
 import type { GamePlatform, ListingType, ProductRarity } from "@/features/marketplace/lib/catalog";
 
 export const metadata = { title: "Edit listing" };
@@ -13,10 +14,11 @@ export default async function EditProductPage({ params }: { params: Promise<{ sl
   const { userId } = await requireBusinessDashboard(`/business/products/${slug}/edit`);
 
   try {
-    const [product, games, categories] = await Promise.all([
+    const [product, games, categories, servers] = await Promise.all([
       getSellerProduct(userId, slug),
       listGames(),
       listCategories(),
+      listAccountServers(userId),
     ]);
 
     return (
@@ -30,6 +32,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ sl
         <ProductForm
           games={games}
           categories={categories}
+          servers={servers.map((server) => ({ id: server.slug, name: server.name }))}
           mode="edit"
           slug={product.slug}
           defaultValues={{
@@ -51,6 +54,8 @@ export default async function EditProductPage({ params }: { params: Promise<{ sl
             minIncrementCents: product.auction?.minIncrementCents ?? 1000,
             freebiePolicy: product.freebiePolicy,
             freebieQuantity: product.freebieQuantityRemaining ?? undefined,
+            rconServerId: product.rconServerId ?? undefined,
+            rconKitName: product.rconKitName ?? undefined,
           }}
         />
       </div>

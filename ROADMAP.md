@@ -1377,6 +1377,49 @@ surfaced once the bot actually exists.
   hosting decision, run alongside but not inside this web app. Only the
   item-delivery webhook piece above sidesteps that requirement.
 
+**Direct-RCON channel — shipped (2026-08-18, status: done).** Client:
+"we need to create a system like tip4serv" — a real product spec with
+three delivery channels (game plugin w/ webhook, direct RCON, third-
+party bot linking for locked console platforms), confirmed via
+`AskUserQuestion` to build the direct-RCON channel first since it's the
+only one needing zero new external dependencies.
+
+- Sellers opt a listing into auto-delivery on the product form —
+  `Product.rconServerId`/`rconKitName` (both set together or neither;
+  `rconServerId` accepts id/slug/publicRef, same flexible lookup
+  `server.service.ts#loadServer` already used, and ownership is
+  re-verified server-side, not just left to the form's `<select>`).
+- Buyers enter their in-game gamertag at checkout (`Order.
+  buyerGameHandle`, prompted inline by `CheckoutButton` only when the
+  product needs it) — the same "identify yourself at purchase time"
+  pattern Tip4Serv itself uses, not a separately pre-linked profile.
+- Delivery fires the instant `markOrderPaid` runs (webhook-driven,
+  matching Tip4Serv's own instant delivery) — not the existing manual
+  seller "Fulfill" action, which stays for non-RCON listings. Reuses
+  the `giveKitToPlayer`/`kit givetoplayer` RCON primitive that already
+  existed (built for Phase 22's original scope, never wired to an
+  order) and its existing `ServerCredential`-backed auth.
+  `Order.rconDeliveryStatus` (PENDING → DELIVERED/FAILED) is visible on
+  the receipt page to both buyer and seller; a FAILED delivery is
+  seller-retryable (`POST /api/business/orders/[ref]/redeliver`) without
+  needing a fresh purchase.
+- Fails soft by design: a delivery failure never blocks the order
+  itself or the payment — it just leaves `rconDeliveryStatus: FAILED`
+  with a human-readable reason for the seller to act on.
+
+Not built: the other two channels from the client's own spec — a
+KOBA-authored game plugin (Oxide/Carbon `.cs`, Minecraft `.jar`, etc.)
+holding a KOBA-issued key and receiving signed webhooks, and
+third-party bot linking (KAOSBOT/Ch33kys/Veretech/Helios) for locked
+console platforms. The plugin channel is a real, separate artifact per
+game engine — bigger scope, deliberately deferred (confirmed via
+AskUserQuestion). The bot-linking channel's actual access model was
+corrected by the client mid-discussion (2026-08-18): a server owner
+pays the bot developer for their own instance, invites it to their
+Discord server, and connects it via their own RCON credentials — still
+blocked on getting each vendor's incoming-webhook contract from their
+paying-customer docs, none of which is public.
+
 **Data models / entities**
 
 - `DiscordAccountLink` (discordUserId unique, userId, linkedAt).
