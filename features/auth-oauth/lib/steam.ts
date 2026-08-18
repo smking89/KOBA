@@ -19,12 +19,17 @@ function appUrl(): string {
   return process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 }
 
-export function steamRedirectUri(): string {
-  return `${appUrl()}/api/auth-oauth/steam/callback`;
+/** `returnPath` lets other Steam OpenID flows (e.g. features/steam-link,
+ * "add a Steam account to my already-logged-in profile" — a different
+ * flow from login, which creates a session) reuse this same OpenID
+ * plumbing with their own callback route. Defaults to the login
+ * callback so existing call sites don't need to change. */
+export function steamRedirectUri(returnPath = "/api/auth-oauth/steam/callback"): string {
+  return `${appUrl()}${returnPath}`;
 }
 
-export function buildSteamAuthorizeUrl(state: string): string {
-  const returnTo = new URL(steamRedirectUri());
+export function buildSteamAuthorizeUrl(state: string, returnPath?: string): string {
+  const returnTo = new URL(steamRedirectUri(returnPath));
   returnTo.searchParams.set("state", state);
   const params = new URLSearchParams({
     "openid.ns": "http://specs.openid.net/auth/2.0",

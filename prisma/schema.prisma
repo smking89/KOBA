@@ -158,6 +158,10 @@ enum AuditAction {
   BLACKLIST_ENTRY_REMOVED
   PLATFORM_BAN_ISSUED
   PLATFORM_BAN_LIFTED
+  OAUTH_ACCESS_TOKEN_ISSUED
+  OAUTH_ACCESS_TOKEN_REVOKED
+  STEAM_ACCOUNT_LINKED
+  STEAM_ACCOUNT_UNLINKED
 }
 
 // Major, independently-toggleable platform functions. This is the registry
@@ -278,6 +282,9 @@ model User {
   shopBlacklistEntriesCreated      ShopBlacklistEntry[]     @relation("ShopBlacklistCreator")
   platformBlacklistReceived        PlatformBlacklistEntry?  @relation("PlatformBlacklistTargetUser")
   platformBlacklistEntriesCreated  PlatformBlacklistEntry[] @relation("PlatformBlacklistCreator")
+  oauthDeviceGrants       OAuthDeviceGrant[]
+  oauthAccessTokens       OAuthAccessToken[]
+  steamAccountLink        SteamAccountLink?
 }
 
 model Account {
@@ -350,6 +357,75 @@ model OAuthLoginTicket {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+/// OAuth 2.0 Device Authorization Grant (RFC 8628) — Phase 21's
+/// foundational gap: Auth.js sessions are browser cookies only, but a
+/// desktop plugin (and later, Phase 22's Discord bot) has no browser to
+/// hold one. The device flow instead has the client show a short
+/// `userCode`, the person approves it on `/oauth/authorize` in their
+/// actual browser (an already-authenticated session), and the client
+/// polls `/api/oauth/device/token` until it resolves. `clientKey`
+/// identifies which first-party client this is (validated against
+/// features/oauth-device/lib/clients.ts, not a DB-registered OAuth
+/// client — KOBA doesn't support third-party OAuth apps).
+enum OAuthDeviceGrantStatus {
+  PENDING
+  APPROVED
+  DENIED
+  EXPIRED
+}
+
+model OAuthDeviceGrant {
+  id                  String                 @id @default(cuid())
+  deviceCodeHash      String                 @unique
+  userCode            String                 @unique
+  clientKey           String
+  scopes              String[]
+  status              OAuthDeviceGrantStatus @default(PENDING)
+  userId              String?
+  pollIntervalSeconds Int                    @default(5)
+  lastPolledAt        DateTime?
+  expiresAt           DateTime
+  createdAt           DateTime               @default(now())
+  approvedAt          DateTime?
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+/// Long-lived bearer token a device-flow client uses afterward —
+/// features/oauth-device/lib/access-token.ts resolves the
+/// `Authorization: Bearer` header against this table, the non-browser
+/// equivalent of a NextAuth session cookie.
+model OAuthAccessToken {
+  id         String    @id @default(cuid())
+  tokenHash  String    @unique
+  userId     String
+  clientKey  String
+  scopes     String[]
+  expiresAt  DateTime
+  createdAt  DateTime  @default(now())
+  revokedAt  DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+/// Proof a KOBA user controls a given Steam account — Steam's own OpenID
+/// login (features/auth-oauth/lib/steam.ts, shared with login-OAuth),
+/// not a koba-issued credential. The PC Plugin uses this to know which
+/// local Steam install to read/write skins for.
+model SteamAccountLink {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  steamId64   String   @unique
+  personaName String?
+  linkedAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model VerificationToken {
@@ -2363,6 +2439,12 @@ model InventoryItem {
   aidenAssetId       String?
   serial             String?
   lockTradeOfferId   String?
+  /// Set by the KOBA PC Plugin (Phase 21) after it actually writes this
+  /// item into a game's local skin config — distinct from merely owning
+  /// it. Null until the plugin reports back via POST
+  /// /api/plugin/inventory/[itemId]/applied.
+  appliedAt          DateTime?
+  appliedGame        String?
   createdAt          DateTime                   @default(now())
   updatedAt          DateTime                   @updatedAt
 

@@ -14,6 +14,9 @@ import { PlusBadge } from "@/features/plus/components/plus-badge";
 import { SocialConnectionsPanel } from "@/features/social-connections/components/social-connections-panel";
 import { socialProviderConfiguredMap } from "@/features/social-connections/lib/providers";
 import { listUserSocialConnections } from "@/features/social-connections/services/social-connection.service";
+import { ConnectedDevicesPanel } from "@/features/oauth-device/components/connected-devices-panel";
+import { listAccessTokens } from "@/features/oauth-device/services/device-flow.service";
+import { getSteamLink } from "@/features/steam-link/services/steam-link.service";
 
 export const metadata = { title: "Settings" };
 
@@ -30,6 +33,10 @@ export default async function SettingsPage() {
   }
 
   const socialConnections = await listUserSocialConnections(session.user.id);
+  const [steamLink, deviceTokens] = await Promise.all([
+    getSteamLink(session.user.id),
+    listAccessTokens(session.user.id),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -93,6 +100,24 @@ export default async function SettingsPage() {
         <SocialConnectionsPanel
           configured={socialProviderConfiguredMap()}
           connections={socialConnections}
+        />
+      </Card>
+
+      <Card className="border-t-2 border-t-neon-lime">
+        <CardTitle>Steam & connected devices</CardTitle>
+        <CardDescription className="mb-4">
+          Link Steam so the KOBA PC Plugin knows which local install to apply skins to. Revoke a
+          device here if it&apos;s lost or no longer trusted — it can&apos;t act as you afterward.
+        </CardDescription>
+        <ConnectedDevicesPanel
+          initialSteamLink={steamLink ? { steamId64: steamLink.steamId64, personaName: steamLink.personaName } : null}
+          initialTokens={deviceTokens.map((token) => ({
+            id: token.id,
+            clientKey: token.clientKey,
+            scopes: token.scopes,
+            createdAt: token.createdAt.toISOString(),
+            expiresAt: token.expiresAt.toISOString(),
+          }))}
         />
       </Card>
 

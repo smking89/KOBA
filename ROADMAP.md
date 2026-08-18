@@ -48,7 +48,7 @@ open questions that need client decisions before (or during) each phase.
 - [Phase 18 — Freebie Products (status: done)](#phase-18--freebie-products-status-done)
 - [Phase 19 — Rarity-Matched Trading (status: done)](#phase-19--rarity-matched-trading-status-done)
 - [Phase 20 — Multi-Subdomain Architecture](#phase-20--multi-subdomain-architecture)
-- [Phase 21 — KOBA PC Plugin](#phase-21--koba-pc-plugin)
+- [Phase 21 — KOBA PC Plugin (status: backend done)](#phase-21--koba-pc-plugin-status-backend-done-plugin-itself-not-started)
 - [Phase 22 — Discord Bot](#phase-22--discord-bot)
 - [Phase 23 — KOBA Shop (cosmetics storefront)](#phase-23--koba-shop-cosmetics-storefront)
 - [Sequencing / milestones](#sequencing--milestones)
@@ -1232,7 +1232,7 @@ Client-specified domain structure:
 
 ---
 
-## Phase 21 — KOBA PC Plugin
+## Phase 21 — KOBA PC Plugin (status: backend done, plugin itself not started)
 
 A native desktop application — **not part of this Next.js app**, a
 separate codebase/tech stack — that talks to `koba.games` and
@@ -1885,6 +1885,58 @@ Not built yet: live Discord-guild kick, RCON-based join-blocking on the
 actual game server, and a nudge asking a Steam-only OAuth user (from the
 login-OAuth slice above) to add a real email — all pre-existing,
 explicitly flagged gaps this feature doesn't attempt to close.
+
+---
+
+## Phase 21 backend — OAuth device flow + Steam account link (2026-08-18, status: done)
+
+Only the backend half of Phase 21 — the desktop plugin itself is a
+separate codebase/tech stack, out of scope here. Chosen over Phases 22/23
+via `AskUserQuestion` specifically because it's this repo's foundational,
+shared gap ("this app currently has no authentication mechanism for a
+non-browser client") that Phase 22's Discord bot needs too.
+
+- **OAuth 2.0 Device Authorization Grant (RFC 8628)** —
+  `OAuthDeviceGrant` (device code/user code pair, PENDING → APPROVED/
+  DENIED/EXPIRED) + `OAuthAccessToken` (long-lived, 90-day, revocable
+  bearer token). `POST /api/oauth/device/code` issues the pair;
+  `/oauth/authorize` is the consent page (an already-authenticated
+  browser session approves/denies by user code — supports both a
+  pre-filled `?user_code=` link and manual entry); `POST /api/oauth/
+  device/token` is what the plugin polls, returning RFC 8628's exact
+  error vocabulary (`authorization_pending`, `slow_down`,
+  `access_denied`, `expired_token`) until it resolves.
+- **No third-party OAuth client registry** — `clientKey` is validated
+  against a small hardcoded registry
+  (`features/oauth-device/lib/clients.ts`, just `"pc-plugin"` today) —
+  KOBA doesn't support arbitrary third-party apps, and adding Phase 22's
+  Discord bot later is a registry entry, not a migration.
+- **`SteamAccountLink`** — reuses the exact same Steam OpenID plumbing
+  built for login-OAuth (`features/auth-oauth/lib/steam.ts`, generalized
+  to accept a `returnPath` so this flow's callback differs from login's)
+  but is a genuinely different flow: "attach Steam to my already-
+  logged-in session" (`features/steam-link`), not "log me in as
+  whoever this Steam account is." Guards against a Steam account already
+  linked to a different KOBA user.
+- **Read API for the plugin** — `Authorization: Bearer` auth (the
+  non-browser equivalent of `auth()`,
+  `features/oauth-device/lib/access-token.ts`), scoped to
+  `inventory:read`/`inventory:write`. `GET /api/plugin/inventory`
+  returns `InventoryItem` rows filtered to `acquisitionSource IN
+  (PURCHASE, GENERATION)` per the roadmap's own spec — "purchased or
+  Aiden-generated skins," not every item ever granted. `POST /api/
+  plugin/inventory/[itemId]/applied` lets the plugin report back what
+  it actually wrote into a game's local config, distinct from merely
+  owning it (`InventoryItem.appliedAt`/`appliedGame`, new columns).
+- UI: a "Steam & connected devices" card on `/settings` — link/unlink
+  Steam, list connected devices with a revoke button (revoking deletes
+  the bearer token immediately; the device can't act as the user again
+  without a fresh device-flow approval).
+
+Not built: the plugin itself. Per-game skin-application mechanics, tech
+stack (Tauri/Electron/native), and code-signing/distribution are still
+open client questions — this backend is deliberately built generic
+enough not to presume any of those answers.
 
 ---
 
