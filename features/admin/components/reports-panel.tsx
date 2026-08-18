@@ -3,6 +3,14 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
+import {
+  ListPanel,
+  ListPanelEmpty,
+  ListRow,
+  ListRowActions,
+  ListRowMain,
+  ListRowMeta,
+} from "@/components/dashboard/list-panel";
 
 type OpenReport = {
   publicRef: string;
@@ -34,27 +42,27 @@ export function ReportsPanel({ reports }: { reports: OpenReport[] }) {
   }
 
   if (reports.length === 0) {
-    return <p className="text-sm text-muted">No open content reports.</p>;
+    return <ListPanelEmpty>No open content reports.</ListPanelEmpty>;
   }
 
   return (
     <div className="space-y-3">
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
-      <ul className="divide-y divide-border rounded-md border border-border">
+      <ListPanel>
         {reports.map((report) => (
-          <li key={report.publicRef} className="space-y-3 px-4 py-3">
-            <div className="space-y-1">
+          <ListRow key={report.publicRef}>
+            <ListRowMain>
               <p className="font-mono text-xs text-neon-lime">{report.publicRef}</p>
               <p className="text-sm text-foreground">
                 {report.targetType} · <span className="font-mono text-xs">{report.targetRef}</span>
               </p>
-              <p className="text-sm text-muted">{report.reason}</p>
-              <p className="text-xs text-muted">
+              <ListRowMeta className="text-sm">{report.reason}</ListRowMeta>
+              <ListRowMeta>
                 {report.reporterHandle ? `@${report.reporterHandle}` : "reporter"} ·{" "}
                 {new Date(report.createdAt).toLocaleString()}
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
+              </ListRowMeta>
+            </ListRowMain>
+            <ListRowActions>
               <Button
                 size="sm"
                 disabled={pending}
@@ -80,10 +88,10 @@ export function ReportsPanel({ reports }: { reports: OpenReport[] }) {
               >
                 Dismiss
               </Button>
-            </div>
-          </li>
+            </ListRowActions>
+          </ListRow>
         ))}
-      </ul>
+      </ListPanel>
     </div>
   );
 }

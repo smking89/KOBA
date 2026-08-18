@@ -3,6 +3,16 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  ListPanel,
+  ListPanelEmpty,
+  ListRow,
+  ListRowActions,
+  ListRowMain,
+  ListRowMeta,
+  ListRowTitle,
+} from "@/components/dashboard/list-panel";
 
 type PendingProduct = {
   slug: string;
@@ -42,31 +52,28 @@ export function PendingProductsPanel({ products }: { products: PendingProduct[] 
   }
 
   if (products.length === 0) {
-    return <p className="text-sm text-muted">No listings waiting for approval.</p>;
+    return <ListPanelEmpty>No listings waiting for approval.</ListPanelEmpty>;
   }
 
   return (
     <div className="space-y-3">
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
-      <ul className="divide-y divide-border rounded-md border border-border">
+      <ListPanel>
         {products.map((product) => (
-          <li
-            key={product.slug}
-            className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
-          >
-            <div className="min-w-0 space-y-1">
-              <p className="truncate font-medium text-foreground">{product.title}</p>
-              <p className="text-xs text-muted">
-                {product.game} · {product.category} · {product.listingType} · $
+          <ListRow key={product.slug}>
+            <ListRowMain>
+              <ListRowTitle>{product.title}</ListRowTitle>
+              <ListRowMeta>
+                {product.game} · {product.category} · <Badge>{product.listingType}</Badge> · $
                 {(product.priceCents / 100).toFixed(2)}
-              </p>
+              </ListRowMeta>
               <p className="font-mono text-xs text-muted">
                 {product.slug}
                 {product.shopSlug ? ` · ${product.shopSlug}` : ""}
                 {product.sellerHandle ? ` · @${product.sellerHandle}` : ""}
               </p>
-            </div>
-            <div className="flex shrink-0 gap-2">
+            </ListRowMain>
+            <ListRowActions>
               <Button
                 size="sm"
                 disabled={pending}
@@ -82,10 +89,10 @@ export function PendingProductsPanel({ products }: { products: PendingProduct[] 
               >
                 Reject
               </Button>
-            </div>
-          </li>
+            </ListRowActions>
+          </ListRow>
         ))}
-      </ul>
+      </ListPanel>
     </div>
   );
 }

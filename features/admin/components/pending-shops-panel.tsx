@@ -3,6 +3,15 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
+import {
+  ListPanel,
+  ListPanelEmpty,
+  ListRow,
+  ListRowActions,
+  ListRowMain,
+  ListRowMeta,
+  ListRowTitle,
+} from "@/components/dashboard/list-panel";
 
 type PendingShop = {
   slug: string;
@@ -34,27 +43,24 @@ export function PendingShopsPanel({ shops }: { shops: PendingShop[] }) {
   }
 
   if (shops.length === 0) {
-    return <p className="text-sm text-muted">No shops waiting for verification.</p>;
+    return <ListPanelEmpty>No shops waiting for verification.</ListPanelEmpty>;
   }
 
   return (
     <div className="space-y-3">
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
-      <ul className="divide-y divide-border rounded-md border border-border">
+      <ListPanel>
         {shops.map((shop) => (
-          <li
-            key={shop.slug}
-            className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
-          >
-            <div className="min-w-0 space-y-1">
-              <p className="truncate font-medium text-foreground">{shop.name}</p>
-              <p className="text-xs text-muted">
+          <ListRow key={shop.slug}>
+            <ListRowMain>
+              <ListRowTitle>{shop.name}</ListRowTitle>
+              <ListRowMeta>
                 {shop.productCount} products · {shop.ownerEmail}
                 {shop.ownerHandle ? ` · @${shop.ownerHandle}` : ""}
-              </p>
+              </ListRowMeta>
               {shop.bio ? <p className="line-clamp-2 text-sm text-muted">{shop.bio}</p> : null}
-            </div>
-            <div className="flex shrink-0 gap-2">
+            </ListRowMain>
+            <ListRowActions>
               <Button size="sm" disabled={pending} onClick={() => void act(shop.slug, "VERIFIED")}>
                 Verify
               </Button>
@@ -66,10 +72,10 @@ export function PendingShopsPanel({ shops }: { shops: PendingShop[] }) {
               >
                 Reject
               </Button>
-            </div>
-          </li>
+            </ListRowActions>
+          </ListRow>
         ))}
-      </ul>
+      </ListPanel>
     </div>
   );
 }
