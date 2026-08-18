@@ -202,105 +202,105 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  accounts       Account[]
-  sessions       Session[]
-  profile        AccountProfile?
-  kobaIdentities KobaIdentity[]
-  auditLogs      AuditLog[]     @relation("AuditActor")
-  staffMfaFactor StaffMfaFactor?
-  staffMfaChallenges StaffMfaChallenge[]
-  staffSessions  StaffSession[]
-  platformFunctionFlagUpdates PlatformFunctionFlag[] @relation("PlatformFunctionFlagUpdatedBy")
-  boostsOwned    Boost[]        @relation("BoostOwner")
-  boostsGifted   Boost[]        @relation("BoostGiftedFrom")
-  products       Product[]
-  favorites      ProductFavorite[]
-  productSaves   ProductSave[]
-  productComments ProductComment[]
-  achievements   UserAchievement[]
-  ownedShop      Shop?            @relation("ShopOwner")
-  shopMemberships ShopMember[]
-  shopFollows    ShopFollow[]
-  shopReviews    ShopReview[]     @relation("ShopReviewAuthor")
-  ordersBought   Order[]          @relation("OrderBuyer")
-  coinPurchases  CoinPurchase[]
-  escrowDisputesFiled    OrderEscrow[] @relation("OrderEscrowDisputedBy")
-  escrowDisputesResolved OrderEscrow[] @relation("OrderEscrowResolvedBy")
-  bids           Bid[]
-  wonAuctions    Auction[]        @relation("AuctionWinner")
-  ownedGroups    Group[]          @relation("GroupOwner")
-  groupMemberships GroupMember[]
-  groupJoinRequests GroupJoinRequest[]
-  groupInvitesSent GroupInvitation[] @relation("GroupInviteSender")
-  groupInvitesReceived GroupInvitation[] @relation("GroupInvitee")
-  groupBansIssued GroupBan[]      @relation("GroupBanActor")
-  groupBans       GroupBan[]      @relation("GroupBanTarget")
-  lfgPosts        LfgPost[]
-  lfgRequests     LfgRequest[]
-  posts           Post[]
-  comments        PostComment[]
-  reactions       PostReaction[]
-  savedPosts      PostSave[]
-  stories         Story[]
-  storyViews      StoryView[]
-  follows         UserFollow[]     @relation("Followers")
-  following       UserFollow[]     @relation("Following")
-  blocks          UserBlock[]      @relation("Blocker")
-  blockedBy       UserBlock[]      @relation("Blocked")
-  reports         ContentReport[]
-  conversationMemberships ConversationParticipant[]
-  directMessages  DirectMessage[]
-  tradesProposed  TradeOffer[]      @relation("TradeProposer")
-  tradesReceived  TradeOffer[]      @relation("TradeCounterparty")
-  inventoryItems  InventoryItem[]
-  tradeEvents     TradeEvent[]
-  ownedServers    GameServer[]
-  serverFavourites ServerFavourite[]
-  serverNotices   ServerOwnerNotice[]
-  plusSubscriptions PlusSubscription[]
-  stripeCustomerId  String?            @unique
-  serverBios       ServerBio[]
-  freebieClaims    FreebieClaim[]
-  coinWallet      CoinWallet?
-  ledgerAccounts  LedgerAccount[]
-  aidenJobs       AidenJob[]
-  aidenAssets     AidenAsset[]
-  ownedDeveloperProfiles DeveloperProfile[] @relation("DeveloperProfileOwner")
-  developerMemberships DeveloperMember[]
-  devProducts     DevProduct[]
-  devInstalls     DevInstall[]
-  devPurchases    DevPurchase[]
-  devEntitlements DevEntitlement[]
-  devReviews      DevProductReview[]
-  developerApiKeys DeveloperApiKey[]
-  referralCodes           ReferralCode[]            @relation("ReferralInfluencer")
-  influencerEarnings      InfluencerEarning[]       @relation("InfluencerEarnings")
-  influencerPayoutAccount InfluencerPayoutAccount?
-  influencerProfile       InfluencerProfile?
-  affiliateCampaigns      AffiliateCampaign[]       @relation("CampaignSeller")
-  campaignParticipations  CampaignParticipation[]
-  promoCodesCreated       PromoCode[]               @relation("PromoCodeSeller")
-  promoRedemptions        PromoCodeRedemption[]
-  promotionCommissionsEarned PromotionCommission[]  @relation("CommissionInfluencer")
-  promotionCommissionsSold   PromotionCommission[]  @relation("CommissionSeller")
-  sponsoredCampaigns      SponsoredCampaign[]
-  promotionNotices        PromotionNotice[]
-  socialConnections       UserSocialConnection[]
-  loginIdentities         UserLoginIdentity[]
-  oauthLoginTickets       OAuthLoginTicket[]
-  shopBlacklistEntriesReceived     ShopBlacklistEntry[]     @relation("ShopBlacklistTarget")
-  shopBlacklistEntriesCreated      ShopBlacklistEntry[]     @relation("ShopBlacklistCreator")
-  platformBlacklistReceived        PlatformBlacklistEntry?  @relation("PlatformBlacklistTargetUser")
-  platformBlacklistEntriesCreated  PlatformBlacklistEntry[] @relation("PlatformBlacklistCreator")
-  oauthDeviceGrants       OAuthDeviceGrant[]
-  oauthAccessTokens       OAuthAccessToken[]
-  steamAccountLink        SteamAccountLink?
-  xboxAccountLink         XboxAccountLink?
-  playStationAccountLink  PlayStationAccountLink?
-  kobaShopApplicationsReviewed KobaShopApplication[]
-  cosmeticOrders          CosmeticOrder[]
-  cosmeticOwnerships      CosmeticOwnership[]
-  cosmeticEquips          CosmeticEquip[]
+  accounts                        Account[]
+  sessions                        Session[]
+  profile                         AccountProfile?
+  kobaIdentities                  KobaIdentity[]
+  auditLogs                       AuditLog[]                @relation("AuditActor")
+  staffMfaFactor                  StaffMfaFactor?
+  staffMfaChallenges              StaffMfaChallenge[]
+  staffSessions                   StaffSession[]
+  platformFunctionFlagUpdates     PlatformFunctionFlag[]    @relation("PlatformFunctionFlagUpdatedBy")
+  boostsOwned                     Boost[]                   @relation("BoostOwner")
+  boostsGifted                    Boost[]                   @relation("BoostGiftedFrom")
+  products                        Product[]
+  favorites                       ProductFavorite[]
+  productSaves                    ProductSave[]
+  productComments                 ProductComment[]
+  achievements                    UserAchievement[]
+  ownedShop                       Shop?                     @relation("ShopOwner")
+  shopMemberships                 ShopMember[]
+  shopFollows                     ShopFollow[]
+  shopReviews                     ShopReview[]              @relation("ShopReviewAuthor")
+  ordersBought                    Order[]                   @relation("OrderBuyer")
+  coinPurchases                   CoinPurchase[]
+  escrowDisputesFiled             OrderEscrow[]             @relation("OrderEscrowDisputedBy")
+  escrowDisputesResolved          OrderEscrow[]             @relation("OrderEscrowResolvedBy")
+  bids                            Bid[]
+  wonAuctions                     Auction[]                 @relation("AuctionWinner")
+  ownedGroups                     Group[]                   @relation("GroupOwner")
+  groupMemberships                GroupMember[]
+  groupJoinRequests               GroupJoinRequest[]
+  groupInvitesSent                GroupInvitation[]         @relation("GroupInviteSender")
+  groupInvitesReceived            GroupInvitation[]         @relation("GroupInvitee")
+  groupBansIssued                 GroupBan[]                @relation("GroupBanActor")
+  groupBans                       GroupBan[]                @relation("GroupBanTarget")
+  lfgPosts                        LfgPost[]
+  lfgRequests                     LfgRequest[]
+  posts                           Post[]
+  comments                        PostComment[]
+  reactions                       PostReaction[]
+  savedPosts                      PostSave[]
+  stories                         Story[]
+  storyViews                      StoryView[]
+  follows                         UserFollow[]              @relation("Followers")
+  following                       UserFollow[]              @relation("Following")
+  blocks                          UserBlock[]               @relation("Blocker")
+  blockedBy                       UserBlock[]               @relation("Blocked")
+  reports                         ContentReport[]
+  conversationMemberships         ConversationParticipant[]
+  directMessages                  DirectMessage[]
+  tradesProposed                  TradeOffer[]              @relation("TradeProposer")
+  tradesReceived                  TradeOffer[]              @relation("TradeCounterparty")
+  inventoryItems                  InventoryItem[]
+  tradeEvents                     TradeEvent[]
+  ownedServers                    GameServer[]
+  serverFavourites                ServerFavourite[]
+  serverNotices                   ServerOwnerNotice[]
+  plusSubscriptions               PlusSubscription[]
+  stripeCustomerId                String?                   @unique
+  serverBios                      ServerBio[]
+  freebieClaims                   FreebieClaim[]
+  coinWallet                      CoinWallet?
+  ledgerAccounts                  LedgerAccount[]
+  aidenJobs                       AidenJob[]
+  aidenAssets                     AidenAsset[]
+  ownedDeveloperProfiles          DeveloperProfile[]        @relation("DeveloperProfileOwner")
+  developerMemberships            DeveloperMember[]
+  devProducts                     DevProduct[]
+  devInstalls                     DevInstall[]
+  devPurchases                    DevPurchase[]
+  devEntitlements                 DevEntitlement[]
+  devReviews                      DevProductReview[]
+  developerApiKeys                DeveloperApiKey[]
+  referralCodes                   ReferralCode[]            @relation("ReferralInfluencer")
+  influencerEarnings              InfluencerEarning[]       @relation("InfluencerEarnings")
+  influencerPayoutAccount         InfluencerPayoutAccount?
+  influencerProfile               InfluencerProfile?
+  affiliateCampaigns              AffiliateCampaign[]       @relation("CampaignSeller")
+  campaignParticipations          CampaignParticipation[]
+  promoCodesCreated               PromoCode[]               @relation("PromoCodeSeller")
+  promoRedemptions                PromoCodeRedemption[]
+  promotionCommissionsEarned      PromotionCommission[]     @relation("CommissionInfluencer")
+  promotionCommissionsSold        PromotionCommission[]     @relation("CommissionSeller")
+  sponsoredCampaigns              SponsoredCampaign[]
+  promotionNotices                PromotionNotice[]
+  socialConnections               UserSocialConnection[]
+  loginIdentities                 UserLoginIdentity[]
+  oauthLoginTickets               OAuthLoginTicket[]
+  shopBlacklistEntriesReceived    ShopBlacklistEntry[]      @relation("ShopBlacklistTarget")
+  shopBlacklistEntriesCreated     ShopBlacklistEntry[]      @relation("ShopBlacklistCreator")
+  platformBlacklistReceived       PlatformBlacklistEntry?   @relation("PlatformBlacklistTargetUser")
+  platformBlacklistEntriesCreated PlatformBlacklistEntry[]  @relation("PlatformBlacklistCreator")
+  oauthDeviceGrants               OAuthDeviceGrant[]
+  oauthAccessTokens               OAuthAccessToken[]
+  steamAccountLink                SteamAccountLink?
+  xboxAccountLink                 XboxAccountLink?
+  playStationAccountLink          PlayStationAccountLink?
+  kobaShopApplicationsReviewed    KobaShopApplication[]
+  cosmeticOrders                  CosmeticOrder[]
+  cosmeticOwnerships              CosmeticOwnership[]
+  cosmeticEquips                  CosmeticEquip[]
 }
 
 model Account {
@@ -329,7 +329,8 @@ model Session {
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-/** "Continue with Discord/Steam/Google" sign-in identities (client,
+/**
+ * "Continue with Discord/Steam/Google" sign-in identities (client,
  * 2026-08-17: "for the login and register pages, we need oauth").
  * Deliberately separate from `Account` above (the unused Auth.js-Adapter
  * shape already in this schema) and from `UserSocialConnection` (bio
@@ -337,7 +338,8 @@ model Session {
  * identity log in as," enforced one-to-one both ways. No auto-linking by
  * email: a provider identity not already in this table, whose email
  * matches an existing User, is refused (features/auth-oauth), not
- * silently merged. */
+ * silently merged.
+ */
 enum LoginOAuthProvider {
   DISCORD
   GOOGLE
@@ -358,10 +360,12 @@ model UserLoginIdentity {
   @@index([userId])
 }
 
-/** One-time ticket handing an OAuth callback (no client-side password) off
+/**
+ * One-time ticket handing an OAuth callback (no client-side password) off
  * to the existing Credentials provider, which is the only thing allowed
  * to mint a NextAuth session — mirrors StaffMfaChallenge's
- * session-issue ticket pattern in features/staff-mfa. */
+ * session-issue ticket pattern in features/staff-mfa.
+ */
 model OAuthLoginTicket {
   id         String    @id @default(cuid())
   tokenHash  String    @unique
@@ -416,14 +420,14 @@ model OAuthDeviceGrant {
 /// `Authorization: Bearer` header against this table, the non-browser
 /// equivalent of a NextAuth session cookie.
 model OAuthAccessToken {
-  id         String    @id @default(cuid())
-  tokenHash  String    @unique
-  userId     String
-  clientKey  String
-  scopes     String[]
-  expiresAt  DateTime
-  createdAt  DateTime  @default(now())
-  revokedAt  DateTime?
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  userId    String
+  clientKey String
+  scopes    String[]
+  expiresAt DateTime
+  createdAt DateTime  @default(now())
+  revokedAt DateTime?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -454,10 +458,10 @@ model SteamAccountLink {
 /// ownership-verification API the way Steam's OpenID does, and none is
 /// needed since KOBAID already answers "do they actually own this."
 model XboxAccountLink {
-  id        String   @id @default(cuid())
-  userId    String   @unique
-  gamertag  String   @unique
-  linkedAt  DateTime @default(now())
+  id       String   @id @default(cuid())
+  userId   String   @unique
+  gamertag String   @unique
+  linkedAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -486,16 +490,16 @@ enum TagPrivacy {
 }
 
 model AccountProfile {
-  id                 String           @id @default(cuid())
-  userId             String           @unique
-  handle             String           @unique
-  displayName        String?
-  bio                String?
-  activeAccountType  KobaAccountType  @default(PLAYER)
-  tagPrivacy         TagPrivacy       @default(FOLLOWERS)
-  kobaIdRevealedAt   DateTime?
-  createdAt          DateTime         @default(now())
-  updatedAt          DateTime         @updatedAt
+  id                String          @id @default(cuid())
+  userId            String          @unique
+  handle            String          @unique
+  displayName       String?
+  bio               String?
+  activeAccountType KobaAccountType @default(PLAYER)
+  tagPrivacy        TagPrivacy      @default(FOLLOWERS)
+  kobaIdRevealedAt  DateTime?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -507,10 +511,10 @@ model KobaIdentity {
   userId      String
   createdAt   DateTime        @default(now())
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  plusSubscription PlusSubscription?
-  plusGrants       PlusEntitlementGrant[]
-  aidenJobs        AidenJob[]
+  user              User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plusSubscription  PlusSubscription?
+  plusGrants        PlusEntitlementGrant[]
+  aidenJobs         AidenJob[]
   developerProfiles DeveloperProfile[]
 
   @@unique([userId, accountType])
@@ -591,21 +595,21 @@ enum BoostStatus {
 // codebase already uses that pattern for exactly this kind of
 // "one row can point at several different entity types" case.
 model Boost {
-  id                String           @id @default(cuid())
-  ownerUserId       String
-  status            BoostStatus      @default(UNUSED)
-  purchaseCoinCost  Int
-  purchasedAt       DateTime         @default(now())
-  giftedFromUserId  String?
-  giftedAt          DateTime?
-  targetType        BoostTargetKind?
-  targetId          String?
-  appliedAt         DateTime?
-  expiresAt         DateTime?
-  idempotencyKey    String           @unique
+  id               String           @id @default(cuid())
+  ownerUserId      String
+  status           BoostStatus      @default(UNUSED)
+  purchaseCoinCost Int
+  purchasedAt      DateTime         @default(now())
+  giftedFromUserId String?
+  giftedAt         DateTime?
+  targetType       BoostTargetKind?
+  targetId         String?
+  appliedAt        DateTime?
+  expiresAt        DateTime?
+  idempotencyKey   String           @unique
 
-  owner       User  @relation("BoostOwner", fields: [ownerUserId], references: [id], onDelete: Cascade)
-  giftedFrom  User? @relation("BoostGiftedFrom", fields: [giftedFromUserId], references: [id], onDelete: SetNull)
+  owner      User  @relation("BoostOwner", fields: [ownerUserId], references: [id], onDelete: Cascade)
+  giftedFrom User? @relation("BoostGiftedFrom", fields: [giftedFromUserId], references: [id], onDelete: SetNull)
 
   @@index([ownerUserId])
   @@index([targetType, targetId])
@@ -715,24 +719,24 @@ enum FreebiePolicy {
 }
 
 model Product {
-  id                 String           @id @default(cuid())
-  slug               String           @unique
-  title              String
-  description        String           @db.Text
-  rarity             ProductRarity
-  rarityRank         Int
-  listingType        ListingType      @default(FIXED)
-  moderationStatus   ModerationStatus @default(DRAFT)
-  priceCents         Int
-  currency           String           @default("USD")
-  inventoryQty       Int              @default(0)
-  platforms          GamePlatform[]
-  sellerUserId       String
-  shopId             String?
-  gameId             String
-  categoryId         String
-  publishedAt        DateTime?
-  freebiePolicy      FreebiePolicy    @default(NONE)
+  id                       String           @id @default(cuid())
+  slug                     String           @unique
+  title                    String
+  description              String           @db.Text
+  rarity                   ProductRarity
+  rarityRank               Int
+  listingType              ListingType      @default(FIXED)
+  moderationStatus         ModerationStatus @default(DRAFT)
+  priceCents               Int
+  currency                 String           @default("USD")
+  inventoryQty             Int              @default(0)
+  platforms                GamePlatform[]
+  sellerUserId             String
+  shopId                   String?
+  gameId                   String
+  categoryId               String
+  publishedAt              DateTime?
+  freebiePolicy            FreebiePolicy    @default(NONE)
   /// Meaningful only when freebiePolicy = LIMITED_QUANTITY — a one-time
   /// lifetime pool per product (client direction not yet given on
   /// replenishment; "first 15 free" is modeled as never resetting,
@@ -747,28 +751,28 @@ model Product {
   /// GameServers receives the command, and the Oxide/uMod kit name
   /// (features/servers/lib/rcon/kit-commands.ts) it runs
   /// `kit givetoplayer` for.
-  rconServerId       String?
-  rconKitName        String?
-  createdAt          DateTime         @default(now())
-  updatedAt          DateTime         @updatedAt
+  rconServerId             String?
+  rconKitName              String?
+  createdAt                DateTime         @default(now())
+  updatedAt                DateTime         @updatedAt
 
-  seller    User              @relation(fields: [sellerUserId], references: [id], onDelete: Cascade)
-  shop      Shop?             @relation(fields: [shopId], references: [id], onDelete: SetNull)
-  game      Game              @relation(fields: [gameId], references: [id], onDelete: Restrict)
-  category  Category          @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-  rconServer GameServer?      @relation("ProductRconServer", fields: [rconServerId], references: [id], onDelete: SetNull)
-  variants  ProductVariant[]
-  media     ProductMedia[]
-  favorites ProductFavorite[]
-  saves     ProductSave[]
-  orderItems      OrderItem[]
-  auction         Auction?
-  referralCodes   ReferralCode[]
-  campaignProducts AffiliateCampaignProduct[]
+  seller            User                       @relation(fields: [sellerUserId], references: [id], onDelete: Cascade)
+  shop              Shop?                      @relation(fields: [shopId], references: [id], onDelete: SetNull)
+  game              Game                       @relation(fields: [gameId], references: [id], onDelete: Restrict)
+  category          Category                   @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  rconServer        GameServer?                @relation("ProductRconServer", fields: [rconServerId], references: [id], onDelete: SetNull)
+  variants          ProductVariant[]
+  media             ProductMedia[]
+  favorites         ProductFavorite[]
+  saves             ProductSave[]
+  orderItems        OrderItem[]
+  auction           Auction?
+  referralCodes     ReferralCode[]
+  campaignProducts  AffiliateCampaignProduct[]
   promoCodeProducts PromoCodeProduct[]
-  aidenAsset      AidenAsset?
-  freebieClaims   FreebieClaim[]
-  comments        ProductComment[]
+  aidenAsset        AidenAsset?
+  freebieClaims     FreebieClaim[]
+  comments          ProductComment[]
 
   @@index([moderationStatus, publishedAt])
   @@index([gameId])
@@ -785,11 +789,11 @@ model Product {
 /// (Order itself has no such constraint; multiple paid orders for the
 /// same product are normal). Modeled on DevInstall's shape.
 model FreebieClaim {
-  id           String   @id @default(cuid())
-  productId    String
-  buyerUserId  String
-  orderId      String   @unique
-  createdAt    DateTime @default(now())
+  id          String   @id @default(cuid())
+  productId   String
+  buyerUserId String
+  orderId     String   @unique
+  createdAt   DateTime @default(now())
 
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
   buyer   User    @relation(fields: [buyerUserId], references: [id], onDelete: Cascade)
@@ -939,48 +943,73 @@ enum OrderStatus {
 
 /// Direct-RCON auto-delivery outcome, set the instant an order with an
 /// rconKitName product is marked PAID (markOrderPaid) — not a manual
-/// seller "fulfill" action. FAILED is retryable by the seller
-/// (POST /api/business/orders/[publicRef]/redeliver).
+/// seller "fulfill" action.
+/// Client, 2026-08-18 (KOBA-vs-Tip4Serv architecture spec): "the KOBA
+/// gateway must cache the commands in a database queue and safely
+/// retry execution using an exponential backoff strategy until success
+/// is confirmed" for an offline/laggy target server — RETRYING covers
+/// that in-flight state, DEAD is reached once RconCommandJob exhausts
+/// its retry budget (RCON_JOB_MAX_ATTEMPTS). FAILED stays reserved for
+/// non-retryable config problems (bad RCON credentials, unsupported
+/// game) that a retry loop can't fix — only the seller can, by
+/// correcting the server config and hitting retry. Both FAILED and DEAD
+/// are seller-retryable (POST /api/business/orders/[publicRef]/redeliver).
 enum RconDeliveryStatus {
   NOT_APPLICABLE
   PENDING
+  RETRYING
   DELIVERED
   FAILED
+  DEAD
+}
+
+/// Lifecycle of one queued RconCommandJob attempt. PENDING jobs with
+/// runAfter <= now are claimed by the RCON delivery worker
+/// (scripts/run-rcon-delivery-worker.mjs); after a transient failure
+/// (server offline/timed out) the same job is put back to PENDING with
+/// runAfter pushed out by computeRconBackoffMs, up to
+/// RCON_JOB_MAX_ATTEMPTS before going DEAD.
+enum RconCommandJobStatus {
+  PENDING
+  RUNNING
+  SUCCEEDED
+  FAILED
+  DEAD
 }
 
 model Shop {
-  id                   String                 @id @default(cuid())
-  slug                 String                 @unique
-  name                 String
-  bio                  String                 @db.Text
-  ownerUserId          String                 @unique
-  verificationStatus   ShopVerificationStatus @default(UNVERIFIED)
-  verificationNote     String?
-  stripeAccountId      String?                @unique
-  chargesEnabled       Boolean                @default(false)
-  payoutsEnabled       Boolean                @default(false)
-  taggingAllowed       Boolean                @default(true)
-  createdAt            DateTime               @default(now())
-  updatedAt            DateTime               @updatedAt
+  id                 String                 @id @default(cuid())
+  slug               String                 @unique
+  name               String
+  bio                String                 @db.Text
+  ownerUserId        String                 @unique
+  verificationStatus ShopVerificationStatus @default(UNVERIFIED)
+  verificationNote   String?
+  stripeAccountId    String?                @unique
+  chargesEnabled     Boolean                @default(false)
+  payoutsEnabled     Boolean                @default(false)
+  taggingAllowed     Boolean                @default(true)
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
 
-  owner         User             @relation("ShopOwner", fields: [ownerUserId], references: [id], onDelete: Cascade)
-  members       ShopMember[]
-  follows       ShopFollow[]
-  reviews       ShopReview[]
-  products      Product[]
-  orders        Order[]
-  servers       GameServer[]
-  cosmetics     Cosmetic[]
-  promoConfig          ShopPromoConfig?
-  referralCodes        ReferralCode[]
-  affiliateCampaigns   AffiliateCampaign[]
-  promoCodes           PromoCode[]
-  socialConnections    ShopSocialConnection[]
-  blacklistEntries     ShopBlacklistEntry[]
-  platformBan          PlatformBlacklistEntry? @relation("PlatformBlacklistTargetShop")
-  kobaShopApplication  KobaShopApplication?
-  cosmeticOrders       CosmeticOrder[]
-  shopCosmeticEquip    ShopCosmeticEquip?
+  owner               User                    @relation("ShopOwner", fields: [ownerUserId], references: [id], onDelete: Cascade)
+  members             ShopMember[]
+  follows             ShopFollow[]
+  reviews             ShopReview[]
+  products            Product[]
+  orders              Order[]
+  servers             GameServer[]
+  cosmetics           Cosmetic[]
+  promoConfig         ShopPromoConfig?
+  referralCodes       ReferralCode[]
+  affiliateCampaigns  AffiliateCampaign[]
+  promoCodes          PromoCode[]
+  socialConnections   ShopSocialConnection[]
+  blacklistEntries    ShopBlacklistEntry[]
+  platformBan         PlatformBlacklistEntry? @relation("PlatformBlacklistTargetShop")
+  kobaShopApplication KobaShopApplication?
+  cosmeticOrders      CosmeticOrder[]
+  shopCosmeticEquip   ShopCosmeticEquip?
 }
 
 model ShopMember {
@@ -1043,20 +1072,20 @@ enum CosmeticSubType {
 /// Sold pre-made, closed sub-type enum, no custom-build fields, per
 /// ROADMAP.md Phase 3's explicit non-goal.
 model Cosmetic {
-  id               String            @id @default(cuid())
-  slug             String            @unique
+  id               String           @id @default(cuid())
+  slug             String           @unique
   ownerShopId      String
   subType          CosmeticSubType
   rarity           ProductRarity
   name             String
-  description      String            @db.Text
+  description      String           @db.Text
   priceCents       Int
-  currency         String            @default("USD")
-  moderationStatus ModerationStatus  @default(DRAFT)
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
+  currency         String           @default("USD")
+  moderationStatus ModerationStatus @default(DRAFT)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
 
-  ownerShop Shop @relation(fields: [ownerShopId], references: [id], onDelete: Cascade)
+  ownerShop  Shop                @relation(fields: [ownerShopId], references: [id], onDelete: Cascade)
   orders     CosmeticOrder[]
   ownerships CosmeticOwnership[]
 
@@ -1089,8 +1118,8 @@ model KobaShopApplication {
   createdAt        DateTime                  @default(now())
   updatedAt        DateTime                  @updatedAt
 
-  shop         Shop  @relation(fields: [shopId], references: [id], onDelete: Cascade)
-  reviewedBy   User? @relation(fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+  shop       Shop  @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  reviewedBy User? @relation(fields: [reviewedByUserId], references: [id], onDelete: SetNull)
 }
 
 /// Cosmetic checkout — a dedicated model rather than reusing Order/
@@ -1102,25 +1131,25 @@ model KobaShopApplication {
 /// Product orders) — a digital cosmetic has none of the delivery-dispute
 /// risk that motivated Product's escrow window.
 model CosmeticOrder {
-  id                  String      @id @default(cuid())
-  publicRef           String      @unique
-  idempotencyKey      String      @unique
-  cosmeticId          String
-  shopId              String
-  buyerUserId         String
-  status              OrderStatus @default(PENDING)
-  unitPriceCents      Int
-  applicationFeeCents Int
-  sellerPayoutCents   Int
-  currency            String      @default("USD")
+  id                      String      @id @default(cuid())
+  publicRef               String      @unique
+  idempotencyKey          String      @unique
+  cosmeticId              String
+  shopId                  String
+  buyerUserId             String
+  status                  OrderStatus @default(PENDING)
+  unitPriceCents          Int
+  applicationFeeCents     Int
+  sellerPayoutCents       Int
+  currency                String      @default("USD")
   stripeCheckoutSessionId String?
   stripePaymentIntentId   String?
-  createdAt           DateTime    @default(now())
-  updatedAt           DateTime    @updatedAt
+  createdAt               DateTime    @default(now())
+  updatedAt               DateTime    @updatedAt
 
-  cosmetic Cosmetic @relation(fields: [cosmeticId], references: [id], onDelete: Cascade)
-  shop     Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
-  buyer    User     @relation(fields: [buyerUserId], references: [id], onDelete: Cascade)
+  cosmetic  Cosmetic           @relation(fields: [cosmeticId], references: [id], onDelete: Cascade)
+  shop      Shop               @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  buyer     User               @relation(fields: [buyerUserId], references: [id], onDelete: Cascade)
   ownership CosmeticOwnership?
 
   @@index([shopId])
@@ -1139,9 +1168,9 @@ model CosmeticOwnership {
   orderId    String   @unique
   acquiredAt DateTime @default(now())
 
-  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  cosmetic Cosmetic      @relation(fields: [cosmeticId], references: [id], onDelete: Cascade)
-  order    CosmeticOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cosmetic      Cosmetic           @relation(fields: [cosmeticId], references: [id], onDelete: Cascade)
+  order         CosmeticOrder      @relation(fields: [orderId], references: [id], onDelete: Cascade)
   personalEquip CosmeticEquip?
   shopEquip     ShopCosmeticEquip?
 
@@ -1189,58 +1218,60 @@ enum OrderKind {
 }
 
 model Order {
-  id                      String      @id @default(cuid())
-  publicRef               String      @unique
-  shopId                  String
-  buyerUserId             String
-  status                  OrderStatus @default(PENDING)
-  kind                    OrderKind   @default(FIXED)
-  totalCents              Int
-  applicationFeeCents     Int         @default(0)
-  sellerPayoutCents       Int
-  influencerShareCents    Int         @default(0)
-  originalSubtotalCents   Int         @default(0)
-  discountCents           Int         @default(0)
-  eligibleCommissionBaseCents Int     @default(0)
-  promoCodeId             String?
-  campaignId              String?
-  participationId         String?
-  attributionSource       AttributionSource?
-  currency                String      @default("USD")
-  stripeCheckoutSessionId String?     @unique
-  stripePaymentIntentId   String?
-  idempotencyKey          String      @unique
-  auctionId               String?
-  paidAt                  DateTime?
-  refundedAt              DateTime?
+  id                          String             @id @default(cuid())
+  publicRef                   String             @unique
+  shopId                      String
+  buyerUserId                 String
+  status                      OrderStatus        @default(PENDING)
+  kind                        OrderKind          @default(FIXED)
+  totalCents                  Int
+  applicationFeeCents         Int                @default(0)
+  sellerPayoutCents           Int
+  influencerShareCents        Int                @default(0)
+  originalSubtotalCents       Int                @default(0)
+  discountCents               Int                @default(0)
+  eligibleCommissionBaseCents Int                @default(0)
+  promoCodeId                 String?
+  campaignId                  String?
+  participationId             String?
+  attributionSource           AttributionSource?
+  currency                    String             @default("USD")
+  stripeCheckoutSessionId     String?            @unique
+  stripePaymentIntentId       String?
+  idempotencyKey              String             @unique
+  auctionId                   String?
+  paidAt                      DateTime?
+  refundedAt                  DateTime?
   /// Captured at checkout only when the purchased Product has
   /// rconKitName set — the in-game identifier (Steam persona, Xbox
   /// gamertag, PSN username; the `kit givetoplayer` command takes
   /// whatever string the game itself uses, see kit-commands.ts) the
-  /// auto-delivery command targets. Same "identify yourself at purchase
-  /// time" pattern Tip4Serv itself uses, not a separately pre-linked
-  /// profile.
-  buyerGameHandle         String?
-  rconDeliveryStatus      RconDeliveryStatus @default(NOT_APPLICABLE)
-  rconDeliveryError       String?     @db.Text
-  createdAt               DateTime    @default(now())
-  updatedAt               DateTime    @updatedAt
+  /// auto-delivery command targets. Resolved server-side at checkout
+  /// from the buyer's pre-linked Steam/Xbox/PSN identity in Settings
+  /// (features/game-identity#resolveGameHandleForPlatforms) — not
+  /// typed in at checkout.
+  buyerGameHandle             String?
+  rconDeliveryStatus          RconDeliveryStatus @default(NOT_APPLICABLE)
+  rconDeliveryError           String?            @db.Text
+  createdAt                   DateTime           @default(now())
+  updatedAt                   DateTime           @updatedAt
 
   referralCodeId String?
 
-  shop                 Shop                  @relation(fields: [shopId], references: [id], onDelete: Restrict)
-  buyer                User                  @relation("OrderBuyer", fields: [buyerUserId], references: [id], onDelete: Restrict)
-  items                OrderItem[]
-  referralCode         ReferralCode?         @relation(fields: [referralCodeId], references: [id], onDelete: SetNull)
-  referralAttribution     ReferralAttribution?
-  influencerEarning       InfluencerEarning?
-  promoCode               PromoCode?             @relation(fields: [promoCodeId], references: [id], onDelete: SetNull)
-  campaign                AffiliateCampaign?     @relation(fields: [campaignId], references: [id], onDelete: SetNull)
-  participation           CampaignParticipation? @relation(fields: [participationId], references: [id], onDelete: SetNull)
-  promotionCommission     PromotionCommission?
-  promoRedemption         PromoCodeRedemption?
-  escrow                  OrderEscrow?
-  freebieClaim            FreebieClaim?
+  shop                Shop                   @relation(fields: [shopId], references: [id], onDelete: Restrict)
+  buyer               User                   @relation("OrderBuyer", fields: [buyerUserId], references: [id], onDelete: Restrict)
+  items               OrderItem[]
+  referralCode        ReferralCode?          @relation(fields: [referralCodeId], references: [id], onDelete: SetNull)
+  referralAttribution ReferralAttribution?
+  influencerEarning   InfluencerEarning?
+  promoCode           PromoCode?             @relation(fields: [promoCodeId], references: [id], onDelete: SetNull)
+  campaign            AffiliateCampaign?     @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  participation       CampaignParticipation? @relation(fields: [participationId], references: [id], onDelete: SetNull)
+  promotionCommission PromotionCommission?
+  promoRedemption     PromoCodeRedemption?
+  escrow              OrderEscrow?
+  freebieClaim        FreebieClaim?
+  rconCommandJobs     RconCommandJob[]
 
   @@index([shopId, createdAt])
   @@index([buyerUserId])
@@ -1340,9 +1371,9 @@ model ReferralCode {
   createdAt        DateTime  @default(now())
   revokedAt        DateTime?
 
-  influencer   User                   @relation("ReferralInfluencer", fields: [influencerUserId], references: [id], onDelete: Cascade)
-  product      Product                @relation(fields: [productId], references: [id], onDelete: Cascade)
-  shop         Shop                   @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  influencer   User                  @relation("ReferralInfluencer", fields: [influencerUserId], references: [id], onDelete: Cascade)
+  product      Product               @relation(fields: [productId], references: [id], onDelete: Cascade)
+  shop         Shop                  @relation(fields: [shopId], references: [id], onDelete: Cascade)
   orders       Order[]
   attributions ReferralAttribution[]
   earnings     InfluencerEarning[]
@@ -1367,16 +1398,16 @@ model ReferralAttribution {
 }
 
 model InfluencerEarning {
-  id               String                   @id @default(cuid())
-  publicRef        String                   @unique
+  id               String                  @id @default(cuid())
+  publicRef        String                  @unique
   influencerUserId String
   referralCodeId   String
-  orderId          String                   @unique
+  orderId          String                  @unique
   amountCents      Int
-  currency         String                   @default("USD")
-  status           InfluencerEarningStatus  @default(ACCRUED)
-  stripeTransferId String?                  @unique
-  createdAt        DateTime                 @default(now())
+  currency         String                  @default("USD")
+  status           InfluencerEarningStatus @default(ACCRUED)
+  stripeTransferId String?                 @unique
+  createdAt        DateTime                @default(now())
   paidAt           DateTime?
   voidedAt         DateTime?
 
@@ -1483,25 +1514,25 @@ enum SponsoredEventType {
 }
 
 model InfluencerProfile {
-  id                    String                        @id @default(cuid())
-  userId                String                        @unique
-  slug                  String                        @unique
-  displayName           String
-  bio                   String                        @default("") @db.Text
-  avatarUrl             String?
-  bannerUrl             String?
-  socialLinksJson       String                        @default("[]")
-  games                 String[]
-  categories            String[]
-  audienceRegions       String[]
-  contactEmail          String?
-  verificationStatus    InfluencerVerificationStatus  @default(UNVERIFIED)
-  verificationNote      String?
-  suspendedAt           DateTime?
-  payoutEligible        Boolean                       @default(false)
-  disclosureAcceptedAt  DateTime?
-  createdAt             DateTime                      @default(now())
-  updatedAt             DateTime                      @updatedAt
+  id                   String                       @id @default(cuid())
+  userId               String                       @unique
+  slug                 String                       @unique
+  displayName          String
+  bio                  String                       @default("") @db.Text
+  avatarUrl            String?
+  bannerUrl            String?
+  socialLinksJson      String                       @default("[]")
+  games                String[]
+  categories           String[]
+  audienceRegions      String[]
+  contactEmail         String?
+  verificationStatus   InfluencerVerificationStatus @default(UNVERIFIED)
+  verificationNote     String?
+  suspendedAt          DateTime?
+  payoutEligible       Boolean                      @default(false)
+  disclosureAcceptedAt DateTime?
+  createdAt            DateTime                     @default(now())
+  updatedAt            DateTime                     @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -1509,34 +1540,34 @@ model InfluencerProfile {
 }
 
 model AffiliateCampaign {
-  id                      String                   @id @default(cuid())
-  publicRef               String                   @unique
+  id                      String                  @id @default(cuid())
+  publicRef               String                  @unique
   shopId                  String
   sellerUserId            String
   name                    String
-  status                  AffiliateCampaignStatus  @default(DRAFT)
-  commissionType          PromotionRateType        @default(PERCENTAGE)
-  commissionValue         Int                      @default(1000)
+  status                  AffiliateCampaignStatus @default(DRAFT)
+  commissionType          PromotionRateType       @default(PERCENTAGE)
+  commissionValue         Int                     @default(1000)
   discountType            PromotionRateType?
   discountValue           Int?
-  attributionWindowHours  Int                      @default(168)
-  totalBudgetCents        Int                      @default(0)
-  remainingBudgetCents    Int                      @default(0)
+  attributionWindowHours  Int                     @default(168)
+  totalBudgetCents        Int                     @default(0)
+  remainingBudgetCents    Int                     @default(0)
   perInfluencerLimitCents Int?
   totalConversionLimit    Int?
-  conversionCount         Int                      @default(0)
+  conversionCount         Int                     @default(0)
   targetGames             String[]
   targetCategories        String[]
-  openApplications        Boolean                  @default(true)
-  terms                   String                   @default("") @db.Text
+  openApplications        Boolean                 @default(true)
+  terms                   String                  @default("") @db.Text
   startsAt                DateTime?
   endsAt                  DateTime?
   moderationNote          String?
-  createdAt               DateTime                 @default(now())
-  updatedAt               DateTime                 @updatedAt
+  createdAt               DateTime                @default(now())
+  updatedAt               DateTime                @updatedAt
 
-  shop           Shop                      @relation(fields: [shopId], references: [id], onDelete: Cascade)
-  seller         User                      @relation("CampaignSeller", fields: [sellerUserId], references: [id], onDelete: Cascade)
+  shop           Shop                       @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  seller         User                       @relation("CampaignSeller", fields: [sellerUserId], references: [id], onDelete: Cascade)
   products       AffiliateCampaignProduct[]
   participations CampaignParticipation[]
   promoCodes     PromoCode[]
@@ -1560,23 +1591,23 @@ model AffiliateCampaignProduct {
 }
 
 model CampaignParticipation {
-  id               String                       @id @default(cuid())
-  publicRef        String                       @unique
+  id               String                      @id @default(cuid())
+  publicRef        String                      @unique
   campaignId       String
   influencerUserId String
-  status           CampaignParticipationStatus  @default(APPLIED)
-  referralToken    String                       @unique
+  status           CampaignParticipationStatus @default(APPLIED)
+  referralToken    String                      @unique
   promoCodeId      String?
   termsAcceptedAt  DateTime?
-  createdAt        DateTime                     @default(now())
-  updatedAt        DateTime                     @updatedAt
+  createdAt        DateTime                    @default(now())
+  updatedAt        DateTime                    @updatedAt
 
-  campaign     AffiliateCampaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  influencer   User                    @relation(fields: [influencerUserId], references: [id], onDelete: Cascade)
-  promoCode    PromoCode?              @relation(fields: [promoCodeId], references: [id], onDelete: SetNull)
-  clickEvents  ReferralClickEvent[]
-  commissions  PromotionCommission[]
-  orders       Order[]
+  campaign    AffiliateCampaign     @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  influencer  User                  @relation(fields: [influencerUserId], references: [id], onDelete: Cascade)
+  promoCode   PromoCode?            @relation(fields: [promoCodeId], references: [id], onDelete: SetNull)
+  clickEvents ReferralClickEvent[]
+  commissions PromotionCommission[]
+  orders      Order[]
 
   @@unique([campaignId, influencerUserId])
   @@index([influencerUserId, status])
@@ -1584,25 +1615,25 @@ model CampaignParticipation {
 }
 
 model PromoCode {
-  id                   String             @id @default(cuid())
-  code                 String             @unique
-  sellerUserId         String
-  shopId               String
-  campaignId           String?
-  discountType         PromotionRateType
-  discountValue        Int
-  minOrderCents        Int                @default(0)
-  maxDiscountCents     Int?
-  usageLimit           Int?
-  usageCount           Int                @default(0)
-  perAccountLimit      Int                @default(1)
-  startsAt             DateTime?
-  endsAt               DateTime?
-  active               Boolean            @default(true)
+  id                     String            @id @default(cuid())
+  code                   String            @unique
+  sellerUserId           String
+  shopId                 String
+  campaignId             String?
+  discountType           PromotionRateType
+  discountValue          Int
+  minOrderCents          Int               @default(0)
+  maxDiscountCents       Int?
+  usageLimit             Int?
+  usageCount             Int               @default(0)
+  perAccountLimit        Int               @default(1)
+  startsAt               DateTime?
+  endsAt                 DateTime?
+  active                 Boolean           @default(true)
   applicableAccountTypes String[]
-  stackingAllowed      Boolean            @default(false)
-  createdAt            DateTime           @default(now())
-  updatedAt            DateTime           @updatedAt
+  stackingAllowed        Boolean           @default(false)
+  createdAt              DateTime          @default(now())
+  updatedAt              DateTime          @updatedAt
 
   seller         User                    @relation("PromoCodeSeller", fields: [sellerUserId], references: [id], onDelete: Cascade)
   shop           Shop                    @relation(fields: [shopId], references: [id], onDelete: Cascade)
@@ -1642,16 +1673,16 @@ model PromoCodeRedemption {
 }
 
 model ReferralClickEvent {
-  id               String   @id @default(cuid())
-  publicRef        String   @unique
-  participationId  String
-  campaignId       String
-  visitorHash      String?
-  destinationPath  String
-  idempotencyKey   String   @unique
-  suspicious       Boolean  @default(false)
-  createdAt        DateTime @default(now())
-  expiresAt        DateTime
+  id              String   @id @default(cuid())
+  publicRef       String   @unique
+  participationId String
+  campaignId      String
+  visitorHash     String?
+  destinationPath String
+  idempotencyKey  String   @unique
+  suspicious      Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  expiresAt       DateTime
 
   participation CampaignParticipation @relation(fields: [participationId], references: [id], onDelete: Cascade)
   campaign      AffiliateCampaign     @relation(fields: [campaignId], references: [id], onDelete: Cascade)
@@ -1661,25 +1692,25 @@ model ReferralClickEvent {
 }
 
 model PromotionCommission {
-  id               String                      @id @default(cuid())
-  publicRef        String                      @unique
-  campaignId       String
-  participationId  String
-  influencerUserId String
-  sellerUserId     String
-  orderId          String                      @unique
-  amountCents      Int
-  currency         String                      @default("USD")
-  status           PromotionCommissionStatus   @default(PENDING)
+  id                String                    @id @default(cuid())
+  publicRef         String                    @unique
+  campaignId        String
+  participationId   String
+  influencerUserId  String
+  sellerUserId      String
+  orderId           String                    @unique
+  amountCents       Int
+  currency          String                    @default("USD")
+  status            PromotionCommissionStatus @default(PENDING)
   attributionSource AttributionSource
-  idempotencyKey   String                      @unique
-  qualifiedAt      DateTime?
-  availableAt      DateTime?
-  reversedAt       DateTime?
-  paidAt           DateTime?
-  reviewNote       String?
-  createdAt        DateTime                    @default(now())
-  updatedAt        DateTime                    @updatedAt
+  idempotencyKey    String                    @unique
+  qualifiedAt       DateTime?
+  availableAt       DateTime?
+  reversedAt        DateTime?
+  paidAt            DateTime?
+  reviewNote        String?
+  createdAt         DateTime                  @default(now())
+  updatedAt         DateTime                  @updatedAt
 
   campaign      AffiliateCampaign     @relation(fields: [campaignId], references: [id], onDelete: Restrict)
   participation CampaignParticipation @relation(fields: [participationId], references: [id], onDelete: Restrict)
@@ -1692,34 +1723,34 @@ model PromotionCommission {
 }
 
 model SponsoredCampaign {
-  id                     String                   @id @default(cuid())
-  publicRef              String                   @unique
-  advertiserUserId       String
-  entityType             SponsoredEntityType
-  entityId               String
-  placement              SponsoredPlacement
-  targetGameId           String?
-  targetCategoryId       String?
-  targetPlatform         String?
-  targetRegion           String?
-  startsAt               DateTime?
-  endsAt                 DateTime?
-  totalBudgetCoins       BigInt
-  remainingBudgetCoins   BigInt
-  dailyBudgetCoins       BigInt
-  dailySpentCoins        BigInt                   @default(0)
-  dailySpentOn           DateTime?
-  cpcCoins               BigInt
-  frequencyCap           Int                      @default(6)
-  status                 SponsoredCampaignStatus  @default(DRAFT)
-  reservationPublicRef   String?
-  impressionCount        Int                      @default(0)
-  clickCount             Int                      @default(0)
-  spendCoins             BigInt                   @default(0)
-  lastShownAt            DateTime?
-  moderationNote         String?
-  createdAt              DateTime                 @default(now())
-  updatedAt              DateTime                 @updatedAt
+  id                   String                  @id @default(cuid())
+  publicRef            String                  @unique
+  advertiserUserId     String
+  entityType           SponsoredEntityType
+  entityId             String
+  placement            SponsoredPlacement
+  targetGameId         String?
+  targetCategoryId     String?
+  targetPlatform       String?
+  targetRegion         String?
+  startsAt             DateTime?
+  endsAt               DateTime?
+  totalBudgetCoins     BigInt
+  remainingBudgetCoins BigInt
+  dailyBudgetCoins     BigInt
+  dailySpentCoins      BigInt                  @default(0)
+  dailySpentOn         DateTime?
+  cpcCoins             BigInt
+  frequencyCap         Int                     @default(6)
+  status               SponsoredCampaignStatus @default(DRAFT)
+  reservationPublicRef String?
+  impressionCount      Int                     @default(0)
+  clickCount           Int                     @default(0)
+  spendCoins           BigInt                  @default(0)
+  lastShownAt          DateTime?
+  moderationNote       String?
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
 
   advertiser User             @relation(fields: [advertiserUserId], references: [id], onDelete: Cascade)
   events     SponsoredEvent[]
@@ -1854,22 +1885,22 @@ enum GroupInviteStatus {
 }
 
 model Group {
-  id             String           @id @default(cuid())
-  slug           String           @unique
+  id             String          @id @default(cuid())
+  slug           String          @unique
   name           String
-  bio            String           @db.Text
-  visibility     GroupVisibility  @default(PUBLIC)
-  taggingAllowed Boolean          @default(true)
+  bio            String          @db.Text
+  visibility     GroupVisibility @default(PUBLIC)
+  taggingAllowed Boolean         @default(true)
   ownerUserId    String
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
 
-  owner         User                @relation("GroupOwner", fields: [ownerUserId], references: [id], onDelete: Cascade)
-  members       GroupMember[]
-  joinRequests  GroupJoinRequest[]
-  invitations   GroupInvitation[]
-  bans          GroupBan[]
-  posts         Post[]
+  owner        User               @relation("GroupOwner", fields: [ownerUserId], references: [id], onDelete: Cascade)
+  members      GroupMember[]
+  joinRequests GroupJoinRequest[]
+  invitations  GroupInvitation[]
+  bans         GroupBan[]
+  posts        Post[]
 
   @@index([visibility, createdAt])
   @@index([ownerUserId])
@@ -1904,13 +1935,13 @@ model GroupJoinRequest {
 }
 
 model GroupInvitation {
-  id            String            @id @default(cuid())
-  groupId       String
-  invitedUserId String
+  id              String            @id @default(cuid())
+  groupId         String
+  invitedUserId   String
   invitedByUserId String
-  status        GroupInviteStatus @default(PENDING)
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
+  status          GroupInviteStatus @default(PENDING)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
 
   group     Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
   invitee   User  @relation("GroupInvitee", fields: [invitedUserId], references: [id], onDelete: Cascade)
@@ -1921,11 +1952,11 @@ model GroupInvitation {
 }
 
 model GroupBan {
-  groupId       String
-  userId        String
+  groupId        String
+  userId         String
   bannedByUserId String
-  reason        String?
-  createdAt     DateTime @default(now())
+  reason         String?
+  createdAt      DateTime @default(now())
 
   group    Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
   user     User  @relation("GroupBanTarget", fields: [userId], references: [id], onDelete: Cascade)
@@ -1972,24 +2003,24 @@ enum LfgRequestStatus {
 }
 
 model LfgPost {
-  id             String      @id @default(cuid())
-  publicRef      String      @unique
-  authorUserId   String
-  title          String
-  body           String      @db.Text
-  gameId         String
-  platform       GamePlatform
-  region         LfgRegion
-  timezone       String
-  skillLevel     LfgSkill
-  mic            LfgMic
-  availability   String
-  slotsTotal     Int
-  slotsFilled    Int         @default(1)
-  status         LfgStatus   @default(OPEN)
-  expiresAt      DateTime
-  createdAt      DateTime    @default(now())
-  updatedAt      DateTime    @updatedAt
+  id           String       @id @default(cuid())
+  publicRef    String       @unique
+  authorUserId String
+  title        String
+  body         String       @db.Text
+  gameId       String
+  platform     GamePlatform
+  region       LfgRegion
+  timezone     String
+  skillLevel   LfgSkill
+  mic          LfgMic
+  availability String
+  slotsTotal   Int
+  slotsFilled  Int          @default(1)
+  status       LfgStatus    @default(OPEN)
+  expiresAt    DateTime
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
 
   author   User         @relation(fields: [authorUserId], references: [id], onDelete: Cascade)
   game     Game         @relation(fields: [gameId], references: [id], onDelete: Restrict)
@@ -2089,16 +2120,16 @@ model UserBlock {
 }
 
 model Post {
-  id                String          @id @default(cuid())
-  publicRef         String          @unique
-  authorUserId      String
-  groupId           String?
-  body              String          @db.Text
-  visibility        PostVisibility  @default(PUBLIC)
-  moderationStatus  PostModeration  @default(LIVE)
-  sponsored         Boolean         @default(false)
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
+  id               String         @id @default(cuid())
+  publicRef        String         @unique
+  authorUserId     String
+  groupId          String?
+  body             String         @db.Text
+  visibility       PostVisibility @default(PUBLIC)
+  moderationStatus PostModeration @default(LIVE)
+  sponsored        Boolean        @default(false)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
 
   author    User           @relation(fields: [authorUserId], references: [id], onDelete: Cascade)
   group     Group?         @relation(fields: [groupId], references: [id], onDelete: Cascade)
@@ -2127,13 +2158,13 @@ model SocialMedia {
 }
 
 model PostComment {
-  id           String         @id @default(cuid())
-  publicRef    String         @unique
-  postId       String
-  authorUserId String
-  body         String
+  id               String         @id @default(cuid())
+  publicRef        String         @unique
+  postId           String
+  authorUserId     String
+  body             String
   moderationStatus PostModeration @default(LIVE)
-  createdAt    DateTime       @default(now())
+  createdAt        DateTime       @default(now())
 
   post   Post @relation(fields: [postId], references: [id], onDelete: Cascade)
   author User @relation(fields: [authorUserId], references: [id], onDelete: Cascade)
@@ -2179,13 +2210,13 @@ model PostTag {
 }
 
 model Story {
-  id        String   @id @default(cuid())
-  publicRef String   @unique
+  id           String   @id @default(cuid())
+  publicRef    String   @unique
   authorUserId String
-  body      String
-  mediaUrl  String?
-  expiresAt DateTime
-  createdAt DateTime @default(now())
+  body         String
+  mediaUrl     String?
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
 
   author User        @relation(fields: [authorUserId], references: [id], onDelete: Cascade)
   views  StoryView[]
@@ -2620,33 +2651,33 @@ enum DevWebhookDeliveryStatus {
 }
 
 model InventoryItem {
-  id                 String                     @id @default(cuid())
-  publicRef          String                     @unique
-  ownerUserId        String
-  title              String
-  game               String
-  platform           GamePlatform
-  rarity             ProductRarity
-  transferable       Boolean                    @default(false)
-  listedForTrade     Boolean                    @default(false)
-  status             InventoryItemStatus        @default(ACTIVE)
-  acquisitionSource  InventoryAcquisitionSource @default(GRANT)
-  productId          String?
-  aidenAssetId       String?
-  serial             String?
-  lockTradeOfferId   String?
+  id                String                     @id @default(cuid())
+  publicRef         String                     @unique
+  ownerUserId       String
+  title             String
+  game              String
+  platform          GamePlatform
+  rarity            ProductRarity
+  transferable      Boolean                    @default(false)
+  listedForTrade    Boolean                    @default(false)
+  status            InventoryItemStatus        @default(ACTIVE)
+  acquisitionSource InventoryAcquisitionSource @default(GRANT)
+  productId         String?
+  aidenAssetId      String?
+  serial            String?
+  lockTradeOfferId  String?
   /// Set by the KOBA PC Plugin (Phase 21) after it actually writes this
   /// item into a game's local skin config — distinct from merely owning
   /// it. Null until the plugin reports back via POST
   /// /api/plugin/inventory/[itemId]/applied.
-  appliedAt          DateTime?
-  appliedGame        String?
-  createdAt          DateTime                   @default(now())
-  updatedAt          DateTime                   @updatedAt
+  appliedAt         DateTime?
+  appliedGame       String?
+  createdAt         DateTime                   @default(now())
+  updatedAt         DateTime                   @updatedAt
 
-  owner            User             @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
-  lockTradeOffer   TradeOffer?      @relation("TradeItemLocks", fields: [lockTradeOfferId], references: [id], onDelete: SetNull)
-  tradeLines       TradeOfferItem[]
+  owner              User             @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+  lockTradeOffer     TradeOffer?      @relation("TradeItemLocks", fields: [lockTradeOfferId], references: [id], onDelete: SetNull)
+  tradeLines         TradeOfferItem[]
   activeMapForServer GameServer?
 
   @@index([ownerUserId, listedForTrade, status])
@@ -2656,23 +2687,23 @@ model InventoryItem {
 }
 
 model TradeOffer {
-  id                 String     @id @default(cuid())
-  publicRef          String     @unique
-  idempotencyKey     String     @unique
-  state              TradeState @default(PENDING)
+  id                 String        @id @default(cuid())
+  publicRef          String        @unique
+  idempotencyKey     String        @unique
+  state              TradeState    @default(PENDING)
   rarityTier         ProductRarity
   proposerUserId     String
   counterpartyUserId String
   note               String?
   expiresAt          DateTime?
-  version            Int        @default(0)
+  version            Int           @default(0)
   parentTradeId      String?
   acceptedAt         DateTime?
   completedAt        DateTime?
   rejectedAt         DateTime?
   cancelledAt        DateTime?
-  createdAt          DateTime   @default(now())
-  updatedAt          DateTime   @updatedAt
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
 
   proposer     User             @relation("TradeProposer", fields: [proposerUserId], references: [id], onDelete: Cascade)
   counterparty User             @relation("TradeCounterparty", fields: [counterpartyUserId], references: [id], onDelete: Cascade)
@@ -2689,7 +2720,7 @@ model TradeOffer {
 }
 
 model TradeOfferItem {
-  id               String         @id @default(cuid())
+  id               String        @id @default(cuid())
   tradeOfferId     String
   inventoryItemId  String
   side             TradeItemSide
@@ -2698,7 +2729,7 @@ model TradeOfferItem {
   platformSnapshot GamePlatform
   raritySnapshot   ProductRarity
   ownerUserIdSnap  String
-  createdAt        DateTime       @default(now())
+  createdAt        DateTime      @default(now())
 
   tradeOffer    TradeOffer    @relation(fields: [tradeOfferId], references: [id], onDelete: Cascade)
   inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Restrict)
@@ -2725,52 +2756,52 @@ model TradeEvent {
 }
 
 model GameServer {
-  id                 String                   @id @default(cuid())
-  publicRef          String                   @unique
-  slug               String                   @unique
-  name               String
-  description        String?                  @db.Text
-  game               String
-  platformFamily     ServerPlatformFamily
-  region             String
-  country            String?
-  timezone           String?
-  tags               String[]
-  ownerUserId        String
+  id                       String                   @id @default(cuid())
+  publicRef                String                   @unique
+  slug                     String                   @unique
+  name                     String
+  description              String?                  @db.Text
+  game                     String
+  platformFamily           ServerPlatformFamily
+  region                   String
+  country                  String?
+  timezone                 String?
+  tags                     String[]
+  ownerUserId              String
   /// Active KOBA account type that owns this server (BUSINESS or INFLUENCER).
-  ownerAccountType   KobaAccountType
-  shopId             String?
-  joinInfo           String?
-  hostname           String?
-  host               String?
-  queryPort          Int?
-  gamePort           Int?
-  port               Int?
-  hideResolvedIp     Boolean                  @default(true)
-  adapterKey         String                   @default("manual")
-  capabilities       ServerCapability[]
-  verificationStatus ServerVerificationStatus @default(UNVERIFIED)
-  publicationStatus  ServerPublicationStatus  @default(DRAFT)
-  operationalStatus  ServerOnlineStatus       @default(UNKNOWN)
+  ownerAccountType         KobaAccountType
+  shopId                   String?
+  joinInfo                 String?
+  hostname                 String?
+  host                     String?
+  queryPort                Int?
+  gamePort                 Int?
+  port                     Int?
+  hideResolvedIp           Boolean                  @default(true)
+  adapterKey               String                   @default("manual")
+  capabilities             ServerCapability[]
+  verificationStatus       ServerVerificationStatus @default(UNVERIFIED)
+  publicationStatus        ServerPublicationStatus  @default(DRAFT)
+  operationalStatus        ServerOnlineStatus       @default(UNKNOWN)
   /// Prefer operationalStatus; kept for expansion UI compatibility.
-  status             ServerOnlineStatus       @default(UNKNOWN)
-  verificationToken  String?
-  verificationNote   String?
-  verifiedAt         DateTime?
-  submittedAt        DateTime?
-  suspendedAt        DateTime?
-  livePlayers        Int?
-  maxPlayers         Int?
-  queue              Int?
-  mapName            String?
-  mapSize            String?
-  pingMs             Int?
-  lastRefreshAt      DateTime?
-  lastSuccessfulAt   DateTime?
-  freshUntil         DateTime?
-  pollFailures       Int                      @default(0)
-  nextPollAt         DateTime?
-  rconTestState      RconTestState            @default(IDLE)
+  status                   ServerOnlineStatus       @default(UNKNOWN)
+  verificationToken        String?
+  verificationNote         String?
+  verifiedAt               DateTime?
+  submittedAt              DateTime?
+  suspendedAt              DateTime?
+  livePlayers              Int?
+  maxPlayers               Int?
+  queue                    Int?
+  mapName                  String?
+  mapSize                  String?
+  pingMs                   Int?
+  lastRefreshAt            DateTime?
+  lastSuccessfulAt         DateTime?
+  freshUntil               DateTime?
+  pollFailures             Int                      @default(0)
+  nextPollAt               DateTime?
+  rconTestState            RconTestState            @default(IDLE)
   /// "Rarity" for a server (client clarification, 2026-08-15): derived
   /// from a Map they own on this server, purchased on the KOBA
   /// marketplace — NOT a standalone server-level tier the owner just
@@ -2779,23 +2810,24 @@ model GameServer {
   /// (features/servers/services/server.service.ts#setActiveMap
   /// enforces this — schema alone can't express "owned by the same
   /// user as ownerUserId").
-  activeMapInventoryItemId String? @unique
-  createdAt          DateTime                 @default(now())
-  updatedAt          DateTime                 @updatedAt
+  activeMapInventoryItemId String?                  @unique
+  createdAt                DateTime                 @default(now())
+  updatedAt                DateTime                 @updatedAt
 
-  owner        User                    @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
-  shop         Shop?                   @relation(fields: [shopId], references: [id], onDelete: SetNull)
-  credential   ServerCredential?
-  favourites   ServerFavourite[]
-  snapshots    ServerStatusSnapshot[]
-  integrations ServerIntegration[]
-  attempts     IntegrationAttempt[]
-  jobs         ServerIntegrationJob[]
-  notices      ServerOwnerNotice[]
-  idempotency  IntegrationIdempotency[]
-  bios         ServerBio[]
-  activeMapInventoryItem InventoryItem? @relation(fields: [activeMapInventoryItemId], references: [id], onDelete: SetNull)
-  rconDeliveryProducts   Product[]      @relation("ProductRconServer")
+  owner                  User                     @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+  shop                   Shop?                    @relation(fields: [shopId], references: [id], onDelete: SetNull)
+  credential             ServerCredential?
+  favourites             ServerFavourite[]
+  snapshots              ServerStatusSnapshot[]
+  integrations           ServerIntegration[]
+  attempts               IntegrationAttempt[]
+  jobs                   ServerIntegrationJob[]
+  notices                ServerOwnerNotice[]
+  idempotency            IntegrationIdempotency[]
+  bios                   ServerBio[]
+  activeMapInventoryItem InventoryItem?           @relation(fields: [activeMapInventoryItemId], references: [id], onDelete: SetNull)
+  rconDeliveryProducts   Product[]                @relation("ProductRconServer")
+  rconCommandJobs        RconCommandJob[]         @relation("RconCommandJobServer")
 
   @@index([ownerUserId])
   @@index([game, region])
@@ -2931,6 +2963,40 @@ model ServerIntegrationJob {
   @@index([serverId, status])
 }
 
+/// Durable RCON delivery queue (client, 2026-08-18: "if a target game
+/// server is offline, down, or experiencing lag, the KOBA gateway must
+/// cache the commands in a database queue and safely retry execution
+/// using an exponential backoff strategy until success is confirmed").
+/// One row per delivery attempt-chain for one order — created the
+/// instant an order with an rconKitName product is marked PAID, and
+/// re-created fresh on a seller-triggered redeliver. The happy path
+/// (server online) still resolves on the very first attempt, executed
+/// inline from deliverRconKitForOrder for the same instant-delivery
+/// feel Tip4Serv has; only a transient failure (TIMEOUT) hands the job
+/// off to the worker for backoff retry — a non-retryable failure
+/// (AUTH_FAILED, UNSUPPORTED) goes straight to FAILED, no point
+/// queueing a retry a seller config change is what actually fixes.
+model RconCommandJob {
+  id            String               @id @default(cuid())
+  orderId       String
+  serverId      String
+  kitName       String
+  gamertag      String
+  status        RconCommandJobStatus @default(PENDING)
+  attempts      Int                  @default(0)
+  runAfter      DateTime             @default(now())
+  lastError     String?              @db.Text
+  correlationId String
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  order  Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  server GameServer @relation("RconCommandJobServer", fields: [serverId], references: [id], onDelete: Cascade)
+
+  @@index([status, runAfter])
+  @@index([orderId])
+}
+
 model ServerOwnerNotice {
   id          String    @id @default(cuid())
   serverId    String
@@ -3006,31 +3072,31 @@ model PlanEntitlement {
 // features/plus/lib/tenure.ts for why that's the deliberate choice, not
 // an oversight).
 model PlusSubscription {
-  id                     String                @id @default(cuid())
-  publicRef              String                @unique
-  userId                 String
-  kobaIdentityId         String                @unique
-  accountType            KobaAccountType
-  planId                 String?
-  interval               PlusPlanInterval?
-  provider               String                @default("stripe")
-  stripeCustomerId       String?
-  stripeSubscriptionId   String?               @unique
-  stripeCheckoutSessionId String?              @unique
-  checkoutIdempotencyKey String?              @unique
-  state                  PlusSubscriptionState @default(NONE)
-  cancelAtPeriodEnd      Boolean               @default(false)
-  currentPeriodStart     DateTime?
-  currentPeriodEnd       DateTime?
-  cancelledAt            DateTime?
-  endedAt                DateTime?
-  trialEndsAt            DateTime?
-  lastStripeEventId      String?
-  lastStripeEventCreated Int?
-  version                Int                   @default(0)
-  firstActivatedAt       DateTime?
-  createdAt              DateTime              @default(now())
-  updatedAt              DateTime              @updatedAt
+  id                      String                @id @default(cuid())
+  publicRef               String                @unique
+  userId                  String
+  kobaIdentityId          String                @unique
+  accountType             KobaAccountType
+  planId                  String?
+  interval                PlusPlanInterval?
+  provider                String                @default("stripe")
+  stripeCustomerId        String?
+  stripeSubscriptionId    String?               @unique
+  stripeCheckoutSessionId String?               @unique
+  checkoutIdempotencyKey  String?               @unique
+  state                   PlusSubscriptionState @default(NONE)
+  cancelAtPeriodEnd       Boolean               @default(false)
+  currentPeriodStart      DateTime?
+  currentPeriodEnd        DateTime?
+  cancelledAt             DateTime?
+  endedAt                 DateTime?
+  trialEndsAt             DateTime?
+  lastStripeEventId       String?
+  lastStripeEventCreated  Int?
+  version                 Int                   @default(0)
+  firstActivatedAt        DateTime?
+  createdAt               DateTime              @default(now())
+  updatedAt               DateTime              @updatedAt
 
   user     User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   identity KobaIdentity      @relation(fields: [kobaIdentityId], references: [id], onDelete: Cascade)
@@ -3078,23 +3144,23 @@ model ServerBio {
 }
 
 model CoinWallet {
-  id                   String           @id @default(cuid())
-  userId               String           @unique
-  status               CoinWalletStatus @default(ACTIVE)
-  currency             CoinCurrency     @default(KOBA_COIN)
-  version              Int              @default(0)
+  id                 String           @id @default(cuid())
+  userId             String           @unique
+  status             CoinWalletStatus @default(ACTIVE)
+  currency           CoinCurrency     @default(KOBA_COIN)
+  version            Int              @default(0)
   /// Projection caches — ledger entries remain source of truth.
-  purchasedBalance     BigInt           @default(0)
-  promotionalBalance   BigInt           @default(0)
-  earnedBalance        BigInt           @default(0)
-  reservedBalance      BigInt           @default(0)
-  createdAt            DateTime         @default(now())
-  updatedAt            DateTime         @updatedAt
+  purchasedBalance   BigInt           @default(0)
+  promotionalBalance BigInt           @default(0)
+  earnedBalance      BigInt           @default(0)
+  reservedBalance    BigInt           @default(0)
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
 
-  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  accounts      LedgerAccount[]
-  reservations  CoinReservation[]
-  transactions  LedgerTransaction[] @relation("WalletTransactions")
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accounts     LedgerAccount[]
+  reservations CoinReservation[]
+  transactions LedgerTransaction[] @relation("WalletTransactions")
 }
 
 model LedgerAccount {
@@ -3116,29 +3182,29 @@ model LedgerAccount {
 }
 
 model LedgerTransaction {
-  id                 String         @id @default(cuid())
-  publicRef          String         @unique
-  idempotencyKey     String         @unique
-  category           CoinTxCategory
-  status             LedgerTxStatus @default(POSTED)
-  memo               String
-  actorUserId        String?
-  walletId           String?
-  externalRef        String?
-  metadataJson       String?
-  createdAt          DateTime       @default(now())
-  postedAt           DateTime?
-  reversedAt         DateTime?
-  reversesTxId       String?        @unique
-  reversedByTxId     String?        @unique
+  id             String         @id @default(cuid())
+  publicRef      String         @unique
+  idempotencyKey String         @unique
+  category       CoinTxCategory
+  status         LedgerTxStatus @default(POSTED)
+  memo           String
+  actorUserId    String?
+  walletId       String?
+  externalRef    String?
+  metadataJson   String?
+  createdAt      DateTime       @default(now())
+  postedAt       DateTime?
+  reversedAt     DateTime?
+  reversesTxId   String?        @unique
+  reversedByTxId String?        @unique
 
-  wallet     CoinWallet?        @relation("WalletTransactions", fields: [walletId], references: [id], onDelete: SetNull)
-  reverses   LedgerTransaction? @relation("LedgerReversal", fields: [reversesTxId], references: [id], onDelete: SetNull)
-  reversedBy LedgerTransaction? @relation("LedgerReversal")
-  entries    LedgerEntry[]
-  reservationReserve  CoinReservation? @relation("ReservationReserveTx")
-  reservationCapture  CoinReservation? @relation("ReservationCaptureTx")
-  reservationRelease  CoinReservation? @relation("ReservationReleaseTx")
+  wallet             CoinWallet?        @relation("WalletTransactions", fields: [walletId], references: [id], onDelete: SetNull)
+  reverses           LedgerTransaction? @relation("LedgerReversal", fields: [reversesTxId], references: [id], onDelete: SetNull)
+  reversedBy         LedgerTransaction? @relation("LedgerReversal")
+  entries            LedgerEntry[]
+  reservationReserve CoinReservation?   @relation("ReservationReserveTx")
+  reservationCapture CoinReservation?   @relation("ReservationCaptureTx")
+  reservationRelease CoinReservation?   @relation("ReservationReleaseTx")
 
   @@index([category, createdAt])
   @@index([walletId, createdAt])
@@ -3147,13 +3213,13 @@ model LedgerTransaction {
 }
 
 model LedgerEntry {
-  id            String          @id @default(cuid())
-  transactionId String
-  accountId     String
-  side          LedgerEntrySide
-  amount        BigInt
+  id             String          @id @default(cuid())
+  transactionId  String
+  accountId      String
+  side           LedgerEntrySide
+  amount         BigInt
   classification CoinBucket?
-  createdAt     DateTime        @default(now())
+  createdAt      DateTime        @default(now())
 
   transaction LedgerTransaction @relation(fields: [transactionId], references: [id], onDelete: Restrict)
   account     LedgerAccount     @relation(fields: [accountId], references: [id], onDelete: Restrict)
@@ -3163,29 +3229,29 @@ model LedgerEntry {
 }
 
 model CoinReservation {
-  id                 String                @id @default(cuid())
-  publicRef          String                @unique
-  walletId           String
-  amount             BigInt
+  id              String                @id @default(cuid())
+  publicRef       String                @unique
+  walletId        String
+  amount          BigInt
   /// JSON array of { bucket, amount } source allocations (immutable after ACTIVE).
-  allocationsJson    String
-  purpose            String
-  status             CoinReservationStatus @default(PENDING)
-  idempotencyKey     String                @unique
-  expiresAt          DateTime?
-  metadataJson       String?
-  reserveTxId        String?               @unique
-  captureTxId        String?               @unique
-  releaseTxId        String?               @unique
-  capturedAt         DateTime?
-  releasedAt         DateTime?
-  createdAt          DateTime              @default(now())
-  updatedAt          DateTime              @updatedAt
+  allocationsJson String
+  purpose         String
+  status          CoinReservationStatus @default(PENDING)
+  idempotencyKey  String                @unique
+  expiresAt       DateTime?
+  metadataJson    String?
+  reserveTxId     String?               @unique
+  captureTxId     String?               @unique
+  releaseTxId     String?               @unique
+  capturedAt      DateTime?
+  releasedAt      DateTime?
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
 
-  wallet     CoinWallet         @relation(fields: [walletId], references: [id], onDelete: Cascade)
-  reserveTx  LedgerTransaction? @relation("ReservationReserveTx", fields: [reserveTxId], references: [id], onDelete: SetNull)
-  captureTx  LedgerTransaction? @relation("ReservationCaptureTx", fields: [captureTxId], references: [id], onDelete: SetNull)
-  releaseTx  LedgerTransaction? @relation("ReservationReleaseTx", fields: [releaseTxId], references: [id], onDelete: SetNull)
+  wallet    CoinWallet         @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  reserveTx LedgerTransaction? @relation("ReservationReserveTx", fields: [reserveTxId], references: [id], onDelete: SetNull)
+  captureTx LedgerTransaction? @relation("ReservationCaptureTx", fields: [captureTxId], references: [id], onDelete: SetNull)
+  releaseTx LedgerTransaction? @relation("ReservationReleaseTx", fields: [releaseTxId], references: [id], onDelete: SetNull)
 
   @@index([walletId, status])
   @@index([status, expiresAt])
@@ -3229,17 +3295,17 @@ model CoinPurchase {
 }
 
 model AidenJob {
-  id                     String                 @id @default(cuid())
-  publicRef              String                 @unique
+  id                     String                @id @default(cuid())
+  publicRef              String                @unique
   userId                 String
   kobaIdentityId         String?
-  prompt                 String                 @db.Text
+  prompt                 String                @db.Text
   promptHash             String?
   game                   String
   platform               String
   assetType              AidenAssetType
-  settingsJson           String                 @default("{}")
-  state                  AidenJobState          @default(QUEUED)
+  settingsJson           String                @default("{}")
+  state                  AidenJobState         @default(QUEUED)
   coinCostPreview        Int
   /// Actual Coin-equivalent cost reported by the frontier-model provider's
   /// usage response, once real providers are wired (features/aiden/providers).
@@ -3252,26 +3318,26 @@ model AidenJob {
   /// Raw provider usage payload (tokens, compute units, whatever that
   /// provider's response shape is), stored as-is for audit. Null until a
   /// real (non-stub) provider is configured and actually called.
-  frontierModelUsageJson String?                @db.Text
-  estimatedCostCoins     BigInt                 @default(0)
+  frontierModelUsageJson String?               @db.Text
+  estimatedCostCoins     BigInt                @default(0)
   actualCostCoins        BigInt?
   reservationPublicRef   String?
   reservationTxId        String?
-  provider               String                 @default("mock")
-  model                  String                 @default("aiden-mock-concept")
-  modelVersion           String                 @default("1")
-  providerRequestId      String?                @unique
-  idempotencyKey         String?                @unique
-  promptModeration       AidenPromptModeration  @default(PENDING)
-  outputModeration       AidenOutputModeration  @default(PENDING)
+  provider               String                @default("mock")
+  model                  String                @default("aiden-mock-concept")
+  modelVersion           String                @default("1")
+  providerRequestId      String?               @unique
+  idempotencyKey         String?               @unique
+  promptModeration       AidenPromptModeration @default(PENDING)
+  outputModeration       AidenOutputModeration @default(PENDING)
   failureReason          String?
   failureClass           AidenFailureClass?
-  attempts               Int                    @default(0)
-  maxAttempts            Int                    @default(3)
-  runAfter               DateTime               @default(now())
+  attempts               Int                   @default(0)
+  maxAttempts            Int                   @default(3)
+  runAfter               DateTime              @default(now())
   claimedAt              DateTime?
   claimedBy              String?
-  version                Int                    @default(0)
+  version                Int                   @default(0)
   outputStorageKey       String?
   outputMime             String?
   outputBytes            Bytes?
@@ -3279,11 +3345,11 @@ model AidenJob {
   outputWidth            Int?
   outputHeight           Int?
   cancelRequestedAt      DateTime?
-  createdAt              DateTime               @default(now())
-  updatedAt              DateTime               @updatedAt
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
 
-  user     User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  identity KobaIdentity?  @relation(fields: [kobaIdentityId], references: [id], onDelete: SetNull)
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  identity KobaIdentity? @relation(fields: [kobaIdentityId], references: [id], onDelete: SetNull)
   asset    AidenAsset?
 
   @@index([userId, createdAt])
@@ -3292,28 +3358,28 @@ model AidenJob {
 }
 
 model AidenAsset {
-  id               String                @id @default(cuid())
-  publicRef        String                @unique
-  userId           String
-  jobId            String?               @unique
-  title            String
-  assetType        AidenAssetType
-  technicalStatus  AidenTechnicalStatus  @default(CONCEPT_ONLY)
-  moderation       AidenModerationState  @default(PRIVATE)
-  game             String
-  previewLabel     String
-  storageKey       String?
-  mimeType         String?
-  byteSize         Int?
-  width            Int?
-  height           Int?
-  provider         String?
-  model            String?
-  modelVersion     String?
-  provenanceJson   String?
+  id                 String               @id @default(cuid())
+  publicRef          String               @unique
+  userId             String
+  jobId              String?              @unique
+  title              String
+  assetType          AidenAssetType
+  technicalStatus    AidenTechnicalStatus @default(CONCEPT_ONLY)
+  moderation         AidenModerationState @default(PRIVATE)
+  game               String
+  previewLabel       String
+  storageKey         String?
+  mimeType           String?
+  byteSize           Int?
+  width              Int?
+  height             Int?
+  provider           String?
+  model              String?
+  modelVersion       String?
+  provenanceJson     String?
   /// Generated output location (image/model/map file URL). Null for
   /// CONCEPT_ONLY assets and anything created before real generation existed.
-  assetUrl         String?
+  assetUrl           String?
   /// Set once this asset has been published to the marketplace as a
   /// Product (features/aiden/services/aiden.service.ts's
   /// publishAssetToMarketplace). Null means never published; presence
@@ -3322,12 +3388,12 @@ model AidenAsset {
   /// seller submit -> staff review pipeline as any other listing — this
   /// is lineage tracking, not a moderation bypass.
   publishedProductId String?              @unique
-  createdAt        DateTime              @default(now())
-  updatedAt        DateTime              @updatedAt
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
 
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  job             AidenJob? @relation(fields: [jobId], references: [id], onDelete: SetNull)
-  publishedProduct Product? @relation(fields: [publishedProductId], references: [id], onDelete: SetNull)
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job              AidenJob? @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  publishedProduct Product?  @relation(fields: [publishedProductId], references: [id], onDelete: SetNull)
 
   @@index([userId, createdAt])
   @@index([moderation])
@@ -3401,9 +3467,9 @@ model ShopBlacklistEntry {
   createdByUserId      String
   createdAt            DateTime @default(now())
 
-  shop        Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
-  targetUser  User @relation("ShopBlacklistTarget", fields: [targetUserId], references: [id], onDelete: Cascade)
-  createdBy   User @relation("ShopBlacklistCreator", fields: [createdByUserId], references: [id], onDelete: Cascade)
+  shop       Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  targetUser User @relation("ShopBlacklistTarget", fields: [targetUserId], references: [id], onDelete: Cascade)
+  createdBy  User @relation("ShopBlacklistCreator", fields: [createdByUserId], references: [id], onDelete: Cascade)
 
   @@unique([shopId, targetUserId])
   @@index([targetUserId])
@@ -3443,32 +3509,32 @@ model PlatformBlacklistEntry {
 }
 
 model DeveloperProfile {
-  id              String    @id @default(cuid())
-  slug            String    @unique
-  displayName     String
-  description     String    @default("") @db.Text
-  avatarUrl       String?
-  bannerUrl       String?
-  websiteUrl      String?
-  supportUrl      String?
-  privacyUrl      String?
-  termsUrl        String?
+  id                 String    @id @default(cuid())
+  slug               String    @unique
+  displayName        String
+  description        String    @default("") @db.Text
+  avatarUrl          String?
+  bannerUrl          String?
+  websiteUrl         String?
+  supportUrl         String?
+  privacyUrl         String?
+  termsUrl           String?
   // Socials bio block (App Store submission flow, 2026-08-18: "they can
   // input there website and socials via there app store bio") — website/
   // support above already existed; these are the additional public
   // profile links shown on the App Store publisher page.
-  twitterUrl      String?
-  githubUrl       String?
-  youtubeUrl      String?
-  discordServerUrl String?
-  contactEmail    String
-  verified        Boolean   @default(false)
-  verifiedAt      DateTime?
-  suspendedAt     DateTime?
-  games           String[]
-  platforms       String[]
-  ownerUserId     String
-  kobaIdentityId  String?
+  twitterUrl         String?
+  githubUrl          String?
+  youtubeUrl         String?
+  discordServerUrl   String?
+  contactEmail       String
+  verified           Boolean   @default(false)
+  verifiedAt         DateTime?
+  suspendedAt        DateTime?
+  games              String[]
+  platforms          String[]
+  ownerUserId        String
+  kobaIdentityId     String?
   // The publisher's own connected Discord identity (OAuth "identify"
   // scope, features/developers/lib/discord-oauth.ts) — proves they
   // control a real Discord account. Foundation for bot-ownership
@@ -3477,11 +3543,11 @@ model DeveloperProfile {
   discordUserId      String?   @unique
   discordUsername    String?
   discordConnectedAt DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
-  owner        User                  @relation("DeveloperProfileOwner", fields: [ownerUserId], references: [id], onDelete: Cascade)
-  identity     KobaIdentity?         @relation(fields: [kobaIdentityId], references: [id], onDelete: SetNull)
+  owner        User                       @relation("DeveloperProfileOwner", fields: [ownerUserId], references: [id], onDelete: Cascade)
+  identity     KobaIdentity?              @relation(fields: [kobaIdentityId], references: [id], onDelete: SetNull)
   members      DeveloperMember[]
   applications DeveloperApplication[]
   products     DevProduct[]
@@ -3492,11 +3558,11 @@ model DeveloperProfile {
 }
 
 model DeveloperMember {
-  id        String               @id @default(cuid())
+  id        String              @id @default(cuid())
   profileId String
   userId    String
   role      DeveloperMemberRole
-  createdAt DateTime             @default(now())
+  createdAt DateTime            @default(now())
 
   profile DeveloperProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
   user    User             @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -3506,23 +3572,23 @@ model DeveloperMember {
 }
 
 model DeveloperApplication {
-  id                    String                   @id @default(cuid())
-  publicRef             String                   @unique
-  profileId             String
-  name                  String
-  description           String                   @default("") @db.Text
-  logoUrl               String?
-  environment           DeveloperAppEnvironment  @default(SANDBOX)
-  status                DeveloperAppStatus       @default(ACTIVE)
-  scopes                String[]
-  redirectUris          String[]
-  productionApprovedAt  DateTime?
-  suspendedAt           DateTime?
-  createdAt             DateTime                 @default(now())
-  updatedAt             DateTime                 @updatedAt
+  id                   String                  @id @default(cuid())
+  publicRef            String                  @unique
+  profileId            String
+  name                 String
+  description          String                  @default("") @db.Text
+  logoUrl              String?
+  environment          DeveloperAppEnvironment @default(SANDBOX)
+  status               DeveloperAppStatus      @default(ACTIVE)
+  scopes               String[]
+  redirectUris         String[]
+  productionApprovedAt DateTime?
+  suspendedAt          DateTime?
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
 
-  profile DeveloperProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  apiKeys DeveloperApiKey[]
+  profile  DeveloperProfile           @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  apiKeys  DeveloperApiKey[]
   webhooks DeveloperWebhookEndpoint[]
 
   @@index([profileId, environment])
@@ -3530,19 +3596,19 @@ model DeveloperApplication {
 }
 
 model DeveloperApiKey {
-  id            String                   @id @default(cuid())
+  id            String                  @id @default(cuid())
   applicationId String
   userId        String
   name          String
-  prefix        String                   @unique
+  prefix        String                  @unique
   secretHash    String
   scopes        String[]
   environment   DeveloperAppEnvironment
   expiresAt     DateTime?
   lastUsedAt    DateTime?
   revokedAt     DateTime?
-  rateLimitRpm  Int                      @default(60)
-  createdAt     DateTime                 @default(now())
+  rateLimitRpm  Int                     @default(60)
+  createdAt     DateTime                @default(now())
 
   application DeveloperApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
   user        User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -3567,30 +3633,30 @@ model DeveloperWebhookEndpoint {
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
-  profile     DeveloperProfile          @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  application DeveloperApplication?     @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+  profile     DeveloperProfile           @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  application DeveloperApplication?      @relation(fields: [applicationId], references: [id], onDelete: SetNull)
   deliveries  DeveloperWebhookDelivery[]
 
   @@index([profileId, disabledAt])
 }
 
 model DeveloperWebhookDelivery {
-  id            String                    @id @default(cuid())
-  deliveryId    String                    @unique
-  endpointId    String
-  eventType     String
-  payloadJson   String                    @db.Text
-  payloadHash   String
-  timestamp     DateTime
-  status        DevWebhookDeliveryStatus  @default(PENDING)
-  attempts      Int                       @default(0)
-  maxAttempts   Int                       @default(6)
-  runAfter      DateTime                  @default(now())
-  lastError     String?
-  claimedAt     DateTime?
-  version       Int                       @default(0)
-  createdAt     DateTime                  @default(now())
-  updatedAt     DateTime                  @updatedAt
+  id          String                   @id @default(cuid())
+  deliveryId  String                   @unique
+  endpointId  String
+  eventType   String
+  payloadJson String                   @db.Text
+  payloadHash String
+  timestamp   DateTime
+  status      DevWebhookDeliveryStatus @default(PENDING)
+  attempts    Int                      @default(0)
+  maxAttempts Int                      @default(6)
+  runAfter    DateTime                 @default(now())
+  lastError   String?
+  claimedAt   DateTime?
+  version     Int                      @default(0)
+  createdAt   DateTime                 @default(now())
+  updatedAt   DateTime                 @updatedAt
 
   endpoint DeveloperWebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
 
@@ -3598,58 +3664,58 @@ model DeveloperWebhookDelivery {
 }
 
 model DevProduct {
-  id                 String              @id @default(cuid())
-  publicRef          String              @unique
-  slug               String              @unique
-  ownerUserId        String
-  profileId          String?
-  kind               DevProductKind
-  category           DevProductCategory  @default(UTILITY)
-  name               String
-  shortDescription   String              @default("")
-  description        String              @default("") @db.Text
-  pricing            DevPricing          @default(FREE)
-  priceCents         Int                 @default(0)
-  priceCoins         BigInt              @default(0)
-  version            String              @default("0.1.0")
-  compatibility      String[]
-  scopes             String[]
-  games              String[]
-  operatingSystems   String[]
-  serverPlatforms    String[]
-  screenshotsJson    String              @default("[]")
-  iconUrl            String?
-  docsUrl            String?
-  supportUrl         String?
-  privacyUrl         String?
+  id                String             @id @default(cuid())
+  publicRef         String             @unique
+  slug              String             @unique
+  ownerUserId       String
+  profileId         String?
+  kind              DevProductKind
+  category          DevProductCategory @default(UTILITY)
+  name              String
+  shortDescription  String             @default("")
+  description       String             @default("") @db.Text
+  pricing           DevPricing         @default(FREE)
+  priceCents        Int                @default(0)
+  priceCoins        BigInt             @default(0)
+  version           String             @default("0.1.0")
+  compatibility     String[]
+  scopes            String[]
+  games             String[]
+  operatingSystems  String[]
+  serverPlatforms   String[]
+  screenshotsJson   String             @default("[]")
+  iconUrl           String?
+  docsUrl           String?
+  supportUrl        String?
+  privacyUrl        String?
   // DISCORD_BOT submissions only (features/developers/lib/discord-invite.ts):
   // the bot's own OAuth2 invite URL, and its Discord application/client
   // ID parsed out of that URL at submission time. discordVerifiedAt is
   // deliberately unpopulated for now — proving the submitting KOBAID
   // actually owns this specific application ID (not just that the link
   // is well-formed) is a follow-up increment, not yet built.
-  discordInviteUrl   String?
-  discordClientId    String?
-  discordVerifiedAt  DateTime?
-  changelog          String              @default("") @db.Text
-  reviewState        DevReviewState      @default(DRAFT)
-  publishedAt        DateTime?
-  suspendedAt        DateTime?
-  kobaOfficial       Boolean             @default(false)
-  ratingSum          Int                 @default(0)
-  ratingCount        Int                 @default(0)
-  downloadCount      Int                 @default(0)
-  moderationNote     String?
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
+  discordInviteUrl  String?
+  discordClientId   String?
+  discordVerifiedAt DateTime?
+  changelog         String             @default("") @db.Text
+  reviewState       DevReviewState     @default(DRAFT)
+  publishedAt       DateTime?
+  suspendedAt       DateTime?
+  kobaOfficial      Boolean            @default(false)
+  ratingSum         Int                @default(0)
+  ratingCount       Int                @default(0)
+  downloadCount     Int                @default(0)
+  moderationNote    String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
 
-  owner         User                 @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
-  profile       DeveloperProfile?    @relation(fields: [profileId], references: [id], onDelete: SetNull)
-  installs      DevInstall[]
-  versions      DevProductVersion[]
-  entitlements  DevEntitlement[]
-  purchases     DevPurchase[]
-  reviews       DevProductReview[]
+  owner        User                @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+  profile      DeveloperProfile?   @relation(fields: [profileId], references: [id], onDelete: SetNull)
+  installs     DevInstall[]
+  versions     DevProductVersion[]
+  entitlements DevEntitlement[]
+  purchases    DevPurchase[]
+  reviews      DevProductReview[]
 
   @@index([ownerUserId])
   @@index([kind, reviewState])
@@ -3673,20 +3739,20 @@ model DevInstall {
 }
 
 model DevProductVersion {
-  id              String            @id @default(cuid())
-  publicRef       String            @unique
-  productId       String
-  semver          String
-  changelog       String            @default("") @db.Text
-  channel         DevReleaseChannel @default(STABLE)
-  gameVersions    String[]
-  platforms       String[]
-  requirements    String            @default("")
-  reviewState     DevReviewState    @default(DRAFT)
-  releasedAt      DateTime?
-  deprecatedAt    DateTime?
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
+  id           String            @id @default(cuid())
+  publicRef    String            @unique
+  productId    String
+  semver       String
+  changelog    String            @default("") @db.Text
+  channel      DevReleaseChannel @default(STABLE)
+  gameVersions String[]
+  platforms    String[]
+  requirements String            @default("")
+  reviewState  DevReviewState    @default(DRAFT)
+  releasedAt   DateTime?
+  deprecatedAt DateTime?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
 
   product   DevProduct           @relation(fields: [productId], references: [id], onDelete: Cascade)
   artifacts DevProductArtifact[]
@@ -3696,16 +3762,16 @@ model DevProductVersion {
 }
 
 model DevProductArtifact {
-  id            String            @id @default(cuid())
-  versionId     String
-  storageKey    String
-  sha256        String
-  byteSize      Int
-  mimeType      String
-  filename      String
-  status        DevArtifactStatus @default(QUARANTINE)
-  bytes         Bytes?
-  createdAt     DateTime          @default(now())
+  id         String            @id @default(cuid())
+  versionId  String
+  storageKey String
+  sha256     String
+  byteSize   Int
+  mimeType   String
+  filename   String
+  status     DevArtifactStatus @default(QUARANTINE)
+  bytes      Bytes?
+  createdAt  DateTime          @default(now())
 
   version DevProductVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
 
@@ -3728,23 +3794,23 @@ model DevEntitlement {
 }
 
 model DevPurchase {
-  id                     String            @id @default(cuid())
-  publicRef              String            @unique
-  idempotencyKey         String            @unique
-  buyerUserId            String
-  productId              String
-  priceCoins             BigInt
-  feeCoins               BigInt
-  sellerCoins            BigInt
-  commissionBps          Int
-  status                 DevPurchaseStatus @default(PAID)
-  captureTxRef           String?
-  sellerTxRef            String?
-  refundTxRef            String?
-  refundReason           String?
-  proceedsUnrecoverable  Boolean           @default(false)
-  createdAt              DateTime          @default(now())
-  updatedAt              DateTime          @updatedAt
+  id                    String            @id @default(cuid())
+  publicRef             String            @unique
+  idempotencyKey        String            @unique
+  buyerUserId           String
+  productId             String
+  priceCoins            BigInt
+  feeCoins              BigInt
+  sellerCoins           BigInt
+  commissionBps         Int
+  status                DevPurchaseStatus @default(PAID)
+  captureTxRef          String?
+  sellerTxRef           String?
+  refundTxRef           String?
+  refundReason          String?
+  proceedsUnrecoverable Boolean           @default(false)
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
 
   buyer   User       @relation(fields: [buyerUserId], references: [id], onDelete: Cascade)
   product DevProduct @relation(fields: [productId], references: [id], onDelete: Cascade)

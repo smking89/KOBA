@@ -1434,6 +1434,71 @@ only one needing zero new external dependencies.
   itself or the payment — it just leaves `rconDeliveryStatus: FAILED`
   with a human-readable reason for the seller to act on.
 
+**Durable retry queue — shipped (2026-08-18, status: done).** Client
+brought a full enterprise/Tip4Serv-competitor architecture spec
+("KOBA Delivery Gateway... background worker service") — see the
+"KOBA Delivery Gateway architecture (client spec, not fully built)"
+note below for the whole thing. Confirmed via `AskUserQuestion` to
+start with this piece: the durable RCON command queue, since every
+other piece in that spec (Connect payouts, Method B webhooks,
+subscription expiry) would ultimately enqueue into the same queue.
+
+- Replaces the same-day fire-once/manual-retry-only delivery above.
+  `RconCommandJob` (`features/payments/services/rcon-queue.service.ts`)
+  is a real persistent job row per delivery attempt-chain, following
+  this codebase's existing worker convention exactly
+  (`ServerIntegrationJob`/`runIntegrationBatch`,
+  `features/promotions/services/worker.service.ts`) rather than adding
+  a new one: `status`/`attempts`/`runAfter`, claimed by
+  `scripts/run-rcon-delivery-worker.mjs` (`pnpm rcon:worker`, same
+  `runWorkerMain` heartbeat/alert wrapper every other worker uses).
+- The happy path is unchanged — `deliverRconKitForOrder` still creates
+  the job and executes the first attempt inline from `markOrderPaid`,
+  so a server that's online still gets instant delivery, matching
+  Tip4Serv. Only a transient failure (RCON `TIMEOUT` — server
+  offline/laggy) hands off to the worker: `computeRconBackoffMs`
+  doubles from 30s up to a 15-minute cap, `RCON_JOB_MAX_ATTEMPTS = 8`
+  (~1h total budget) before the job goes terminal.
+  `Order.rconDeliveryStatus` gained two new states for this:
+  `RETRYING` (backoff in progress) and `DEAD` (budget exhausted,
+  seller-retryable same as `FAILED`).
+- `FAILED` is now reserved for non-retryable config problems
+  (`AUTH_FAILED`/`UNSUPPORTED` — bad RCON password, missing
+  host/port) that automatic retry can never fix, only a seller
+  correcting the server config can — no point burning an hour of
+  backoff retries on a password that was always wrong.
+- Seller retry (`POST /api/business/orders/[ref]/redeliver`) now
+  covers both `FAILED` and `DEAD`, and creates a fresh job rather than
+  reusing the exhausted one, so a stale retry budget never carries
+  over.
+
+**KOBA Delivery Gateway architecture (client spec, 2026-08-18, not
+fully built).** Client described the full commercial architecture
+this platform is meant to become — a Tip4Serv-class competitor with
+Stripe Connect split payouts, a signed-webhook plugin channel (HMAC
+SHA256, rotatable per-server API keys, for Oxide/Spigot-style modded
+servers), a third-party console-bot gateway, and subscription/churn
+lifecycle (auto-queued expiry commands on cancel/failed payment).
+Confirmed via `AskUserQuestion` this session only builds the durable
+retry queue (above) — the rest is scoped but explicitly deferred, not
+started:
+
+- **Stripe Connect split payouts** — today KOBA is the sole Stripe
+  merchant of record (single-account Checkout, no connected accounts,
+  no marketplace fee split). Moving to Connect is a real business-model
+  change (server-owner onboarding/KYC, Connect-specific webhooks), not
+  a small addition.
+- **Method B: signed webhook/plugin channel** — the KOBA-side
+  HMAC-SHA256 signed API + rotatable per-server keys a modded-server
+  plugin could pull commands from. Distinct from actually writing the
+  Oxide/Spigot plugin code itself, which stays its own per-engine
+  artifact (see below).
+- **Subscription-driven expiry commands** — per-server VIP-rank
+  subscriptions with auto-queued removal commands on churn. Would
+  enqueue into the same `RconCommandJob` queue once built, but depends
+  on a subscription model this codebase doesn't have yet (only
+  platform-level KOBA Plus via `PlusSubscription` exists).
+
 Not built: the other two channels from the client's own spec — a
 KOBA-authored game plugin (Oxide/Carbon `.cs`, Minecraft `.jar`, etc.)
 holding a KOBA-issued key and receiving signed webhooks, and

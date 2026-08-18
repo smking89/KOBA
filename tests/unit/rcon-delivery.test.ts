@@ -65,3 +65,28 @@ describe("checkoutSchema", () => {
     }
   });
 });
+
+describe("computeRconBackoffMs — durable RCON delivery queue", () => {
+  it("doubles each attempt, capped at RCON_JOB_MAX_INTERVAL_MS", async () => {
+    // Client, 2026-08-18 (KOBA-vs-Tip4Serv architecture spec): "the
+    // KOBA gateway must cache the commands in a database queue and
+    // safely retry execution using an exponential backoff strategy
+    // until success is confirmed" for an offline/laggy target server.
+    const {
+      computeRconBackoffMs,
+      RCON_JOB_BASE_INTERVAL_MS,
+      RCON_JOB_MAX_INTERVAL_MS,
+      RCON_JOB_MAX_ATTEMPTS,
+    } = await import("@/features/payments/services/rcon-queue.service");
+
+    expect(computeRconBackoffMs(1)).toBe(RCON_JOB_BASE_INTERVAL_MS);
+    expect(computeRconBackoffMs(2)).toBe(RCON_JOB_BASE_INTERVAL_MS * 2);
+    expect(computeRconBackoffMs(3)).toBe(RCON_JOB_BASE_INTERVAL_MS * 4);
+
+    // Never exceeds the cap, however many attempts are fed in.
+    expect(computeRconBackoffMs(RCON_JOB_MAX_ATTEMPTS)).toBeLessThanOrEqual(
+      RCON_JOB_MAX_INTERVAL_MS,
+    );
+    expect(computeRconBackoffMs(50)).toBe(RCON_JOB_MAX_INTERVAL_MS);
+  });
+});
