@@ -162,6 +162,12 @@ enum AuditAction {
   OAUTH_ACCESS_TOKEN_REVOKED
   STEAM_ACCOUNT_LINKED
   STEAM_ACCOUNT_UNLINKED
+  KOBA_SHOP_APPLICATION_SUBMITTED
+  KOBA_SHOP_APPLICATION_APPROVED
+  KOBA_SHOP_APPLICATION_REJECTED
+  COSMETIC_PURCHASED
+  COSMETIC_EQUIPPED
+  COSMETIC_UNEQUIPPED
 }
 
 // Major, independently-toggleable platform functions. This is the registry
@@ -285,6 +291,10 @@ model User {
   oauthDeviceGrants       OAuthDeviceGrant[]
   oauthAccessTokens       OAuthAccessToken[]
   steamAccountLink        SteamAccountLink?
+  kobaShopApplicationsReviewed KobaShopApplication[]
+  cosmeticOrders          CosmeticOrder[]
+  cosmeticOwnerships      CosmeticOwnership[]
+  cosmeticEquips          CosmeticEquip[]
 }
 
 model Account {
@@ -914,6 +924,9 @@ model Shop {
   socialConnections    ShopSocialConnection[]
   blacklistEntries     ShopBlacklistEntry[]
   platformBan          PlatformBlacklistEntry? @relation("PlatformBlacklistTargetShop")
+  kobaShopApplication  KobaShopApplication?
+  cosmeticOrders       CosmeticOrder[]
+  shopCosmeticEquip    ShopCosmeticEquip?
 }
 
 model ShopMember {
@@ -990,11 +1003,130 @@ model Cosmetic {
   updatedAt        DateTime          @updatedAt
 
   ownerShop Shop @relation(fields: [ownerShopId], references: [id], onDelete: Cascade)
+  orders     CosmeticOrder[]
+  ownerships CosmeticOwnership[]
 
   @@index([ownerShopId])
   @@index([moderationStatus])
   @@index([subType])
   @@index([rarity])
+}
+
+/// Phase 23 — KOBA Shop (client, 2026-08-18): a second, narrower
+/// application-gate on top of Blue-Badge shop verification (Phase 9) —
+/// a shop can be Blue-Badge verified and still not be approved to sell
+/// in the KOBA Shop specifically. Reuses the Blue-Badge admin review
+/// pattern (confirmed via AskUserQuestion) rather than a separate
+/// workflow — same PendingShopsPanel-style queue, same staff
+/// permissions.
+enum KobaShopApplicationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model KobaShopApplication {
+  id               String                    @id @default(cuid())
+  shopId           String                    @unique
+  status           KobaShopApplicationStatus @default(PENDING)
+  note             String?                   @db.Text
+  reviewedByUserId String?
+  reviewedAt       DateTime?
+  createdAt        DateTime                  @default(now())
+  updatedAt        DateTime                  @updatedAt
+
+  shop         Shop  @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  reviewedBy   User? @relation(fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+}
+
+/// Cosmetic checkout — a dedicated model rather than reusing Order/
+/// OrderItem (confirmed via AskUserQuestion): Cosmetic has no rarity-tier
+/// inventory and no per-game shape, so a shared Order table would mean
+/// permanently-null columns and branching logic everywhere Order is
+/// already read (refunds, escrow, receipts). Settles as a direct Stripe
+/// Connect destination charge at purchase time (no escrow hold, unlike
+/// Product orders) — a digital cosmetic has none of the delivery-dispute
+/// risk that motivated Product's escrow window.
+model CosmeticOrder {
+  id                  String      @id @default(cuid())
+  publicRef           String      @unique
+  idempotencyKey      String      @unique
+  cosmeticId          String
+  shopId              String
+  buyerUserId         String
+  status              OrderStatus @default(PENDING)
+  unitPriceCents      Int
+  applicationFeeCents Int
+  sellerPayoutCents   Int
+  currency            String      @default("USD")
+  stripeCheckoutSessionId String?
+  stripePaymentIntentId   String?
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+
+  cosmetic Cosmetic @relation(fields: [cosmeticId], references: [id], onDelete: Cascade)
+  shop     Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  buyer    User     @relation(fields: [buyerUserId], references: [id], onDelete: Cascade)
+  ownership CosmeticOwnership?
+
+  @@index([shopId])
+  @@index([buyerUserId])
+  @@index([cosmeticId])
+}
+
+/// Anyone can buy a cosmetic (client, 2026-08-18) — owning one and
+/// being allowed to *equip* it are separate facts, tracked separately
+/// (see CosmeticEquip) so a lapsed KOBA Plus subscription can hide an
+/// equipped cosmetic without touching ownership at all.
+model CosmeticOwnership {
+  id         String   @id @default(cuid())
+  userId     String
+  cosmeticId String
+  orderId    String   @unique
+  acquiredAt DateTime @default(now())
+
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cosmetic Cosmetic      @relation(fields: [cosmeticId], references: [id], onDelete: Cascade)
+  order    CosmeticOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  personalEquip CosmeticEquip?
+  shopEquip     ShopCosmeticEquip?
+
+  @@unique([userId, cosmeticId])
+  @@index([userId])
+}
+
+/// One active cosmetic per subtype per user (client, 2026-08-18,
+/// confirmed via AskUserQuestion) — equipping requires KOBA Plus, but
+/// this row is never deleted just because Plus lapses; visibility is
+/// computed at read time from current Plus status
+/// (features/koba-shop/services/cosmetic-equip.service.ts), so it
+/// reappears automatically the moment Plus resumes rather than needing
+/// re-equipping. SHOP_BANNER is deliberately excluded here (app-level,
+/// not DB-level) — it equips onto a Shop, see ShopCosmeticEquip.
+model CosmeticEquip {
+  id                  String          @id @default(cuid())
+  userId              String
+  subType             CosmeticSubType
+  cosmeticOwnershipId String          @unique
+  equippedAt          DateTime        @default(now())
+
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ownership CosmeticOwnership @relation(fields: [cosmeticOwnershipId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, subType])
+}
+
+/// SHOP_BANNER's equip target is the Shop, not the buyer's own profile —
+/// still gated on the shop owner (whoever bought it) holding active
+/// KOBA Plus, same as CosmeticEquip.
+model ShopCosmeticEquip {
+  id                  String   @id @default(cuid())
+  shopId              String   @unique
+  cosmeticOwnershipId String   @unique
+  equippedAt          DateTime @default(now())
+
+  shop      Shop              @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  ownership CosmeticOwnership @relation(fields: [cosmeticOwnershipId], references: [id], onDelete: Cascade)
 }
 
 enum OrderKind {

@@ -1350,21 +1350,29 @@ surfaced once the bot actually exists.
   (gamertag capture) described above, which doesn't exist yet. KOBA
   doesn't create kits; server owners set those up in-panel themselves,
   same as they would for KAOSBOT/Ch33kys/Veretech.
-- **Third-party delivery bot interop (deferred, client decision
-  2026-08-16): for now, console kit/in-game-item delivery goes through
-  KOBAbot only.** A server owner already running a different console
-  delivery bot — e.g. **KAOSBOT** (bot.ka0s.uk), **Ch33kys RCE Bot**
-  (ch33kysrcebot.com), or **Veretech** (docs.tip4serv.com), all real,
-  verified via web search 2026-08-16, all already deliver purchased
-  items via RCON when notified by a webshop like Tip4Serv — is **not**
-  in scope right now. If the client revisits this, the likely-correct
-  shape is an outbound per-order webhook a server owner can point at
-  whichever bot they run, but building that still needs the actual
-  Tip4Serv/KAOSBOT/Ch33kys/Veretech incoming-webhook contract (payload
-  shape, auth) confirmed from their own docs first — not guessed.
-- **This is a separate always-on service**, not a Next.js route — a
-  Discord gateway connection needs its own long-running process and
-  hosting decision, run alongside but not inside this web app.
+- **Third-party delivery bot interop (client revisited 2026-08-18 —
+  confirmed in scope, updating the 2026-08-16 "KOBAbot only" deferral
+  above).** A server owner doesn't need to *develop or own* the delivery
+  bot — same as **KAOSBOT** (bot.ka0s.uk), **Ch33kys RCE Bot**
+  (ch33kysrcebot.com), **Veretech** (docs.tip4serv.com), and Helios
+  already work with Tip4Serv today: the owner just installs the bot into
+  their own Discord server (a normal bot invite), generates an API
+  key/webhook from that bot's own admin panel, and pastes it into KOBA's
+  server settings. KOBA fires an outbound per-order webhook using that
+  key at fulfillment; the bot (running in the owner's server, against
+  their own RCON) does the actual delivery. This means **item delivery
+  itself needs no always-on KOBA-run bot process** — a per-server "which
+  delivery bot + API key" settings field and an outbound webhook call
+  from the existing order-fulfillment path, both normal Next.js work.
+  Still blocking: the actual incoming-webhook contract (payload shape,
+  auth scheme) for each of KAOSBOT/Ch33kys/Veretech/Helios — none of
+  which is public without a partner account, so this still can't be
+  built until that documentation is in hand for at least one of them.
+- **Everything else in this phase still needs a separate always-on
+  service** — live feeds and slash-command account linking require an
+  actual Discord gateway connection, its own long-running process and
+  hosting decision, run alongside but not inside this web app. Only the
+  item-delivery webhook piece above sidesteps that requirement.
 
 **Data models / entities**
 
@@ -1452,7 +1460,7 @@ needs one of two things that don't exist yet:
 
 ---
 
-## Phase 23 — KOBA Shop (cosmetics storefront)
+## Phase 23 — KOBA Shop (cosmetics storefront) (status: done, 2026-08-18)
 
 A dedicated, high-exposure storefront for the universal `Cosmetic` model
 (nameplates, avatar decorations, profile effects, profile frames, shop
@@ -1519,20 +1527,61 @@ money.ts` (those are `Product`-order-shaped and Blue-Badge-tiered; this
 - Stripe Connect payout splitting (done, `features/payments/lib/
 money.ts`) — extends to a new flat-rate commission path.
 
-**Open questions for the client**
+**All 4 open questions above resolved 2026-08-18 via `AskUserQuestion`,
+shipped the same day — see the build summary below.**
 
-1. Cosmetic checkout — reuse `Order`/`OrderItem`, or a dedicated
-   `CosmeticOrder` model? Affects whether existing order/escrow/refund
-   UI needs branching logic or a parallel implementation.
-2. KOBA Shop application review — same admin queue/SLA pattern as
-   Blue-Badge review (Phase 9), or a different workflow?
-3. Hero section behavior — always shown to every homepage visitor, or
-   conditional (e.g. hidden once a user has already visited the KOBA
-   Shop this session)?
-4. Does KOBA Plus's member-discount perk (Phase 16) apply on top of the
-   seller's listed price before or after the 2.5% seller fee is taken —
-   i.e. does the discount cost the seller revenue or come out of KOBA's
-   cut?
+---
+
+## Phase 23 build summary (2026-08-18, status: done)
+
+- **`CosmeticOrder`** — a dedicated model, not `Order`/`OrderItem`
+  (confirmed): Cosmetic has no rarity tier and no per-game inventory, so
+  reuse would've meant permanently-null columns and branching logic
+  everywhere `Order` is already read. Settles as a **direct Stripe
+  Connect destination charge at purchase time** — no escrow hold, unlike
+  Product orders, since a digital cosmetic has none of the
+  delivery-dispute risk that motivated Product's escrow window.
+- **`KobaShopApplication`** — a second, narrower gate on top of
+  Blue-Badge shop verification, reusing the exact same staff permission
+  (`canVerifyShop`: SUPERADMIN/ADMIN) and admin-queue UI pattern as
+  Blue-Badge review (confirmed).
+- **2.5% flat fee** (`KOBA_SHOP_COMMISSION_BPS`), reusing
+  `splitPayment()` from `features/payments/lib/money.ts` — a separate
+  code path from the Blue-Badge-tiered marketplace commission
+  (8%/4%), tied to KOBA Shop approval rather than verification tier.
+- **Homepage hero** — always shown to every visitor, no session-state
+  personalization (confirmed): `KobaShopHeroSection`, newest-first,
+  scoped to `APPROVED`-application shops only.
+- **KOBA Plus's role clarified mid-build** (client correction,
+  2026-08-18: "KOBA Plus members dont get a discount, they get access to
+  apply cosmetics, anyone can buy cosmetics, but you need a koba plus
+  membership to apply cosmetics") — this replaced the original "member
+  discount" framing entirely. Anyone can buy; only active KOBA Plus
+  members can **equip** a cosmetic. Two more points confirmed via a
+  follow-up `AskUserQuestion`: (1) if Plus lapses while cosmetics are
+  equipped, they auto-hide until Plus resumes — the `CosmeticEquip` row
+  is never deleted, visibility is computed at read time from current
+  Plus status (`getVisibleEquippedCosmetics`), so it reappears
+  automatically, no re-equipping needed; (2) one active cosmetic per
+  subtype per user (nameplate/frame/effect/decoration/emoji), and
+  `SHOP_BANNER` is a separate slot equipped by the shop owner onto their
+  storefront (`ShopCosmeticEquip`), gated on the *owner's* Plus status,
+  not a personal profile slot.
+- Ownership (`CosmeticOwnership`) and equip status are deliberately
+  separate facts/tables — this is what let the lapsed-Plus behavior
+  above work without touching purchase history at all.
+- UI: `/koba-shop` catalog + `/koba-shop/[slug]` detail + buy button,
+  homepage hero, a "KOBA Shop" application card + "Shop banner" equip
+  card on `/business`, a "KOBA Shop applications" admin queue on
+  `/admin`, and a "Cosmetics" equip card on `/settings`.
+
+Not built: nothing deferred within this phase's own confirmed scope —
+all 4 original open questions plus the Plus-gating correction are fully
+implemented. `features/marketplace/services/cosmetic.service.ts`'s
+generic `/api/market/cosmetics` endpoints still exist unchanged
+(unrelated read path, predates this phase); the KOBA Shop is the
+platform's only real cosmetics *browse* page, since nothing consumed
+those generic endpoints before now.
 
 ---
 

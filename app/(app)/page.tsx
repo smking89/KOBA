@@ -12,6 +12,8 @@ import {
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { HomeTour } from "@/components/koba/home-tour";
+import { KobaShopHeroSection } from "@/features/koba-shop/components/koba-shop-hero-section";
+import { listKobaShopHeroCosmetics } from "@/features/koba-shop/services/catalog.service";
 import { cn } from "@/lib/utils";
 
 const features: {
@@ -75,7 +77,9 @@ const steps = [
   { step: "3", title: "Jump in", body: "Browse the Marketplace, join a group, or post an LFG." },
 ];
 
-export default function HomePage() {
+export default async function HomePage() {
+  const heroCosmetics = await listKobaShopHeroCosmetics();
+
   return (
     <div className="space-y-14">
       <section className="space-y-4">
@@ -103,6 +107,8 @@ export default function HomePage() {
           </Link>
         </div>
       </section>
+
+      <KobaShopHeroSection cosmetics={heroCosmetics} />
 
       <section className="space-y-4">
         <p className="text-[11px] font-semibold tracking-[0.16em] text-neon-lime uppercase">

@@ -16,6 +16,10 @@ import { socialProviderConfiguredMap } from "@/features/social-connections/lib/p
 import { listShopSocialConnections } from "@/features/social-connections/services/social-connection.service";
 import { ShopBlacklistPanel } from "@/features/blacklist/components/shop-blacklist-panel";
 import { listShopBlacklist } from "@/features/blacklist/services/shop-blacklist.service";
+import { KobaShopApplicationCard } from "@/features/koba-shop/components/koba-shop-application-card";
+import { getShopApplication } from "@/features/koba-shop/services/application.service";
+import { ShopBannerPanel } from "@/features/koba-shop/components/shop-banner-panel";
+import { listOwnedCosmetics } from "@/features/koba-shop/services/cosmetic-checkout.service";
 
 export const metadata = { title: "Business dashboard" };
 
@@ -42,6 +46,8 @@ export default async function BusinessDashboardPage() {
   const verified = shop.verificationStatus === "VERIFIED";
   const shopSocialConnections = await listShopSocialConnections(shop.id);
   const shopBlacklist = await listShopBlacklist(shop.id, userId);
+  const kobaShopApplication = await getShopApplication(shop.id);
+  const ownedCosmetics = await listOwnedCosmetics(userId);
 
   return (
     <div className="space-y-6">
@@ -126,6 +132,32 @@ export default async function BusinessDashboardPage() {
             ...entry,
             createdAt: entry.createdAt.toISOString(),
           }))}
+        />
+      </Card>
+
+      <Card>
+        <CardTitle>KOBA Shop</CardTitle>
+        <CardDescription className="mb-4">
+          A second, narrower gate on top of your Blue-Badge verification — apply to sell cosmetics
+          in KOBA&apos;s featured, homepage-linked storefront.
+        </CardDescription>
+        <KobaShopApplicationCard application={kobaShopApplication} />
+      </Card>
+
+      <Card>
+        <CardTitle>Shop banner</CardTitle>
+        <CardDescription className="mb-4">
+          A KOBA Shop cosmetic that equips onto your storefront instead of your personal profile —
+          needs your own active KOBA Plus subscription to equip.
+        </CardDescription>
+        <ShopBannerPanel
+          initialBanners={ownedCosmetics
+            .filter((item) => item.cosmetic.subType === "SHOP_BANNER")
+            .map((item) => ({
+              ownershipId: item.id,
+              name: item.cosmetic.name,
+              equipped: item.shopEquip !== null,
+            }))}
         />
       </Card>
 

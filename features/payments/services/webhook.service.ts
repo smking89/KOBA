@@ -6,6 +6,7 @@ import {
   markOrderRefunded,
 } from "@/features/payments/services/checkout.service";
 import { handlePlusStripeEvent } from "@/features/plus/services/plus-webhook.service";
+import { markCosmeticOrderPaid } from "@/features/koba-shop/services/cosmetic-checkout.service";
 import {
   expireCoinPurchaseCheckout,
   markCoinPurchasePaid,
@@ -48,6 +49,17 @@ export async function handleStripeEvent(event: Stripe.Event): Promise<void> {
 
       if (session.metadata?.kind === "coin_purchase") {
         await markCoinPurchasePaid({ sessionId: session.id, paymentIntentId: paymentIntent });
+        return;
+      }
+
+      if (session.metadata?.kind === "cosmetic_order") {
+        const cosmeticOrderRef = session.metadata?.cosmeticOrderRef ?? session.client_reference_id;
+        if (!cosmeticOrderRef) return;
+        await markCosmeticOrderPaid({
+          publicRef: cosmeticOrderRef,
+          paymentIntentId: paymentIntent,
+          sessionId: session.id,
+        });
         return;
       }
 

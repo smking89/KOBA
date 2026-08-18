@@ -17,6 +17,9 @@ import { listUserSocialConnections } from "@/features/social-connections/service
 import { ConnectedDevicesPanel } from "@/features/oauth-device/components/connected-devices-panel";
 import { listAccessTokens } from "@/features/oauth-device/services/device-flow.service";
 import { getSteamLink } from "@/features/steam-link/services/steam-link.service";
+import { OwnedCosmeticsPanel } from "@/features/koba-shop/components/owned-cosmetics-panel";
+import { listOwnedCosmetics } from "@/features/koba-shop/services/cosmetic-checkout.service";
+import { isPlusActive } from "@/features/plus/services/plus.service";
 
 export const metadata = { title: "Settings" };
 
@@ -33,9 +36,11 @@ export default async function SettingsPage() {
   }
 
   const socialConnections = await listUserSocialConnections(session.user.id);
-  const [steamLink, deviceTokens] = await Promise.all([
+  const [steamLink, deviceTokens, ownedCosmetics, hasPlus] = await Promise.all([
     getSteamLink(session.user.id),
     listAccessTokens(session.user.id),
+    listOwnedCosmetics(session.user.id),
+    isPlusActive(session.user.id),
   ]);
 
   return (
@@ -118,6 +123,26 @@ export default async function SettingsPage() {
             createdAt: token.createdAt.toISOString(),
             expiresAt: token.expiresAt.toISOString(),
           }))}
+        />
+      </Card>
+
+      <Card className="border-t-2 border-t-neon-lime">
+        <CardTitle>Cosmetics</CardTitle>
+        <CardDescription className="mb-4">
+          Anyone can buy a cosmetic from the KOBA Shop. Equipping one on your profile needs an
+          active KOBA Plus subscription.
+        </CardDescription>
+        <OwnedCosmeticsPanel
+          hasPlus={hasPlus}
+          initialCosmetics={ownedCosmetics
+            .filter((item) => item.cosmetic.subType !== "SHOP_BANNER")
+            .map((item) => ({
+              ownershipId: item.id,
+              cosmeticId: item.cosmeticId,
+              name: item.cosmetic.name,
+              subType: item.cosmetic.subType,
+              equipped: item.personalEquip !== null,
+            }))}
         />
       </Card>
 

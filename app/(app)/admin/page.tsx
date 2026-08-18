@@ -39,6 +39,8 @@ import { PlatformFunctionsPanel } from "@/features/platform-control/components/p
 import { canManagePlatformBlacklist } from "@/features/blacklist/lib/access";
 import { listPlatformBlacklist } from "@/features/blacklist/services/platform-blacklist.service";
 import { PlatformBlacklistPanel } from "@/features/blacklist/components/platform-blacklist-panel";
+import { listPendingKobaShopApplications } from "@/features/koba-shop/services/application.service";
+import { PendingKobaShopApplicationsPanel } from "@/features/koba-shop/components/pending-applications-panel";
 import { auth } from "@/lib/auth";
 import {
   challengePath,
@@ -125,6 +127,10 @@ export default async function AdminPage() {
   const canManageBlacklist = canManagePlatformBlacklist(actorTypes);
   const platformBlacklist = canManageBlacklist
     ? await listPlatformBlacklist(session.user.id)
+    : [];
+
+  const pendingKobaShopApplications = canStaffVerifyShop(actorTypes)
+    ? await listPendingKobaShopApplications(session.user.id)
     : [];
 
   return (
@@ -369,6 +375,19 @@ export default async function AdminPage() {
                 createdAt: entry.createdAt.toISOString(),
               }))}
             />
+          </div>
+        </Card>
+      ) : null}
+
+      {canStaffVerifyShop(actorTypes) ? (
+        <Card>
+          <CardTitle>KOBA Shop applications</CardTitle>
+          <CardDescription>
+            A second, narrower gate on top of Blue-Badge verification — approving here lets a
+            shop&apos;s Cosmetic listings appear in the homepage-featured KOBA Shop.
+          </CardDescription>
+          <div className="mt-4">
+            <PendingKobaShopApplicationsPanel applications={pendingKobaShopApplications} />
           </div>
         </Card>
       ) : null}
