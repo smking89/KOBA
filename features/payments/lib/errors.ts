@@ -17,7 +17,8 @@ export class PaymentError extends Error {
       | "AMOUNT_TOO_LARGE"
       | "DISABLED"
       | "NOT_FREEBIE"
-      | "BLACKLISTED",
+      | "BLACKLISTED"
+      | "REQUIRES_GAME_IDENTITY",
   ) {
     super(message);
     this.name = "PaymentError";
@@ -31,6 +32,7 @@ export function paymentErrorStatus(code: PaymentError["code"]): number {
     case "FORBIDDEN":
     case "SELF_BUY":
     case "BLACKLISTED":
+    case "REQUIRES_GAME_IDENTITY":
       return 403;
     case "CONFLICT":
       return 409;

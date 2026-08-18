@@ -168,6 +168,10 @@ enum AuditAction {
   COSMETIC_PURCHASED
   COSMETIC_EQUIPPED
   COSMETIC_UNEQUIPPED
+  XBOX_ACCOUNT_LINKED
+  XBOX_ACCOUNT_UNLINKED
+  PLAYSTATION_ACCOUNT_LINKED
+  PLAYSTATION_ACCOUNT_UNLINKED
 }
 
 // Major, independently-toggleable platform functions. This is the registry
@@ -291,6 +295,8 @@ model User {
   oauthDeviceGrants       OAuthDeviceGrant[]
   oauthAccessTokens       OAuthAccessToken[]
   steamAccountLink        SteamAccountLink?
+  xboxAccountLink         XboxAccountLink?
+  playStationAccountLink  PlayStationAccountLink?
   kobaShopApplicationsReviewed KobaShopApplication[]
   cosmeticOrders          CosmeticOrder[]
   cosmeticOwnerships      CosmeticOwnership[]
@@ -433,6 +439,33 @@ model SteamAccountLink {
   userId      String   @unique
   steamId64   String   @unique
   personaName String?
+  linkedAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+/// Console platform identity links (client, 2026-08-18: "koba needs to
+/// have users connect there gamertag, psn, steam via there dashboard
+/// before buying anything" on a game-delivered item — clarified in the
+/// same breath that KOBAID is what proves ownership; these fields exist
+/// purely so KOBA/Discord bots/the PC Plugin "know who is who" for
+/// delivery routing, not as ownership proof). Self-reported, no OAuth —
+/// confirmed via AskUserQuestion: Xbox Live/PSN have no public
+/// ownership-verification API the way Steam's OpenID does, and none is
+/// needed since KOBAID already answers "do they actually own this."
+model XboxAccountLink {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  gamertag  String   @unique
+  linkedAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model PlayStationAccountLink {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  psnUsername String   @unique
   linkedAt    DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)

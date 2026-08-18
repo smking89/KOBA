@@ -47,16 +47,13 @@ describe("upsertProductSchema — direct-RCON auto-delivery fields", () => {
   });
 });
 
-describe("checkoutSchema — buyerGameHandle", () => {
-  it("is optional at the schema level (required-when-needed is checked in the service, not here)", () => {
-    const result = checkoutSchema.safeParse({
-      slug: "starter-kit",
-      idempotencyKey: "idem-12345678",
-    });
-    expect(result.success).toBe(true);
-  });
-
-  it("accepts a provided gamertag", () => {
+describe("checkoutSchema", () => {
+  it("never accepts a client-supplied game handle — the buyer's already-linked", () => {
+    // Client, 2026-08-18: identity linking happens ahead of time in
+    // Settings, not typed in at checkout. checkoutSchema has no
+    // buyerGameHandle field at all; createCheckoutSession resolves it
+    // server-side from SteamAccountLink/XboxAccountLink/
+    // PlayStationAccountLink via resolveGameHandleForPlatforms.
     const result = checkoutSchema.safeParse({
       slug: "starter-kit",
       idempotencyKey: "idem-12345678",
@@ -64,7 +61,7 @@ describe("checkoutSchema — buyerGameHandle", () => {
     });
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data.buyerGameHandle).toBe("SomeGamertag");
+      expect("buyerGameHandle" in result.data).toBe(false);
     }
   });
 });

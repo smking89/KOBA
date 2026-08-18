@@ -17,6 +17,7 @@ import { listUserSocialConnections } from "@/features/social-connections/service
 import { ConnectedDevicesPanel } from "@/features/oauth-device/components/connected-devices-panel";
 import { listAccessTokens } from "@/features/oauth-device/services/device-flow.service";
 import { getSteamLink } from "@/features/steam-link/services/steam-link.service";
+import { getPlayStationLink, getXboxLink } from "@/features/game-identity/services/game-identity.service";
 import { OwnedCosmeticsPanel } from "@/features/koba-shop/components/owned-cosmetics-panel";
 import { listOwnedCosmetics } from "@/features/koba-shop/services/cosmetic-checkout.service";
 import { isPlusActive } from "@/features/plus/services/plus.service";
@@ -36,8 +37,10 @@ export default async function SettingsPage() {
   }
 
   const socialConnections = await listUserSocialConnections(session.user.id);
-  const [steamLink, deviceTokens, ownedCosmetics, hasPlus] = await Promise.all([
+  const [steamLink, xboxLink, psnLink, deviceTokens, ownedCosmetics, hasPlus] = await Promise.all([
     getSteamLink(session.user.id),
+    getXboxLink(session.user.id),
+    getPlayStationLink(session.user.id),
     listAccessTokens(session.user.id),
     listOwnedCosmetics(session.user.id),
     isPlusActive(session.user.id),
@@ -111,11 +114,15 @@ export default async function SettingsPage() {
       <Card className="border-t-2 border-t-neon-lime">
         <CardTitle>Steam & connected devices</CardTitle>
         <CardDescription className="mb-4">
-          Link Steam so the KOBA PC Plugin knows which local install to apply skins to. Revoke a
-          device here if it&apos;s lost or no longer trusted — it can&apos;t act as you afterward.
+          Link Steam, your Xbox gamertag, and your PSN username so a game-delivered purchase
+          (kits, skins) knows which in-game account to reach — required before buying one of
+          those specifically, not for every purchase. Revoke a device here if it&apos;s lost or
+          no longer trusted — it can&apos;t act as you afterward.
         </CardDescription>
         <ConnectedDevicesPanel
           initialSteamLink={steamLink ? { steamId64: steamLink.steamId64, personaName: steamLink.personaName } : null}
+          initialXboxGamertag={xboxLink?.gamertag ?? null}
+          initialPsnUsername={psnLink?.psnUsername ?? null}
           initialTokens={deviceTokens.map((token) => ({
             id: token.id,
             clientKey: token.clientKey,

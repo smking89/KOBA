@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { OAUTH_DEVICE_CLIENTS, type OAuthDeviceClientKey } from "@/features/oauth-device/lib/clients";
+import { TextIdentityLink } from "@/features/game-identity/components/text-identity-link";
 
 type DeviceToken = {
   id: string;
@@ -18,9 +19,13 @@ type SteamLink = { steamId64: string; personaName: string | null } | null;
 
 export function ConnectedDevicesPanel({
   initialSteamLink,
+  initialXboxGamertag,
+  initialPsnUsername,
   initialTokens,
 }: {
   initialSteamLink: SteamLink;
+  initialXboxGamertag: string | null;
+  initialPsnUsername: string | null;
   initialTokens: DeviceToken[];
 }) {
   const [steamLink, setSteamLink] = useState(initialSteamLink);
@@ -64,6 +69,22 @@ export function ConnectedDevicesPanel({
           </a>
         )}
       </div>
+
+      <TextIdentityLink
+        label="Xbox gamertag"
+        placeholder="YourGamertag"
+        apiPath="/api/game-identity/xbox"
+        bodyKey="gamertag"
+        initialValue={initialXboxGamertag}
+      />
+
+      <TextIdentityLink
+        label="PSN username"
+        placeholder="YourPSNUsername"
+        apiPath="/api/game-identity/playstation"
+        bodyKey="psnUsername"
+        initialValue={initialPsnUsername}
+      />
 
       <div>
         <p className="text-sm font-medium">Connected devices</p>

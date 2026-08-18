@@ -1389,10 +1389,37 @@ only one needing zero new external dependencies.
   `rconServerId` accepts id/slug/publicRef, same flexible lookup
   `server.service.ts#loadServer` already used, and ownership is
   re-verified server-side, not just left to the form's `<select>`).
-- Buyers enter their in-game gamertag at checkout (`Order.
-  buyerGameHandle`, prompted inline by `CheckoutButton` only when the
-  product needs it) — the same "identify yourself at purchase time"
-  pattern Tip4Serv itself uses, not a separately pre-linked profile.
+- Buyers link their delivery identity ahead of time in Settings, not
+  at checkout. Client, revisiting this same day after the RCON channel
+  first shipped with an inline checkout-time gamertag prompt: "KAOSBOT/
+  Ch33kys/Veretech/Helios all have there own /link command and koba
+  needs to have users connect there gamertag, psn, steam via there
+  dashboard before buying anything on koba platform that way the
+  [bots] can deliver the products." Confirmed via `AskUserQuestion`
+  the gate applies only to listings that actually deliver in-game
+  (`rconKitName` set), not every purchase platform-wide.
+  - `features/game-identity` adds self-reported `XboxAccountLink`
+    (gamertag) and `PlayStationAccountLink` (psnUsername) — no OAuth
+    round-trip like Steam's, since Xbox Live/PSN have neither a public
+    ownership-verification API. Client's framing for why self-reported
+    is correct here: "KOBAid is the validates to prove a user actually
+    owns a product, the users psn gamertag and steam username is so
+    koba known who is who" — KOBAID already proves platform ownership;
+    these fields are purely delivery routing, telling a bot or RCON
+    call *which* in-game account to target.
+  - `resolveGameHandleForPlatforms(userId, product.platforms)` maps a
+    product's platforms to whichever identity applies (STEAM/PC →
+    `SteamAccountLink`, XBOX → `XboxAccountLink`, PLAYSTATION →
+    `PlayStationAccountLink`) and resolves it server-side inside
+    `createCheckoutSession` — never client-supplied.
+    `checkoutSchema` has no `buyerGameHandle` field at all anymore
+    (removed, superseding the checkout-time prompt from the same-day
+    RCON-delivery build). Checkout blocks with a new `PaymentError`
+    code `REQUIRES_GAME_IDENTITY` (HTTP 403) if nothing's linked; the
+    product page and `CheckoutButton` surface a link to Settings.
+  - Settings → "Steam & connected devices" gained a type-and-save Xbox
+    gamertag / PSN username card (`TextIdentityLink`, shared component)
+    alongside the existing Steam OAuth link.
 - Delivery fires the instant `markOrderPaid` runs (webhook-driven,
   matching Tip4Serv's own instant delivery) — not the existing manual
   seller "Fulfill" action, which stays for non-RCON listings. Reuses

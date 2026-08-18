@@ -5,6 +5,7 @@ import { getPublicEnv } from "@/lib/env";
 import { PaymentError } from "@/features/payments/lib/errors";
 import { generateOrderRef } from "@/features/payments/lib/order-ref";
 import { deliverRconKitForOrder } from "@/features/payments/services/rcon-delivery.service";
+import { resolveGameHandleForPlatforms } from "@/features/game-identity/services/game-identity.service";
 import {
   canCheckoutListing,
   canPayReservedAuction,
@@ -159,11 +160,20 @@ export async function createCheckoutSession(
     throw new PaymentError("This purchase is not available to your account.", "BLACKLISTED");
   }
 
-  if (product.rconKitName && !input.buyerGameHandle) {
-    throw new PaymentError(
-      "Enter your in-game gamertag to receive this automatically.",
-      "INVALID",
-    );
+  // Client, 2026-08-18: identity linking happens ahead of time in
+  // Settings, not typed in at checkout — "koba needs to have users
+  // connect there gamertag, psn, steam via there dashboard before
+  // buying anything" on a listing that actually delivers into a game.
+  // KOBAID already proves ownership; this is purely delivery routing.
+  let resolvedGameHandle: string | null = null;
+  if (product.rconKitName) {
+    resolvedGameHandle = await resolveGameHandleForPlatforms(buyerUserId, product.platforms);
+    if (!resolvedGameHandle) {
+      throw new PaymentError(
+        "Link your gamertag, PSN username, or Steam account in Settings before buying this — it's needed to deliver it automatically.",
+        "REQUIRES_GAME_IDENTITY",
+      );
+    }
   }
 
   const shopMemberUserIds = shop.members.map((row) => row.userId);
@@ -337,7 +347,7 @@ export async function createCheckoutSession(
         currency: product.currency,
         idempotencyKey: input.idempotencyKey,
         auctionId: product.auction?.id ?? null,
-        buyerGameHandle: product.rconKitName ? (input.buyerGameHandle ?? null) : null,
+        buyerGameHandle: resolvedGameHandle,
         rconDeliveryStatus: product.rconKitName ? "PENDING" : "NOT_APPLICABLE",
         items: {
           create: {

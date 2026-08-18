@@ -123,13 +123,23 @@ export default async function ProductDetailPage({
                 alreadyClaimed={product.freebieClaimed}
               />
             ) : (
-              <CheckoutButton
-                slug={product.slug}
-                signedIn={signedIn}
-                label={sold ? "Sold" : "Buy now"}
-                disabled={sold}
-                requiresGameHandle={product.requiresGameHandle}
-              />
+              <>
+                <CheckoutButton
+                  slug={product.slug}
+                  signedIn={signedIn}
+                  label={sold ? "Sold" : "Buy now"}
+                  disabled={sold}
+                />
+                {product.requiresGameHandle ? (
+                  <p className="w-full text-xs text-muted">
+                    Delivered automatically to your linked in-game account — link one in{" "}
+                    <Link href="/settings" className="text-neon-lime hover:underline">
+                      Settings
+                    </Link>{" "}
+                    first if you haven&apos;t.
+                  </p>
+                ) : null}
+              </>
             )}
             <FavoriteButton
               slug={product.slug}
