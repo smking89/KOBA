@@ -7,6 +7,8 @@ import { auth } from "@/lib/auth";
 import { getAccountSnapshot } from "@/features/accounts/services/account.service";
 import { countActiveBids } from "@/features/auctions/services/auction.service";
 import { countJoinedGroups } from "@/features/groups/services/group.service";
+import { getInventoryValueSummary } from "@/features/inventory/services/inventory.service";
+import { formatPrice } from "@/features/marketplace/lib/catalog";
 import { ACCOUNT_TYPE_LABEL } from "@/features/koba-id/lib/format";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -28,7 +30,8 @@ export default async function PlayerDashboardPage() {
     redirect("/enter");
   }
 
-  const [activeBids, groupsJoined] = await Promise.all([
+  const [inventoryValue, activeBids, groupsJoined] = await Promise.all([
+    getInventoryValueSummary(session.user.id),
     countActiveBids(session.user.id),
     countJoinedGroups(session.user.id),
   ]);
@@ -46,7 +49,12 @@ export default async function PlayerDashboardPage() {
       />
 
       <StatCardGrid className="sm:grid-cols-3 lg:grid-cols-3">
-        <StatCard label="Inventory value" value="—" icon={Package} hint="Coming soon" />
+        <StatCard
+          label="Inventory value"
+          value={formatPrice(inventoryValue.totalValueCents)}
+          icon={Package}
+          hint={`${inventoryValue.itemCount} item${inventoryValue.itemCount === 1 ? "" : "s"} in your inventory`}
+        />
         <StatCard
           label="Active bids"
           value={activeBids}

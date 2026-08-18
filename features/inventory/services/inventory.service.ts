@@ -155,6 +155,49 @@ export async function listTradeableInventory(
   return { items: page.map(mapPublicView), nextCursor };
 }
 
+export type InventoryValueSummary = {
+  itemCount: number;
+  totalValueCents: number;
+};
+
+/**
+ * Owned-inventory stat for the player dashboard: how many items the player
+ * still holds (anything short of TRANSFERRED/REVOKED counts as owned, even
+ * while locked in a trade/auction/order/dispute) and their combined value,
+ * priced off the originating Product where one is linked. Items minted
+ * without a productId (e.g. AIDEN generations) contribute to the count but
+ * not the total, since there's no price to attribute to them.
+ */
+export async function getInventoryValueSummary(userId: string): Promise<InventoryValueSummary> {
+  const items = await prisma.inventoryItem.findMany({
+    where: {
+      ownerUserId: userId,
+      status: { notIn: ["TRANSFERRED", "REVOKED"] },
+    },
+    select: { productId: true },
+  });
+
+  const productIds = [...new Set(items.flatMap((item) => (item.productId ? [item.productId] : [])))];
+
+  const priceById = new Map(
+    productIds.length
+      ? (
+          await prisma.product.findMany({
+            where: { id: { in: productIds } },
+            select: { id: true, priceCents: true },
+          })
+        ).map((product) => [product.id, product.priceCents] as const)
+      : [],
+  );
+
+  const totalValueCents = items.reduce(
+    (sum, item) => sum + (item.productId ? (priceById.get(item.productId) ?? 0) : 0),
+    0,
+  );
+
+  return { itemCount: items.length, totalValueCents };
+}
+
 /** Caller's own transferable ACTIVE (or TRADE_LOCKED) inventory for composing offers. */
 export async function listMyTradeable(userId: string): Promise<InventoryItemPublicView[]> {
   const rows = await prisma.inventoryItem.findMany({
