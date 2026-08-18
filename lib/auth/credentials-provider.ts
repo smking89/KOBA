@@ -10,6 +10,7 @@ import { getAccountSnapshot } from "@/features/accounts/services/account.service
 import { mintPublicKobaId } from "@/features/koba-id/services/mint.service";
 import { isStaffAccountType } from "@/features/koba-id/lib/format";
 import { clientIp } from "@/lib/http/client-ip";
+import { isUserPlatformBanned } from "@/features/blacklist/services/platform-blacklist.service";
 
 const mfaTicketSchema = z.object({
   mfaTicket: z.string().min(16).max(128),
@@ -25,6 +26,18 @@ async function sessionUserFromId(userId: string) {
     include: { profile: true },
   });
   if (!user) return null;
+
+  // Superadmin platform ban — full lockout (confirmed via
+  // AskUserQuestion), checked here since every login path (password,
+  // staff MFA ticket, OAuth ticket) funnels through this one function.
+  // Returning null (not a distinct error) is deliberate: it produces the
+  // same generic "invalid email or password" the client already shows,
+  // avoiding an account-enumeration leak that a specific "you're banned"
+  // message would create for anyone probing an email address.
+  if (await isUserPlatformBanned(user.id)) {
+    return null;
+  }
+
   const accountType = user.profile?.activeAccountType ?? "PLAYER";
   if (!isStaffAccountType(accountType)) {
     await mintPublicKobaId(user.id, accountType);

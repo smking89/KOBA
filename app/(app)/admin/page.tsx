@@ -36,6 +36,9 @@ import { isStaffAccountType } from "@/features/koba-id/lib/format";
 import { canManagePlatformFunctions } from "@/features/platform-control/lib/functions";
 import { listPlatformFunctions } from "@/features/platform-control/services/platform-function.service";
 import { PlatformFunctionsPanel } from "@/features/platform-control/components/platform-functions-panel";
+import { canManagePlatformBlacklist } from "@/features/blacklist/lib/access";
+import { listPlatformBlacklist } from "@/features/blacklist/services/platform-blacklist.service";
+import { PlatformBlacklistPanel } from "@/features/blacklist/components/platform-blacklist-panel";
 import { auth } from "@/lib/auth";
 import {
   challengePath,
@@ -118,6 +121,11 @@ export default async function AdminPage() {
 
   const canManageFunctions = canManagePlatformFunctions(actorTypes);
   const platformFunctions = canManageFunctions ? await listPlatformFunctions() : [];
+
+  const canManageBlacklist = canManagePlatformBlacklist(actorTypes);
+  const platformBlacklist = canManageBlacklist
+    ? await listPlatformBlacklist(session.user.id)
+    : [];
 
   return (
     <div className="space-y-8">
@@ -340,6 +348,25 @@ export default async function AdminPage() {
               initialFunctions={platformFunctions.map((fn) => ({
                 ...fn,
                 updatedAt: fn.updatedAt ? fn.updatedAt.toISOString() : null,
+              }))}
+            />
+          </div>
+        </Card>
+      ) : null}
+
+      {canManageBlacklist ? (
+        <Card>
+          <CardTitle>Platform blacklist</CardTitle>
+          <CardDescription>
+            Superadmin-only. Stricter than a shop&apos;s own blacklist — a USER ban is a full
+            account lockout (can&apos;t sign in at all); a SHOP ban delists the storefront
+            platform-wide.
+          </CardDescription>
+          <div className="mt-4">
+            <PlatformBlacklistPanel
+              initialEntries={platformBlacklist.map((entry) => ({
+                ...entry,
+                createdAt: entry.createdAt.toISOString(),
               }))}
             />
           </div>

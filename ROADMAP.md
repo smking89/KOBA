@@ -1830,6 +1830,64 @@ social connections per the confirmed order.
 
 ---
 
+## Blacklist / bans — shop-level and platform-level (2026-08-18, status: done)
+
+Client: "we need a blacklist function both for superadmin role, and
+business accounts, both work similar." Scope was narrowed via a 4-question
+`AskUserQuestion` round before building — see the confirmed answers baked
+into the design below.
+
+- **Two independent tables**, not one polymorphic one (same reasoning as
+  `UserSocialConnection`/`ShopSocialConnection` earlier — Postgres treats
+  multiple NULLs as distinct, defeating a naive nullable-FK unique
+  constraint): `ShopBlacklistEntry` (business-issued, always targets a
+  User) and `PlatformBlacklistEntry` (superadmin-issued, targets a User
+  **or** a Shop — confirmed in scope: "Shops can be blacklisted too").
+- **Bans the whole person, not one KOBAID** (confirmed:
+  "The whole person, always") — every KOBAID a user holds is blocked
+  from a shop (or the platform) they're blacklisted from, closing the
+  "just switch account type" evasion the client's own framing worried
+  about ("KOBAid tied to accounts with a strict 1 KOBAid per account
+  type").
+- **Superadmin ban = full lockout** (confirmed: "Full lockout — can't
+  log in at all") — enforced in `lib/auth/credentials-provider.ts`'s
+  `sessionUserFromId`, the single choke point every login path (password,
+  staff MFA ticket, OAuth ticket) already funnels through. Deliberately
+  returns the same generic "invalid email or password" rather than a
+  distinct "you're banned" message — a specific message would leak
+  account existence to anyone probing an email address.
+- **What's real vs. flagged** (confirmed: "Build the KOBA-side parts
+  now, flag the rest") — there is no live Discord bot in this codebase
+  (Phase 22's KOBAbot is still just roadmap) and RCON only supports
+  whatever ban/kick commands each game's own console exposes, not a
+  KOBAID-aware concept. So today's enforcement is everything KOBA
+  actually controls: checkout (`createCheckoutSession`), freebie claims
+  (`claimFreebie`), shop follows, and shop reviews all check
+  `isUserBlacklistedByShop`/`isUserPlatformBanned`/`isShopPlatformBanned`
+  before proceeding. `requestSocialRemoval` on an entry records the
+  issuer's *intent* to also remove the person from Discord/a live
+  server — a manual step surfaced in the UI copy, not a live action,
+  until Phase 22's bot and per-game RCON ban plumbing exist.
+- Search "via @username or @shopname" (`features/blacklist/lib/search.ts`)
+  — resolves a handle, a KOBAID code, or a shop name/slug (to that
+  shop's owner) into ban-target candidates; hashtags on each entry
+  (`#chargeback`, `#cheating`) are free-text categorization, unrelated
+  to the still-unbuilt user-interest hashtag system from Phase 1.
+  Existing entries are filterable the same way.
+- Business UI: a "Blacklist" card on `/business` (shop owners/moderators,
+  reusing `canManageShop`). Superadmin UI: a "Platform blacklist" card on
+  `/admin`, gated on `SUPERADMIN` specifically (not Admin/Moderator) and
+  requiring the existing staff MFA step-up
+  (`assertStaffAal2(..., { stepUp: true })`) to add or lift a ban, same
+  pattern as staff KOBAID issuance.
+
+Not built yet: live Discord-guild kick, RCON-based join-blocking on the
+actual game server, and a nudge asking a Steam-only OAuth user (from the
+login-OAuth slice above) to add a real email — all pre-existing,
+explicitly flagged gaps this feature doesn't attempt to close.
+
+---
+
 ## Open questions for the client
 
 Flagging rather than guessing on anything with real product/cost/legal consequence:

@@ -29,6 +29,11 @@ import {
 } from "@/features/promotions/services/promo-code.service";
 import { resolveCheckoutAttribution } from "@/features/promotions/services/attribution.service";
 import {
+  isShopPlatformBanned,
+  isUserPlatformBanned,
+} from "@/features/blacklist/services/platform-blacklist.service";
+import { isUserBlacklistedByShop } from "@/features/blacklist/services/shop-blacklist.service";
+import {
   createCommissionForPaidOrder,
   reverseCommissionForOrder,
 } from "@/features/promotions/services/commission.service";
@@ -141,6 +146,17 @@ export async function createCheckoutSession(
   }
   const shop = product.shop;
   const stripeAccountId = shop.stripeAccountId;
+
+  // Blacklist enforcement (features/blacklist) — defense in depth for a
+  // session issued before a ban landed; a freshly-banned platform user
+  // can't get a new session at all (lib/auth/credentials-provider.ts).
+  if (
+    (await isUserPlatformBanned(buyerUserId)) ||
+    (await isShopPlatformBanned(shop.id)) ||
+    (await isUserBlacklistedByShop(shop.id, buyerUserId))
+  ) {
+    throw new PaymentError("This purchase is not available to your account.", "BLACKLISTED");
+  }
 
   const shopMemberUserIds = shop.members.map((row) => row.userId);
   if (
@@ -805,6 +821,14 @@ export async function claimFreebie(buyerUserId: string, slug: string, ipAddress?
   }
   if (product.freebiePolicy === "NONE") {
     throw new PaymentError("This listing is not a freebie.", "NOT_FREEBIE");
+  }
+
+  if (
+    (await isUserPlatformBanned(buyerUserId)) ||
+    (await isShopPlatformBanned(product.shop.id)) ||
+    (await isUserBlacklistedByShop(product.shop.id, buyerUserId))
+  ) {
+    throw new PaymentError("This claim is not available to your account.", "BLACKLISTED");
   }
 
   const shopMemberUserIds = product.shop.members.map((row) => row.userId);

@@ -13,6 +13,7 @@ import { rarityDistribution } from "@/features/shops/services/analytics.service"
 import type { createShopSchema } from "@/features/shops/schemas/shop.schemas";
 import type { z } from "zod";
 import { plusBadgeByIdentityIds } from "@/features/plus/services/plus.service";
+import { isUserBlacklistedByShop } from "@/features/blacklist/services/shop-blacklist.service";
 
 export class ShopError extends Error {
   constructor(
@@ -221,6 +222,9 @@ export async function toggleShopFollow(userId: string, slug: string) {
   if (!canFollowOrReviewShop({ userId, ownerUserId: shop.ownerUserId })) {
     throw new ShopError("You cannot follow your own shop.", "SELF_ACTION");
   }
+  if (await isUserBlacklistedByShop(shop.id, userId)) {
+    throw new ShopError("You cannot follow this shop.", "FORBIDDEN");
+  }
 
   const existing = await prisma.shopFollow.findUnique({
     where: { shopId_userId: { shopId: shop.id, userId } },
@@ -246,6 +250,9 @@ export async function addShopReview(
   }
   if (!canFollowOrReviewShop({ userId, ownerUserId: shop.ownerUserId })) {
     throw new ShopError("You cannot review your own shop.", "SELF_ACTION");
+  }
+  if (await isUserBlacklistedByShop(shop.id, userId)) {
+    throw new ShopError("You cannot review this shop.", "FORBIDDEN");
   }
 
   return prisma.shopReview.upsert({

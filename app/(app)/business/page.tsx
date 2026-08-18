@@ -14,6 +14,8 @@ import { getShopPromo } from "@/features/influencer/services/influencer.service"
 import { SocialConnectionsPanel } from "@/features/social-connections/components/social-connections-panel";
 import { socialProviderConfiguredMap } from "@/features/social-connections/lib/providers";
 import { listShopSocialConnections } from "@/features/social-connections/services/social-connection.service";
+import { ShopBlacklistPanel } from "@/features/blacklist/components/shop-blacklist-panel";
+import { listShopBlacklist } from "@/features/blacklist/services/shop-blacklist.service";
 
 export const metadata = { title: "Business dashboard" };
 
@@ -39,6 +41,7 @@ export default async function BusinessDashboardPage() {
   const shop = data.shop;
   const verified = shop.verificationStatus === "VERIFIED";
   const shopSocialConnections = await listShopSocialConnections(shop.id);
+  const shopBlacklist = await listShopBlacklist(shop.id, userId);
 
   return (
     <div className="space-y-6">
@@ -107,6 +110,22 @@ export default async function BusinessDashboardPage() {
           configured={socialProviderConfiguredMap()}
           connections={shopSocialConnections}
           shopId={shop.id}
+        />
+      </Card>
+
+      <Card>
+        <CardTitle>Blacklist</CardTitle>
+        <CardDescription className="mb-4">
+          Blocks purchases, freebie claims, follows, and reviews from that account across every
+          server this shop owns — PC or console, current or future. KOBA doesn&apos;t yet
+          auto-kick from Discord or auto-ban from a live server; that stays a manual step on your
+          end for now.
+        </CardDescription>
+        <ShopBlacklistPanel
+          initialEntries={shopBlacklist.map((entry) => ({
+            ...entry,
+            createdAt: entry.createdAt.toISOString(),
+          }))}
         />
       </Card>
 

@@ -154,6 +154,10 @@ enum AuditAction {
   SERVER_KIT_DELIVERED
   PRODUCT_COMMENT_POSTED
   ACHIEVEMENT_UNLOCKED
+  BLACKLIST_ENTRY_ADDED
+  BLACKLIST_ENTRY_REMOVED
+  PLATFORM_BAN_ISSUED
+  PLATFORM_BAN_LIFTED
 }
 
 // Major, independently-toggleable platform functions. This is the registry
@@ -270,6 +274,10 @@ model User {
   socialConnections       UserSocialConnection[]
   loginIdentities         UserLoginIdentity[]
   oauthLoginTickets       OAuthLoginTicket[]
+  shopBlacklistEntriesReceived     ShopBlacklistEntry[]     @relation("ShopBlacklistTarget")
+  shopBlacklistEntriesCreated      ShopBlacklistEntry[]     @relation("ShopBlacklistCreator")
+  platformBlacklistReceived        PlatformBlacklistEntry?  @relation("PlatformBlacklistTargetUser")
+  platformBlacklistEntriesCreated  PlatformBlacklistEntry[] @relation("PlatformBlacklistCreator")
 }
 
 model Account {
@@ -828,6 +836,8 @@ model Shop {
   affiliateCampaigns   AffiliateCampaign[]
   promoCodes           PromoCode[]
   socialConnections    ShopSocialConnection[]
+  blacklistEntries     ShopBlacklistEntry[]
+  platformBan          PlatformBlacklistEntry? @relation("PlatformBlacklistTargetShop")
 }
 
 model ShopMember {
@@ -3090,6 +3100,67 @@ model ShopSocialConnection {
 
   @@unique([shopId, provider])
   @@index([shopId])
+}
+
+/// Business-level blacklist (client, 2026-08-18: "we need a blacklist
+/// function both for superadmin role, and business accounts"). Bans the
+/// whole person, not one KOBAID (confirmed via AskUserQuestion) — every
+/// KOBAID that user holds is blocked from this shop, closing the
+/// "just switch account type" evasion. Enforced today at every KOBA-side
+/// interaction with this shop (checkout, freebie claims, follows,
+/// reviews) — this is a strict superset of what future PC-server-join
+/// and Discord-guild-kick enforcement will add once that infrastructure
+/// exists (Phase 22's bot, per-game RCON ban commands); `requestSocialRemoval`
+/// records the shop's *intent* for that follow-up, not a live action.
+model ShopBlacklistEntry {
+  id                   String   @id @default(cuid())
+  shopId               String
+  targetUserId         String
+  reason               String   @db.Text
+  hashtags             String[]
+  requestSocialRemoval Boolean  @default(false)
+  createdByUserId      String
+  createdAt            DateTime @default(now())
+
+  shop        Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  targetUser  User @relation("ShopBlacklistTarget", fields: [targetUserId], references: [id], onDelete: Cascade)
+  createdBy   User @relation("ShopBlacklistCreator", fields: [createdByUserId], references: [id], onDelete: Cascade)
+
+  @@unique([shopId, targetUserId])
+  @@index([targetUserId])
+}
+
+enum PlatformBlacklistTargetType {
+  USER
+  SHOP
+}
+
+/// Superadmin platform-wide ban/blacklist — stricter than a shop's own
+/// (client: "if user is added to blacklist by superadmin its stricter,
+/// they get banned the same way but also from the koba platforms").
+/// USER-type entries fully lock the account out of signing in (checked
+/// in lib/auth/credentials-provider.ts's sessionUserFromId, the one
+/// choke point every login path — password, staff MFA ticket, and OAuth
+/// ticket — already funnels through). SHOP-type entries ban a storefront
+/// itself, confirmed in scope via AskUserQuestion.
+model PlatformBlacklistEntry {
+  id                   String                      @id @default(cuid())
+  targetType           PlatformBlacklistTargetType
+  targetUserId         String?
+  targetShopId         String?
+  reason               String                      @db.Text
+  hashtags             String[]
+  requestSocialRemoval Boolean                     @default(false)
+  createdByUserId      String
+  createdAt            DateTime                    @default(now())
+
+  targetUser User? @relation("PlatformBlacklistTargetUser", fields: [targetUserId], references: [id], onDelete: Cascade)
+  targetShop Shop? @relation("PlatformBlacklistTargetShop", fields: [targetShopId], references: [id], onDelete: Cascade)
+  createdBy  User  @relation("PlatformBlacklistCreator", fields: [createdByUserId], references: [id], onDelete: Cascade)
+
+  @@unique([targetUserId])
+  @@unique([targetShopId])
+  @@index([targetType])
 }
 
 model DeveloperProfile {
