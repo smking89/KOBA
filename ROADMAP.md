@@ -1350,24 +1350,27 @@ surfaced once the bot actually exists.
   (gamertag capture) described above, which doesn't exist yet. KOBA
   doesn't create kits; server owners set those up in-panel themselves,
   same as they would for KAOSBOT/Ch33kys/Veretech.
-- **Third-party delivery bot interop (client revisited 2026-08-18 —
-  confirmed in scope, updating the 2026-08-16 "KOBAbot only" deferral
-  above).** A server owner doesn't need to *develop or own* the delivery
-  bot — same as **KAOSBOT** (bot.ka0s.uk), **Ch33kys RCE Bot**
-  (ch33kysrcebot.com), **Veretech** (docs.tip4serv.com), and Helios
-  already work with Tip4Serv today: the owner just installs the bot into
-  their own Discord server (a normal bot invite), generates an API
-  key/webhook from that bot's own admin panel, and pastes it into KOBA's
-  server settings. KOBA fires an outbound per-order webhook using that
-  key at fulfillment; the bot (running in the owner's server, against
-  their own RCON) does the actual delivery. This means **item delivery
-  itself needs no always-on KOBA-run bot process** — a per-server "which
-  delivery bot + API key" settings field and an outbound webhook call
+- **Third-party delivery bot interop (client revisited and corrected
+  2026-08-18, updating the 2026-08-16 "KOBAbot only" deferral above).**
+  A server owner doesn't need to *develop* the delivery bot, but they do
+  need their own paid, configured instance of one — confirmed by the
+  client: the typical path is the owner **pays the bot developer**
+  (a subscription/license, e.g. for **KAOSBOT** [bot.ka0s.uk],
+  **Ch33kys RCE Bot** [ch33kysrcebot.com], **Veretech**
+  [docs.tip4serv.com], or Helios), **invites that bot into their own
+  Discord server**, and **connects it to their game server with their
+  own RCON credentials** — the bot itself talks RCON directly, KOBA
+  never does. What Tip4Serv integrates with today is that paying
+  customer's own bot instance, not a shared/free one. This means **item
+  delivery still needs no always-on KOBA-run bot process** — a
+  per-server "which delivery bot, here's the webhook/API credential this
+  paid instance gave me" settings field, and an outbound webhook call
   from the existing order-fulfillment path, both normal Next.js work.
-  Still blocking: the actual incoming-webhook contract (payload shape,
-  auth scheme) for each of KAOSBOT/Ch33kys/Veretech/Helios — none of
-  which is public without a partner account, so this still can't be
-  built until that documentation is in hand for at least one of them.
+  Still blocking, unchanged: the actual incoming-webhook contract
+  (payload shape, auth scheme) each paid bot instance exposes for a
+  webshop to call — that's documented in each vendor's own paying-
+  customer/partner docs, none of which is public, so this can't be built
+  until that documentation is in hand for at least one of them.
 - **Everything else in this phase still needs a separate always-on
   service** — live feeds and slash-command account linking require an
   actual Discord gateway connection, its own long-running process and
