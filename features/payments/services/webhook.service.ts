@@ -11,6 +11,13 @@ import {
   expireCoinPurchaseCheckout,
   markCoinPurchasePaid,
 } from "@/features/wallet/services/coin-purchase.service";
+import { activateProductSubscription } from "@/features/payments/services/subscription-checkout.service";
+import {
+  cancelProductSubscription,
+  expireProductSubscriptionForFailedPayment,
+  recordSubscriptionRenewalInvoice,
+} from "@/features/payments/services/subscription-lifecycle.service";
+import { subscriptionIdFromInvoice } from "@/features/plus/lib/stripe-map";
 
 export { verifyStripeEvent } from "@/features/payments/lib/webhook-verify";
 
@@ -59,6 +66,23 @@ export async function handleStripeEvent(event: Stripe.Event): Promise<void> {
           publicRef: cosmeticOrderRef,
           paymentIntentId: paymentIntent,
           sessionId: session.id,
+        });
+        return;
+      }
+
+      if (session.metadata?.kind === "product_subscription") {
+        const subscriptionRef = session.metadata?.subscriptionRef ?? session.client_reference_id;
+        const stripeSubscriptionId =
+          typeof session.subscription === "string"
+            ? session.subscription
+            : (session.subscription?.id ?? null);
+        const stripeCustomerId =
+          typeof session.customer === "string" ? session.customer : (session.customer?.id ?? null);
+        if (!subscriptionRef || !stripeSubscriptionId) return;
+        await activateProductSubscription({
+          publicRef: subscriptionRef,
+          stripeSubscriptionId,
+          stripeCustomerId,
         });
         return;
       }
@@ -122,6 +146,35 @@ export async function handleStripeEvent(event: Stripe.Event): Promise<void> {
       if (order) {
         await markOrderRefunded(order.publicRef, null);
       }
+      return;
+    }
+    // ProductSubscription lifecycle (client, 2026-08-18: "Upon a
+    // Stripe cancellation or failed payment webhook, the system must
+    // auto-queue Expiry Commands") — Plus already claimed its own
+    // subscription/invoice events above via handlePlusStripeEvent, so
+    // by the time execution reaches here the event is either for a
+    // ProductSubscription or belongs to neither and both handlers
+    // below no-op on a missing row.
+    case "customer.subscription.deleted": {
+      const subscription = event.data.object;
+      await cancelProductSubscription(subscription.id);
+      return;
+    }
+    case "invoice.payment_failed": {
+      const invoice = event.data.object;
+      const stripeSubscriptionId = subscriptionIdFromInvoice(invoice);
+      if (!stripeSubscriptionId) return;
+      await expireProductSubscriptionForFailedPayment(stripeSubscriptionId);
+      return;
+    }
+    case "invoice.payment_succeeded": {
+      const invoice = event.data.object;
+      if (invoice.billing_reason !== "subscription_cycle") {
+        // The very first invoice (billing_reason "subscription_create")
+        // is already handled by checkout.session.completed above.
+        return;
+      }
+      await recordSubscriptionRenewalInvoice(invoice);
       return;
     }
     default:

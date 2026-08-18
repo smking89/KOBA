@@ -1,8 +1,9 @@
 /**
- * Durable RCON delivery queue — VPS worker only for the retry batch,
- * but the first-attempt execution path is also called inline from a
- * webhook request (deliverRconKitForOrder), so keep this side-effect
- * boundary explicit rather than folding it into rcon-delivery.service.ts.
+ * Durable command delivery queue — VPS worker only for the retry
+ * batch, but the first-attempt execution path is also called inline
+ * from a webhook request (deliverRconKitForOrder), so keep this
+ * side-effect boundary explicit rather than folding it into
+ * rcon-delivery.service.ts.
  *
  * Client, 2026-08-18 (KOBA-vs-Tip4Serv architecture spec): "if a target
  * game server is offline, down, or experiencing lag, the KOBA gateway
@@ -12,6 +13,17 @@
  * RCON delivery (same day, ab0bb93) with real automatic retry, while
  * keeping that manual seller retry as the escape hatch once the
  * automatic budget is exhausted (DEAD).
+ *
+ * A job's parent is either an Order (one-time RCON-delivery purchase)
+ * or a ProductSubscription (recurring VIP grant/expiry) — never both;
+ * enqueueRconJob's input type enforces that at the call site.
+ * Delivery method is per-server, not per-job: RCON servers get an
+ * inline dial-out attempt via executeRconJob and, on transient
+ * failure, retried by this queue's worker; PLUGIN_API servers never
+ * get dialed by KOBA at all — the job just sits PENDING until the
+ * seller's plugin polls it via features/servers/services/
+ * plugin-gateway.service.ts and reports back through the exact same
+ * applyJobOutcome state machine.
  */
 import { prisma } from "@/lib/db";
 import { newCorrelationId } from "@/lib/observability/request-id";
@@ -40,19 +52,21 @@ export function computeRconBackoffMs(attempts: number): number {
   return Math.min(exp, RCON_JOB_MAX_INTERVAL_MS);
 }
 
-/** Create the job row for a freshly-paid (or seller-redelivered) order.
- * Does not execute it — callers execute the first attempt inline
- * immediately after, for the instant-delivery feel the happy path
- * (server online) should still have. */
-export async function enqueueRconJob(input: {
-  orderId: string;
-  serverId: string;
-  kitName: string;
-  gamertag: string;
-}) {
+type JobParent = { orderId: string; productSubscriptionId?: never } | { productSubscriptionId: string; orderId?: never };
+
+/** Create the job row for a freshly-paid order, a seller-triggered
+ * redeliver, or a subscription grant/expiry. Does not execute it —
+ * RCON-channel callers execute the first attempt inline immediately
+ * after, for the instant-delivery feel the happy path (server online)
+ * should still have; PLUGIN_API-channel callers leave it PENDING for
+ * the plugin to pull. */
+export async function enqueueRconJob(
+  input: JobParent & { serverId: string; kitName: string; gamertag: string },
+) {
   return prisma.rconCommandJob.create({
     data: {
-      orderId: input.orderId,
+      orderId: input.orderId ?? null,
+      productSubscriptionId: input.productSubscriptionId ?? null,
       serverId: input.serverId,
       kitName: input.kitName,
       gamertag: input.gamertag,
@@ -61,105 +75,152 @@ export async function enqueueRconJob(input: {
   });
 }
 
-/** Execute one job attempt and transition both the job and its order
- * to the resulting state. Shared by the inline first-attempt call and
- * the background worker's retry batch — the only place that actually
- * calls giveKitToPlayer for queued delivery. */
-export async function executeRconJob(jobId: string): Promise<
-  "SUCCEEDED" | "RETRYING" | "FAILED" | "DEAD"
-> {
+/** True for a server whose delivery method is RCON — the only kind
+ * that should ever be executed inline/by this worker. Callers check
+ * this before deciding whether to call executeRconJob at all;
+ * PLUGIN_API jobs are left PENDING for the plugin gateway instead. */
+export async function shouldDialRcon(serverId: string): Promise<boolean> {
+  const server = await prisma.gameServer.findUnique({
+    where: { id: serverId },
+    select: { deliveryMethod: true },
+  });
+  return server?.deliveryMethod === "RCON";
+}
+
+/** The single state-transition function every delivery path funnels
+ * through — the RCON dial-out attempt below, and the Method B plugin's
+ * ack of a command it ran itself (features/servers/services/
+ * plugin-gateway.service.ts#ackPluginCommand). Whichever produced the
+ * outcome, SUCCESS/RETRYABLE/TERMINAL mean the same thing to a seller. */
+export async function applyJobOutcome(
+  jobId: string,
+  outcome: "SUCCESS" | "RETRYABLE" | "TERMINAL",
+  message?: string,
+): Promise<"SUCCEEDED" | "RETRYING" | "FAILED" | "DEAD"> {
+  const job = await prisma.rconCommandJob.findUnique({ where: { id: jobId } });
+  if (!job) return "FAILED";
+
+  if (outcome === "SUCCESS") {
+    await prisma.rconCommandJob.update({ where: { id: job.id }, data: { status: "SUCCEEDED" } });
+    if (job.orderId) {
+      await prisma.order.update({
+        where: { id: job.orderId },
+        data: { rconDeliveryStatus: "DELIVERED", rconDeliveryError: null },
+      });
+    }
+    return "SUCCEEDED";
+  }
+
+  if (outcome === "TERMINAL") {
+    const errorMessage = message ?? "Delivery failed.";
+    await prisma.rconCommandJob.update({
+      where: { id: job.id },
+      data: { status: "FAILED", attempts: { increment: 1 }, lastError: errorMessage },
+    });
+    if (job.orderId) {
+      await prisma.order.update({
+        where: { id: job.orderId },
+        data: { rconDeliveryStatus: "FAILED", rconDeliveryError: errorMessage },
+      });
+    }
+    return "FAILED";
+  }
+
+  return handleTransientFailure(job.id, job.attempts, job.orderId, message ?? "The server didn't respond in time.");
+}
+
+/** Execute one job attempt over RCON and translate the result into
+ * applyJobOutcome's vocabulary. Only ever called for a server whose
+ * deliveryMethod is RCON — callers must check shouldDialRcon first. */
+export async function executeRconJob(
+  jobId: string,
+): Promise<"SUCCEEDED" | "RETRYING" | "FAILED" | "DEAD"> {
   const job = await prisma.rconCommandJob.findUnique({
     where: { id: jobId },
-    include: { order: { include: { shop: { select: { ownerUserId: true } } } } },
+    include: {
+      order: { include: { shop: { select: { ownerUserId: true } } } },
+      productSubscription: { include: { shop: { select: { ownerUserId: true } } } },
+    },
   });
   if (!job) return "FAILED";
+
+  const ownerUserId = job.order?.shop.ownerUserId ?? job.productSubscription?.shop.ownerUserId;
+  if (!ownerUserId) return "FAILED";
 
   await prisma.rconCommandJob.update({ where: { id: job.id }, data: { status: "RUNNING" } });
 
   let state: RconTestState;
   try {
-    const result = await giveKitToPlayer(
-      job.order.shop.ownerUserId,
-      job.serverId,
-      job.kitName,
-      job.gamertag,
-      null,
-    );
+    const result = await giveKitToPlayer(ownerUserId, job.serverId, job.kitName, job.gamertag, null);
     state = result.state;
   } catch (error) {
     // Unexpected exceptions (network blip, unhandled adapter error)
     // are treated the same as TIMEOUT — transient, worth retrying —
     // rather than silently going terminal on something that might
     // just be a bad moment.
-    return handleTransientFailure(job.id, job.attempts, error instanceof Error ? error.message : "Unknown delivery error.");
+    return applyJobOutcome(
+      job.id,
+      "RETRYABLE",
+      error instanceof Error ? error.message : "Unknown delivery error.",
+    );
   }
 
   if (state === "SUCCESS") {
-    await prisma.$transaction([
-      prisma.rconCommandJob.update({ where: { id: job.id }, data: { status: "SUCCEEDED" } }),
-      prisma.order.update({
-        where: { id: job.orderId },
-        data: { rconDeliveryStatus: "DELIVERED", rconDeliveryError: null },
-      }),
-    ]);
-    return "SUCCEEDED";
+    return applyJobOutcome(job.id, "SUCCESS");
   }
-
   if (RETRYABLE_STATES.has(state)) {
-    return handleTransientFailure(job.id, job.attempts, "The server didn't respond in time.");
+    return applyJobOutcome(job.id, "RETRYABLE", "The server didn't respond in time.");
   }
-
   // Non-retryable: AUTH_FAILED / UNSUPPORTED / IDLE (shouldn't happen
   // for a configured RCON product, but never leave a job stuck RUNNING).
-  const message = STATE_ERROR_MESSAGE[state] ?? `Delivery failed (${state}).`;
-  await prisma.$transaction([
-    prisma.rconCommandJob.update({
-      where: { id: job.id },
-      data: { status: "FAILED", attempts: { increment: 1 }, lastError: message },
-    }),
-    prisma.order.update({
-      where: { id: job.orderId },
-      data: { rconDeliveryStatus: "FAILED", rconDeliveryError: message },
-    }),
-  ]);
-  return "FAILED";
+  return applyJobOutcome(job.id, "TERMINAL", STATE_ERROR_MESSAGE[state] ?? `Delivery failed (${state}).`);
 }
 
-async function handleTransientFailure(jobId: string, previousAttempts: number, reason: string) {
+async function handleTransientFailure(
+  jobId: string,
+  previousAttempts: number,
+  orderId: string | null,
+  reason: string,
+) {
   const attempts = previousAttempts + 1;
   if (attempts >= RCON_JOB_MAX_ATTEMPTS) {
     const message = `Server unreachable after ${attempts} attempts over about an hour — retry manually once it's back online.`;
-    const job = await prisma.rconCommandJob.update({
+    await prisma.rconCommandJob.update({
       where: { id: jobId },
       data: { status: "DEAD", attempts, lastError: message },
     });
-    await prisma.order.update({
-      where: { id: job.orderId },
-      data: { rconDeliveryStatus: "DEAD", rconDeliveryError: message },
-    });
+    if (orderId) {
+      await prisma.order.update({
+        where: { id: orderId },
+        data: { rconDeliveryStatus: "DEAD", rconDeliveryError: message },
+      });
+    }
     return "DEAD" as const;
   }
 
   const delayMs = withJitter(computeRconBackoffMs(attempts));
   const message = `Server didn't respond — retrying automatically (attempt ${attempts}/${RCON_JOB_MAX_ATTEMPTS}). ${reason}`;
-  const job = await prisma.rconCommandJob.update({
+  await prisma.rconCommandJob.update({
     where: { id: jobId },
     data: { status: "PENDING", attempts, runAfter: new Date(Date.now() + delayMs), lastError: message },
   });
-  await prisma.order.update({
-    where: { id: job.orderId },
-    data: { rconDeliveryStatus: "RETRYING", rconDeliveryError: message },
-  });
+  if (orderId) {
+    await prisma.order.update({
+      where: { id: orderId },
+      data: { rconDeliveryStatus: "RETRYING", rconDeliveryError: message },
+    });
+  }
   return "RETRYING" as const;
 }
 
 /** Batch entrypoint for scripts/run-rcon-delivery-worker.mjs. Claims
- * due PENDING jobs (runAfter <= now) and executes each — the only
- * thing that ever advances a job past its first, inline attempt. */
+ * due PENDING jobs (runAfter <= now) belonging to RCON-channel servers
+ * only — PLUGIN_API jobs are never dialed by KOBA, they wait for the
+ * plugin's own poll (features/servers/services/plugin-gateway.service.ts). */
 export async function runRconDeliveryWorker(limit = 20) {
   const now = new Date();
   const due = await prisma.rconCommandJob.findMany({
-    where: { status: "PENDING", runAfter: { lte: now } },
+    where: { status: "PENDING", runAfter: { lte: now }, server: { deliveryMethod: "RCON" } },
     orderBy: { runAfter: "asc" },
     take: limit,
   });
@@ -172,9 +233,11 @@ export async function runRconDeliveryWorker(limit = 20) {
     else if (outcome === "FAILED" || outcome === "DEAD") failed += 1;
   }
 
-  const queueDepth = await prisma.rconCommandJob.count({ where: { status: "PENDING" } });
+  const queueDepth = await prisma.rconCommandJob.count({
+    where: { status: "PENDING", server: { deliveryMethod: "RCON" } },
+  });
   const oldestPending = await prisma.rconCommandJob.findFirst({
-    where: { status: "PENDING" },
+    where: { status: "PENDING", server: { deliveryMethod: "RCON" } },
     orderBy: { createdAt: "asc" },
     select: { createdAt: true },
   });

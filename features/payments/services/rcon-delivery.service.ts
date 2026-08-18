@@ -1,6 +1,10 @@
 import { prisma } from "@/lib/db";
 import { PaymentError } from "@/features/payments/lib/errors";
-import { enqueueRconJob, executeRconJob } from "@/features/payments/services/rcon-queue.service";
+import {
+  enqueueRconJob,
+  executeRconJob,
+  shouldDialRcon,
+} from "@/features/payments/services/rcon-queue.service";
 
 /**
  * Direct-RCON auto-delivery (client, 2026-08-18: "we need a system like
@@ -49,7 +53,12 @@ export async function deliverRconKitForOrder(orderId: string): Promise<void> {
     kitName: product.rconKitName,
     gamertag: order.buyerGameHandle,
   });
-  await executeRconJob(job.id);
+  // Method B (client, 2026-08-18): a PLUGIN_API server is never dialed
+  // by KOBA — the job stays PENDING until the seller's own plugin polls
+  // it (features/servers/services/plugin-gateway.service.ts).
+  if (await shouldDialRcon(product.rconServerId)) {
+    await executeRconJob(job.id);
+  }
 }
 
 /** Seller-triggered retry after a FAILED or DEAD delivery — creates a
@@ -86,7 +95,9 @@ export async function redeliverRconKitForOrder(actorUserId: string, publicRef: s
     kitName: product.rconKitName,
     gamertag: order.buyerGameHandle,
   });
-  await executeRconJob(job.id);
+  if (await shouldDialRcon(product.rconServerId)) {
+    await executeRconJob(job.id);
+  }
 
   return prisma.order.findUniqueOrThrow({ where: { id: order.id } });
 }

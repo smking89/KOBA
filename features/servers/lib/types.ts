@@ -112,6 +112,7 @@ export type GameServerOwnerView = GameServerView & {
   nextPollAt: string | null;
   rconConfigured: boolean;
   rconTestState: RconTestState;
+  deliveryMethod: "RCON" | "PLUGIN_API";
 };
 
 export type RustIntegrationHealth = {

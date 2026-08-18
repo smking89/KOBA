@@ -35,8 +35,18 @@ export const upsertProductSchema = z
     /// Meaningful only when freebiePolicy = LIMITED_QUANTITY.
     freebieQuantity: z.number().int().min(1).max(100_000).optional(),
     /// Direct-RCON auto-delivery — both set together or both omitted.
+    /// For listingType SUBSCRIPTION these double as the *grant*
+    /// command; expiryKitName/subscriptionInterval below are the
+    /// subscription-only counterparts.
     rconServerId: z.string().trim().min(1).max(64).optional(),
     rconKitName: z.string().trim().min(1).max(120).optional(),
+    /// Client, 2026-08-18 (KOBA-vs-Tip4Serv architecture spec):
+    /// listingType SUBSCRIPTION needs a revoke command run on
+    /// cancellation/failed payment, and a billing interval — required
+    /// together with rconServerId/rconKitName when listingType is
+    /// SUBSCRIPTION, meaningless otherwise.
+    subscriptionInterval: z.enum(["MONTHLY", "ANNUAL"]).optional(),
+    expiryKitName: z.string().trim().min(1).max(120).optional(),
   })
   .refine((value) => value.freebiePolicy !== "LIMITED_QUANTITY" || value.freebieQuantity != null, {
     message: "A limited-quantity freebie needs a free quantity.",
@@ -45,7 +55,20 @@ export const upsertProductSchema = z
   .refine((value) => Boolean(value.rconServerId) === Boolean(value.rconKitName), {
     message: "Pick a server and a kit name together, or leave both blank.",
     path: ["rconKitName"],
-  });
+  })
+  .refine(
+    (value) =>
+      value.listingType !== "SUBSCRIPTION" ||
+      (Boolean(value.rconServerId) &&
+        Boolean(value.rconKitName) &&
+        Boolean(value.expiryKitName) &&
+        Boolean(value.subscriptionInterval)),
+    {
+      message:
+        "A subscription listing needs a server, grant kit, expiry kit, and billing interval.",
+      path: ["expiryKitName"],
+    },
+  );
 
 export type UpsertProductInput = z.infer<typeof upsertProductSchema>;
 // Pre-parse shape (freebiePolicy optional, matches its zod .default()) — use this

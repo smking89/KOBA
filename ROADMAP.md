@@ -1472,39 +1472,84 @@ subscription expiry) would ultimately enqueue into the same queue.
   reusing the exhausted one, so a stale retry budget never carries
   over.
 
-**KOBA Delivery Gateway architecture (client spec, 2026-08-18, not
-fully built).** Client described the full commercial architecture
-this platform is meant to become — a Tip4Serv-class competitor with
-Stripe Connect split payouts, a signed-webhook plugin channel (HMAC
-SHA256, rotatable per-server API keys, for Oxide/Spigot-style modded
-servers), a third-party console-bot gateway, and subscription/churn
-lifecycle (auto-queued expiry commands on cancel/failed payment).
-Confirmed via `AskUserQuestion` this session only builds the durable
-retry queue (above) — the rest is scoped but explicitly deferred, not
-started:
+**KOBA Delivery Gateway architecture (client spec, 2026-08-18).**
+Client described the full commercial architecture this platform is
+meant to become — a Tip4Serv-class competitor with Stripe Connect
+split payouts, a signed-webhook plugin channel, a third-party
+console-bot gateway, and subscription/churn lifecycle. Correction to
+an earlier note in this doc: **Stripe Connect split payouts already
+existed** before this slice (`features/payments/services/
+connect.service.ts` — Express onboarding, `account.updated` webhook
+sync, `OrderEscrow`-backed hold/release via real `stripe.transfers.create`
+to the connected account, dispute flag/resolve) — an earlier
+architecture-assessment pass in this doc wrongly claimed it didn't.
+Confirmed via `AskUserQuestion` this session builds the other two
+pieces from the spec (Method B, subscription expiry) on top of it and
+the durable retry queue above:
 
-- **Stripe Connect split payouts** — today KOBA is the sole Stripe
-  merchant of record (single-account Checkout, no connected accounts,
-  no marketplace fee split). Moving to Connect is a real business-model
-  change (server-owner onboarding/KYC, Connect-specific webhooks), not
-  a small addition.
-- **Method B: signed webhook/plugin channel** — the KOBA-side
-  HMAC-SHA256 signed API + rotatable per-server keys a modded-server
-  plugin could pull commands from. Distinct from actually writing the
-  Oxide/Spigot plugin code itself, which stays its own per-engine
-  artifact (see below).
-- **Subscription-driven expiry commands** — per-server VIP-rank
-  subscriptions with auto-queued removal commands on churn. Would
-  enqueue into the same `RconCommandJob` queue once built, but depends
-  on a subscription model this codebase doesn't have yet (only
-  platform-level KOBA Plus via `PlusSubscription` exists).
+- **Method B: signed webhook/plugin channel — shipped.** Client:
+  "All communication between KOBA and client servers must use HMAC
+  SHA256 request signatures with unique, rotatable server API keys to
+  prevent malicious command injection." `GameServer.deliveryMethod`
+  (`RCON` | `PLUGIN_API`) picks which channel a server uses.
+  `ServerApiKey` holds a KOBA-issued secret **sealed** (AES-256-GCM,
+  `lib/crypto/secret-box.ts` — the same round-trip `ServerCredential`'s
+  RCON password already uses), not one-way hashed like a login
+  password would be: verifying an HMAC means recomputing it, which
+  needs the plaintext secret back, not just a hash of it — this was a
+  real design bug caught and fixed before shipping (an earlier
+  hash-only draft would have made verification impossible). Pull-based
+  by design, not push: `GET /api/gateway/v1/servers/[serverId]/commands`
+  (HMAC-authenticated, `t=<ts>,v1=<hmac>` header mirroring Stripe's own
+  scheme) lets a PLUGIN_API server's own Oxide/Spigot-style plugin poll
+  for pending `RconCommandJob` rows and `POST .../[jobId]/ack` its
+  outcome back — matching how most game servers actually reach KOBA
+  (behind NAT, can't accept inbound). A PLUGIN_API job is never dialed
+  by KOBA itself; `rcon-queue.service#applyJobOutcome` is the single
+  state-transition function both the RCON dial-out path and a plugin's
+  ack funnel through, so RETRYING/DEAD/FAILED mean the same thing to a
+  seller regardless of channel. Seller UI: a delivery-method toggle +
+  rotate-key button on the per-server owner dashboard
+  (`PluginGatewayPanel`), key shown once at rotation.
+- **Subscription-driven expiry commands — shipped.** Client, verbatim:
+  "the platform must track active subscriptions. Upon a Stripe
+  cancellation or failed payment webhook, the system must auto-queue
+  'Expiry Commands' (e.g., removing a player from a VIP permission
+  group)." New `ListingType.SUBSCRIPTION` + `ProductSubscription`
+  (recurring per-server VIP-rank purchase) alongside the existing
+  `SubscriptionPlan`/`PlusSubscription` pair, which stays
+  platform-level-Plus-only and untouched. A subscription listing's
+  `rconServerId`/`rconKitName` double as the grant command (reusing
+  the RCON-delivery product fields); `expiryKitName` is the new revoke
+  counterpart. `features/payments/services/subscription-checkout.service.ts`
+  mirrors `checkout.service.ts`'s blacklist/self-buy/pre-linked-identity
+  checks for `mode: "subscription"` Stripe Checkout instead of bolting
+  a second branch onto the already-long one-time-purchase function.
+  `checkout.session.completed` activates the subscription and enqueues
+  the initial grant job (same instant-delivery inline-execution shape
+  the RCON channel has); `customer.subscription.deleted` and
+  `invoice.payment_failed` both immediately enqueue the expiry job —
+  no grace period, matching the client's wording exactly, not a
+  dunning-retry guess. Renewal settlement
+  (`invoice.payment_succeeded`, `billing_reason: "subscription_cycle"`)
+  settles instantly via a direct Connect transfer into a new
+  `ProductSubscriptionInvoice` ledger row rather than the one-time
+  `OrderEscrow` hold/dispute window — a recurring low-value VIP renewal
+  is a different risk profile than a one-off marketplace good, and
+  `Order`'s schema (auction fields, freebie fields, `OrderItem`, …)
+  doesn't fit a recurring line item cleanly.
+- Sellers configure a subscription listing through the same product
+  form RCON listings use, with grant/expiry kit + billing-interval
+  fields that only appear for `listingType: SUBSCRIPTION`. Stripe
+  Prices are immutable, so `product-admin.service.ts` lazily creates
+  one the first time a listing is saved as SUBSCRIPTION and a fresh
+  replacement whenever price or interval actually changes.
 
-Not built: the other two channels from the client's own spec — a
-KOBA-authored game plugin (Oxide/Carbon `.cs`, Minecraft `.jar`, etc.)
-holding a KOBA-issued key and receiving signed webhooks, and
-third-party bot linking (KAOSBOT/Ch33kys/Veretech/Helios) for locked
-console platforms. The plugin channel is a real, separate artifact per
-game engine — bigger scope, deliberately deferred (confirmed via
+Not built: the KOBA-side gateway API for Method B is done (above), but
+the actual plugin code a seller would install — Oxide/Carbon `.cs`,
+Minecraft `.jar`, etc., polling that gateway and running the commands
+locally — is not; that stays a real, separate artifact per game
+engine, bigger scope, deliberately deferred (confirmed via
 AskUserQuestion). The bot-linking channel's actual access model was
 corrected by the client mid-discussion (2026-08-18): a server owner
 pays the bot developer for their own instance, invites it to their

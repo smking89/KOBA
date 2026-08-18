@@ -288,10 +288,13 @@ export function ProductForm({
         ) : null}
       </div>
       <fieldset className="space-y-2 rounded-md border border-white/10 p-4">
-        <legend className="px-1 text-sm font-medium">Auto-deliver via RCON (optional)</legend>
+        <legend className="px-1 text-sm font-medium">
+          Auto-deliver via RCON or plugin {listingType === "SUBSCRIPTION" ? "" : "(optional)"}
+        </legend>
         <p className="text-xs text-muted">
-          Instantly runs a kit-give command on one of your servers the moment payment clears —
-          buyers enter their in-game gamertag at checkout. Leave both blank for manual fulfillment.
+          {listingType === "SUBSCRIPTION"
+            ? "Required for a subscription — runs the grant command the moment a payment clears, and the expiry command the moment Stripe reports a cancellation or failed payment. Buyers deliver to whichever gamertag/PSN/Steam identity they've already linked in Settings."
+            : "Instantly runs a kit-give command on one of your servers the moment payment clears, to whichever gamertag/PSN/Steam identity the buyer's already linked in Settings. Leave both blank for manual fulfillment."}
         </p>
         {servers.length === 0 ? (
           <p className="text-xs text-muted">
@@ -318,9 +321,43 @@ export function ProductForm({
               </select>
             </FormField>
             {rconServerId ? (
-              <FormField id="rconKitName" label="Kit name" error={errors.rconKitName?.message}>
-                <Input id="rconKitName" placeholder="starter_kit" {...register("rconKitName")} />
+              <FormField
+                id="rconKitName"
+                label={listingType === "SUBSCRIPTION" ? "Grant kit name" : "Kit name"}
+                error={errors.rconKitName?.message}
+              >
+                <Input id="rconKitName" placeholder="vip_grant" {...register("rconKitName")} />
               </FormField>
+            ) : null}
+            {rconServerId && listingType === "SUBSCRIPTION" ? (
+              <>
+                <FormField
+                  id="expiryKitName"
+                  label="Expiry kit name"
+                  error={errors.expiryKitName?.message}
+                >
+                  <Input
+                    id="expiryKitName"
+                    placeholder="vip_revoke"
+                    {...register("expiryKitName")}
+                  />
+                </FormField>
+                <FormField
+                  id="subscriptionInterval"
+                  label="Billing interval"
+                  error={errors.subscriptionInterval?.message}
+                >
+                  <select
+                    id="subscriptionInterval"
+                    className="flex h-10 w-full rounded-md border border-border bg-surface-2 px-3 text-sm"
+                    {...register("subscriptionInterval")}
+                  >
+                    <option value="">Select…</option>
+                    <option value="MONTHLY">Monthly</option>
+                    <option value="ANNUAL">Annual</option>
+                  </select>
+                </FormField>
+              </>
             ) : null}
           </div>
         )}

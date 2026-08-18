@@ -64,12 +64,19 @@ export function priceIdFromStripeSubscription(subscription: Stripe.Subscription)
   return typeof price === "string" ? price : price.id;
 }
 
+/** Recent Stripe API versions moved an invoice's subscription off the
+ * top-level `subscription` field onto `parent.subscription_details.
+ * subscription` (the installed stripe@22 SDK's types no longer even
+ * declare the old field) — check both, oldest-compatible first, so
+ * this keeps working across whichever shape the configured API
+ * version actually sends. */
 export function subscriptionIdFromInvoice(invoice: Stripe.Invoice): string | null {
-  const raw = (
+  const legacy = (
     invoice as Stripe.Invoice & {
       subscription?: string | Stripe.Subscription | null;
     }
   ).subscription;
+  const raw = legacy ?? invoice.parent?.subscription_details?.subscription ?? null;
   if (!raw) return null;
   return typeof raw === "string" ? raw : raw.id;
 }

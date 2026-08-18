@@ -326,6 +326,7 @@ function toOwnerView(server: ServerRow, opts?: { favouritedByMe?: boolean }): Ga
     nextPollAt: server.nextPollAt?.toISOString() ?? null,
     rconConfigured: Boolean(server.credential),
     rconTestState: server.rconTestState as RconTestState,
+    deliveryMethod: server.deliveryMethod as "RCON" | "PLUGIN_API",
   };
 }
 
@@ -706,6 +707,7 @@ export async function updateServer(
       ...(input.publicationStatus !== undefined
         ? { publicationStatus: input.publicationStatus }
         : {}),
+      ...(input.deliveryMethod !== undefined ? { deliveryMethod: input.deliveryMethod } : {}),
     },
     include: serverInclude,
   });

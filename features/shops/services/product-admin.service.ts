@@ -20,6 +20,48 @@ import {
   gamePolicyDenialReason,
   isListingAllowedForGame,
 } from "@/features/marketplace/lib/game-policy";
+import { getStripe, isStripeConfigured } from "@/features/payments/lib/stripe";
+
+const SUBSCRIPTION_INTERVAL_TO_STRIPE: Record<"MONTHLY" | "ANNUAL", "month" | "year"> = {
+  MONTHLY: "month",
+  ANNUAL: "year",
+};
+
+/** Stripe Prices are immutable — a subscription listing lazily gets one
+ * created the first time it's saved as SUBSCRIPTION, and a fresh
+ * replacement whenever the price or interval actually changes (a stale
+ * price left attached to old subscriptions is fine; Stripe subscriptions
+ * keep billing at whatever price they were created against). No-ops
+ * entirely if Stripe isn't configured (local dev without keys) — the
+ * listing just can't be checked out until it is, same as any other
+ * Stripe-dependent listing in this codebase. */
+async function ensureSubscriptionPrice(
+  input: UpsertProductInput,
+  existingPriceCents: number | undefined,
+  existingInterval: string | null | undefined,
+  existingStripePriceId: string | null,
+): Promise<string | null> {
+  if (input.listingType !== "SUBSCRIPTION" || !input.subscriptionInterval) {
+    return null;
+  }
+  if (!isStripeConfigured()) {
+    return existingStripePriceId;
+  }
+  const unchanged =
+    existingStripePriceId &&
+    existingPriceCents === input.priceCents &&
+    existingInterval === input.subscriptionInterval;
+  if (unchanged) {
+    return existingStripePriceId;
+  }
+  const price = await getStripe().prices.create({
+    unit_amount: input.priceCents,
+    currency: "usd",
+    recurring: { interval: SUBSCRIPTION_INTERVAL_TO_STRIPE[input.subscriptionInterval] },
+    product_data: { name: input.title },
+  });
+  return price.id;
+}
 
 function assertGameAllowsListing(
   game: { name: string; contentPolicy: GameContentPolicy; policyNote: string | null },
@@ -107,6 +149,7 @@ export async function createSellerProduct(userId: string, input: UpsertProductIn
   }
   assertGameAllowsListing(game, category.kind);
   await assertOwnsRconServer(shop.ownerUserId, input.rconServerId);
+  const stripePriceId = await ensureSubscriptionPrice(input, undefined, null, null);
 
   const product = await prisma.product.create({
     data: {
@@ -130,6 +173,9 @@ export async function createSellerProduct(userId: string, input: UpsertProductIn
         input.freebiePolicy === "LIMITED_QUANTITY" ? (input.freebieQuantity ?? 0) : null,
       rconServerId: input.rconServerId ?? null,
       rconKitName: input.rconKitName ?? null,
+      subscriptionInterval: input.subscriptionInterval ?? null,
+      expiryKitName: input.expiryKitName ?? null,
+      stripePriceId,
     },
   });
 
@@ -161,6 +207,12 @@ export async function updateSellerProduct(userId: string, slug: string, input: U
   }
   assertGameAllowsListing(game, category.kind);
   await assertOwnsRconServer(shop.ownerUserId, input.rconServerId);
+  const stripePriceId = await ensureSubscriptionPrice(
+    input,
+    product.priceCents,
+    product.subscriptionInterval,
+    product.stripePriceId,
+  );
 
   const updated = await prisma.product.update({
     where: { id: product.id },
@@ -175,6 +227,9 @@ export async function updateSellerProduct(userId: string, slug: string, input: U
       platforms: input.platforms,
       gameId: game.id,
       categoryId: category.id,
+      subscriptionInterval: input.subscriptionInterval ?? null,
+      expiryKitName: input.expiryKitName ?? null,
+      stripePriceId,
       moderationStatus:
         product.moderationStatus === "APPROVED" ? "PENDING" : product.moderationStatus,
       publishedAt: product.moderationStatus === "APPROVED" ? null : product.publishedAt,

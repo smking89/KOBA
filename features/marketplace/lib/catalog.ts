@@ -67,7 +67,7 @@ export const CATEGORY_KINDS = [
 
 export type CategoryKind = (typeof CATEGORY_KINDS)[number];
 
-export const LISTING_TYPES = ["FIXED", "AUCTION"] as const;
+export const LISTING_TYPES = ["FIXED", "AUCTION", "SUBSCRIPTION"] as const;
 export type ListingType = (typeof LISTING_TYPES)[number];
 
 export const FREEBIE_POLICIES = ["NONE", "PERMANENT", "LIMITED_QUANTITY"] as const;

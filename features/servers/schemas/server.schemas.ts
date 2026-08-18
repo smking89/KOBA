@@ -44,6 +44,11 @@ export const updateServerSchema = z.object({
   hideResolvedIp: z.boolean().optional(),
   maxPlayers: z.number().int().min(1).max(100_000).nullable().optional(),
   publicationStatus: z.enum(["DRAFT", "PUBLISHED", "ARCHIVED"]).optional(),
+  /// Method B (client, 2026-08-18): RCON = KOBA dials out with the
+  /// server's stored credentials (existing channel). PLUGIN_API = the
+  /// reverse — a plugin the seller runs polls KOBA for pending
+  /// commands, authenticated with its own rotatable ServerApiKey.
+  deliveryMethod: z.enum(["RCON", "PLUGIN_API"]).optional(),
 });
 
 export type UpdateServerInput = z.infer<typeof updateServerSchema>;

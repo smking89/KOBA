@@ -172,6 +172,10 @@ enum AuditAction {
   XBOX_ACCOUNT_UNLINKED
   PLAYSTATION_ACCOUNT_LINKED
   PLAYSTATION_ACCOUNT_UNLINKED
+  PLUGIN_API_KEY_ROTATED
+  PRODUCT_SUBSCRIPTION_ACTIVATED
+  PRODUCT_SUBSCRIPTION_CANCELED
+  PRODUCT_SUBSCRIPTION_EXPIRED
 }
 
 // Major, independently-toggleable platform functions. This is the registry
@@ -223,6 +227,7 @@ model User {
   shopFollows                     ShopFollow[]
   shopReviews                     ShopReview[]              @relation("ShopReviewAuthor")
   ordersBought                    Order[]                   @relation("OrderBuyer")
+  productSubscriptions            ProductSubscription[]
   coinPurchases                   CoinPurchase[]
   escrowDisputesFiled             OrderEscrow[]             @relation("OrderEscrowDisputedBy")
   escrowDisputesResolved          OrderEscrow[]             @relation("OrderEscrowResolvedBy")
@@ -651,6 +656,21 @@ enum ModerationStatus {
 enum ListingType {
   FIXED
   AUCTION
+  /// Client, 2026-08-18 (KOBA-vs-Tip4Serv architecture spec): "the
+  /// platform must track active subscriptions. Upon a Stripe
+  /// cancellation or failed payment webhook, the system must
+  /// auto-queue 'Expiry Commands.'" A recurring per-server VIP-rank
+  /// purchase — Stripe Checkout in subscription mode instead of
+  /// one-time payment. See ProductSubscription.
+  SUBSCRIPTION
+}
+
+enum ProductSubscriptionStatus {
+  INCOMPLETE
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  EXPIRED
 }
 
 enum ProductMediaKind {
@@ -719,24 +739,24 @@ enum FreebiePolicy {
 }
 
 model Product {
-  id                       String           @id @default(cuid())
-  slug                     String           @unique
+  id                       String            @id @default(cuid())
+  slug                     String            @unique
   title                    String
-  description              String           @db.Text
+  description              String            @db.Text
   rarity                   ProductRarity
   rarityRank               Int
-  listingType              ListingType      @default(FIXED)
-  moderationStatus         ModerationStatus @default(DRAFT)
+  listingType              ListingType       @default(FIXED)
+  moderationStatus         ModerationStatus  @default(DRAFT)
   priceCents               Int
-  currency                 String           @default("USD")
-  inventoryQty             Int              @default(0)
+  currency                 String            @default("USD")
+  inventoryQty             Int               @default(0)
   platforms                GamePlatform[]
   sellerUserId             String
   shopId                   String?
   gameId                   String
   categoryId               String
   publishedAt              DateTime?
-  freebiePolicy            FreebiePolicy    @default(NONE)
+  freebiePolicy            FreebiePolicy     @default(NONE)
   /// Meaningful only when freebiePolicy = LIMITED_QUANTITY — a one-time
   /// lifetime pool per product (client direction not yet given on
   /// replenishment; "first 15 free" is modeled as never resetting,
@@ -753,8 +773,21 @@ model Product {
   /// `kit givetoplayer` for.
   rconServerId             String?
   rconKitName              String?
-  createdAt                DateTime         @default(now())
-  updatedAt                DateTime         @updatedAt
+  /// Subscription-only fields (listingType SUBSCRIPTION). rconServerId/
+  /// rconKitName double as the *grant* command here (same auto-delivery
+  /// machinery as a one-time RCON listing — RconCommandJob doesn't care
+  /// whether it's chained off an Order or a ProductSubscription).
+  /// expiryKitName is the counterpart *revoke* command, run the instant
+  /// Stripe reports a cancellation or failed payment — client's own
+  /// spec wording, not a guess. subscriptionInterval/stripePriceId are
+  /// set together with the above when a seller publishes a
+  /// subscription listing (features/shops/services/product-admin.service.ts
+  /// lazily creates the Stripe Price).
+  subscriptionInterval     PlusPlanInterval?
+  expiryKitName            String?
+  stripePriceId            String?
+  createdAt                DateTime          @default(now())
+  updatedAt                DateTime          @updatedAt
 
   seller            User                       @relation(fields: [sellerUserId], references: [id], onDelete: Cascade)
   shop              Shop?                      @relation(fields: [shopId], references: [id], onDelete: SetNull)
@@ -768,6 +801,7 @@ model Product {
   orderItems        OrderItem[]
   auction           Auction?
   referralCodes     ReferralCode[]
+  subscriptions     ProductSubscription[]
   campaignProducts  AffiliateCampaignProduct[]
   promoCodeProducts PromoCodeProduct[]
   aidenAsset        AidenAsset?
@@ -992,24 +1026,25 @@ model Shop {
   createdAt          DateTime               @default(now())
   updatedAt          DateTime               @updatedAt
 
-  owner               User                    @relation("ShopOwner", fields: [ownerUserId], references: [id], onDelete: Cascade)
-  members             ShopMember[]
-  follows             ShopFollow[]
-  reviews             ShopReview[]
-  products            Product[]
-  orders              Order[]
-  servers             GameServer[]
-  cosmetics           Cosmetic[]
-  promoConfig         ShopPromoConfig?
-  referralCodes       ReferralCode[]
-  affiliateCampaigns  AffiliateCampaign[]
-  promoCodes          PromoCode[]
-  socialConnections   ShopSocialConnection[]
-  blacklistEntries    ShopBlacklistEntry[]
-  platformBan         PlatformBlacklistEntry? @relation("PlatformBlacklistTargetShop")
-  kobaShopApplication KobaShopApplication?
-  cosmeticOrders      CosmeticOrder[]
-  shopCosmeticEquip   ShopCosmeticEquip?
+  owner                User                    @relation("ShopOwner", fields: [ownerUserId], references: [id], onDelete: Cascade)
+  members              ShopMember[]
+  follows              ShopFollow[]
+  reviews              ShopReview[]
+  products             Product[]
+  orders               Order[]
+  servers              GameServer[]
+  cosmetics            Cosmetic[]
+  promoConfig          ShopPromoConfig?
+  referralCodes        ReferralCode[]
+  affiliateCampaigns   AffiliateCampaign[]
+  promoCodes           PromoCode[]
+  socialConnections    ShopSocialConnection[]
+  blacklistEntries     ShopBlacklistEntry[]
+  platformBan          PlatformBlacklistEntry? @relation("PlatformBlacklistTargetShop")
+  kobaShopApplication  KobaShopApplication?
+  cosmeticOrders       CosmeticOrder[]
+  productSubscriptions ProductSubscription[]
+  shopCosmeticEquip    ShopCosmeticEquip?
 }
 
 model ShopMember {
@@ -2359,6 +2394,11 @@ enum ServerPlatformFamily {
   CONSOLE
 }
 
+enum DeliveryMethod {
+  RCON
+  PLUGIN_API
+}
+
 enum ServerCapability {
   STATUS
   PLAYER_COUNT
@@ -2780,6 +2820,16 @@ model GameServer {
   hideResolvedIp           Boolean                  @default(true)
   adapterKey               String                   @default("manual")
   capabilities             ServerCapability[]
+  /// Client, 2026-08-18 (KOBA-vs-Tip4Serv architecture spec, Method B):
+  /// "A secure, authenticated API endpoint hosted by KOBA that handles
+  /// incoming requests from game server plugins... for modded servers."
+  /// RCON = KOBA dials out to the server directly (existing channel).
+  /// PLUGIN_API = the reverse: KOBA never touches this server's RCON at
+  /// all, an Oxide/Spigot-style plugin polls KOBA's gateway for
+  /// pending commands using its own ServerApiKey, matching how game
+  /// servers behind NAT/firewalls actually reach out (they can't
+  /// accept inbound connections, so pull beats push here).
+  deliveryMethod           DeliveryMethod           @default(RCON)
   verificationStatus       ServerVerificationStatus @default(UNVERIFIED)
   publicationStatus        ServerPublicationStatus  @default(DRAFT)
   operationalStatus        ServerOnlineStatus       @default(UNKNOWN)
@@ -2817,6 +2867,7 @@ model GameServer {
   owner                  User                     @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
   shop                   Shop?                    @relation(fields: [shopId], references: [id], onDelete: SetNull)
   credential             ServerCredential?
+  apiKey                 ServerApiKey?
   favourites             ServerFavourite[]
   snapshots              ServerStatusSnapshot[]
   integrations           ServerIntegration[]
@@ -2828,6 +2879,7 @@ model GameServer {
   activeMapInventoryItem InventoryItem?           @relation(fields: [activeMapInventoryItemId], references: [id], onDelete: SetNull)
   rconDeliveryProducts   Product[]                @relation("ProductRconServer")
   rconCommandJobs        RconCommandJob[]         @relation("RconCommandJobServer")
+  productSubscriptions   ProductSubscription[]    @relation("ProductSubscriptionServer")
 
   @@index([ownerUserId])
   @@index([game, region])
@@ -2887,6 +2939,31 @@ model ServerCredential {
 
   server      GameServer         @relation(fields: [serverId], references: [id], onDelete: Cascade)
   integration ServerIntegration? @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+}
+
+/// KOBA-issued rotatable API key for the Method B plugin channel — the
+/// counterpart to ServerCredential's stored RCON password for the RCON
+/// channel. Sealed with the same lib/crypto/secret-box.ts AES-256-GCM
+/// round-trip ServerCredential's RCON password uses, and for the same
+/// reason: KOBA has to recompute `hmac_sha256(secret, message)` itself
+/// to verify a plugin's request signature, which needs the plaintext
+/// secret, not just a one-way hash of it — a hash alone can verify a
+/// password *submitted back*, but can't reconstruct an HMAC. One
+/// active key per server; rotating revokes the prior one and the
+/// plugin owner must update their config with the new secret, shown to
+/// them exactly once at rotation time.
+model ServerApiKey {
+  id         String    @id @default(cuid())
+  serverId   String    @unique
+  keyPrefix  String
+  ciphertext String    @db.Text
+  iv         String
+  authTag    String
+  createdAt  DateTime  @default(now())
+  rotatedAt  DateTime  @default(now())
+  revokedAt  DateTime?
+
+  server GameServer @relation(fields: [serverId], references: [id], onDelete: Cascade)
 }
 
 model ServerIntegration {
@@ -2976,25 +3053,102 @@ model ServerIntegrationJob {
 /// off to the worker for backoff retry — a non-retryable failure
 /// (AUTH_FAILED, UNSUPPORTED) goes straight to FAILED, no point
 /// queueing a retry a seller config change is what actually fixes.
+/// Client, 2026-08-18 (Method B): orderId is nullable and
+/// productSubscriptionId was added so the same job/queue/worker also
+/// carries subscription grant/expiry commands — exactly one of the two
+/// is ever set (enforced in application code, not the schema; Postgres
+/// CHECK constraints aren't worth hand-writing into a migration for
+/// this). A grant job's kitName comes from Product.rconKitName, an
+/// expiry job's from Product.expiryKitName — the job itself doesn't
+/// know or care which, it just runs whatever command it was given.
 model RconCommandJob {
-  id            String               @id @default(cuid())
-  orderId       String
-  serverId      String
-  kitName       String
-  gamertag      String
-  status        RconCommandJobStatus @default(PENDING)
-  attempts      Int                  @default(0)
-  runAfter      DateTime             @default(now())
-  lastError     String?              @db.Text
-  correlationId String
-  createdAt     DateTime             @default(now())
-  updatedAt     DateTime             @updatedAt
+  id                    String               @id @default(cuid())
+  orderId               String?
+  productSubscriptionId String?
+  serverId              String
+  kitName               String
+  gamertag              String
+  status                RconCommandJobStatus @default(PENDING)
+  attempts              Int                  @default(0)
+  runAfter              DateTime             @default(now())
+  lastError             String?              @db.Text
+  correlationId         String
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
 
-  order  Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  server GameServer @relation("RconCommandJobServer", fields: [serverId], references: [id], onDelete: Cascade)
+  order               Order?               @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productSubscription ProductSubscription? @relation(fields: [productSubscriptionId], references: [id], onDelete: Cascade)
+  server              GameServer           @relation("RconCommandJobServer", fields: [serverId], references: [id], onDelete: Cascade)
 
   @@index([status, runAfter])
   @@index([orderId])
+  @@index([productSubscriptionId])
+}
+
+/// One buyer's recurring per-server VIP-rank purchase (ListingType
+/// SUBSCRIPTION). Created INCOMPLETE the moment Stripe Checkout starts
+/// (mirrors PlusSubscription's pending-row-then-webhook-flips pattern),
+/// flipped ACTIVE by checkout.session.completed, which also enqueues
+/// the initial grant RconCommandJob. Client's spec, verbatim: "Upon a
+/// Stripe cancellation or failed payment webhook, the system must
+/// auto-queue 'Expiry Commands' (e.g., removing a player from a VIP
+/// permission group)" — both customer.subscription.deleted and
+/// invoice.payment_failed immediately enqueue the expiry job and flip
+/// status, no grace period, matching that wording exactly.
+model ProductSubscription {
+  id                   String                    @id @default(cuid())
+  publicRef            String                    @unique
+  productId            String
+  shopId               String
+  buyerUserId          String
+  serverId             String
+  gamertag             String
+  stripeCustomerId     String?
+  stripeSubscriptionId String?                   @unique
+  status               ProductSubscriptionStatus @default(INCOMPLETE)
+  currentPeriodEnd     DateTime?
+  cancelledAt          DateTime?
+  createdAt            DateTime                  @default(now())
+  updatedAt            DateTime                  @updatedAt
+
+  product  Product                      @relation(fields: [productId], references: [id], onDelete: Restrict)
+  shop     Shop                         @relation(fields: [shopId], references: [id], onDelete: Restrict)
+  buyer    User                         @relation(fields: [buyerUserId], references: [id], onDelete: Restrict)
+  server   GameServer                   @relation("ProductSubscriptionServer", fields: [serverId], references: [id], onDelete: Restrict)
+  invoices ProductSubscriptionInvoice[]
+  jobs     RconCommandJob[]
+
+  @@index([buyerUserId])
+  @@index([shopId, status])
+}
+
+/// One paid Stripe invoice for a ProductSubscription — the renewal
+/// ledger + Connect payout record. Settles instantly on
+/// invoice.payment_succeeded (a direct stripe.transfers.create split
+/// via splitPayment, same math as one-time checkout) rather than going
+/// through the one-time-purchase OrderEscrow hold/dispute window: a
+/// recurring low-value VIP renewal is a different risk profile than a
+/// one-off marketplace good, and Order's schema (auction fields,
+/// OrderItem, freebie fields, ...) doesn't fit a recurring line item
+/// cleanly — a dedicated ledger row is a better fit than overloading
+/// Order. The very first invoice (billing_reason
+/// "subscription_create") is NOT recorded here — that one is already
+/// covered by the checkout.session.completed → ACTIVE transition; this
+/// table only holds renewal cycles.
+model ProductSubscriptionInvoice {
+  id                  String   @id @default(cuid())
+  subscriptionId      String
+  stripeInvoiceId     String   @unique
+  amountCents         Int
+  applicationFeeCents Int
+  sellerPayoutCents   Int
+  currency            String
+  stripeTransferId    String?
+  createdAt           DateTime @default(now())
+
+  subscription ProductSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@index([subscriptionId])
 }
 
 model ServerOwnerNotice {

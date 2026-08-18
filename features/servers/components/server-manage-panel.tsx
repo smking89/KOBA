@@ -7,6 +7,7 @@ import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { StatusPill } from "@/components/koba/status-pill";
 import type { GameServerOwnerView } from "@/features/servers/lib/types";
 import { metricStateLabel } from "@/features/servers/lib/types";
+import { PluginGatewayPanel } from "@/features/servers/components/plugin-gateway-panel";
 
 export function ServerManagePanel({ server }: { server: GameServerOwnerView }) {
   const router = useRouter();
@@ -118,6 +119,7 @@ export function ServerManagePanel({ server }: { server: GameServerOwnerView }) {
       </div>
       {message ? <p className="mt-2 text-sm text-neon-mint">{message}</p> : null}
       {error ? <p className="mt-2 text-sm text-destructive">{error}</p> : null}
+      <PluginGatewayPanel slug={server.slug} deliveryMethod={server.deliveryMethod} />
     </Card>
   );
 }
