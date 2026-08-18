@@ -1,5 +1,5 @@
 import Link from "next/link";
-import Image from "next/image";
+import { BrandMark } from "@/components/koba/brand-mark";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -10,7 +10,7 @@ export default function DevelopersPage() {
   return (
     <div className="space-y-8">
       <div className="flex items-start gap-4">
-        <Image src="/brand/koba-logo.png" alt="" width={48} height={48} className="rounded-md" />
+        <BrandMark showWordmark={false} size={48} />
         <div>
           <p className="font-mono text-xs uppercase tracking-[0.2em] text-neon-mint">Developers</p>
           <h1 className="mt-2 text-3xl font-semibold tracking-tight">Build on KOBA</h1>

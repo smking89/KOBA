@@ -38,10 +38,10 @@ export default async function AppsCatalogPage({
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight text-[var(--store-ink)]">
+        <h1 className="text-3xl font-bold tracking-tight text-foreground">
           Bots, plugins &amp; tools
         </h1>
-        <p className="mt-1.5 max-w-xl text-sm text-[var(--store-ink-dim)]">
+        <p className="mt-1.5 max-w-xl text-sm text-muted">
           Third-party software is not guaranteed safe. Only published, staff-reviewed listings
           appear here.
         </p>
@@ -49,7 +49,7 @@ export default async function AppsCatalogPage({
 
       <form method="get" className="relative">
         <Search
-          className="pointer-events-none absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2 text-[var(--store-ink-faint)]"
+          className="pointer-events-none absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2 text-muted"
           aria-hidden
         />
         <input
@@ -58,7 +58,7 @@ export default async function AppsCatalogPage({
           defaultValue={params.q}
           placeholder="Search apps, bots, and plugins"
           aria-label="Search apps"
-          className="w-full rounded-full border border-[var(--store-border)] bg-[var(--store-surface)] py-3 pr-4 pl-11 text-sm text-[var(--store-ink)] shadow-[var(--store-shadow)] placeholder:text-[var(--store-ink-faint)] focus:border-[var(--store-accent)] focus:outline-none"
+          className="w-full rounded-full border border-border bg-surface py-3 pr-4 pl-11 text-sm text-foreground shadow-soft placeholder:text-muted focus:border-neon-lime focus:outline-none"
         />
       </form>
 
@@ -66,7 +66,7 @@ export default async function AppsCatalogPage({
 
       {popular.length > 0 ? (
         <section>
-          <h2 className="mb-3 text-lg font-bold text-[var(--store-ink)]">Popular this week</h2>
+          <h2 className="mb-3 text-lg font-bold text-foreground">Popular this week</h2>
           <div className="-mx-1 flex gap-4 overflow-x-auto px-1 pb-2">
             {popular.map((app) => (
               <div key={app.publicRef} className="w-64 shrink-0">
@@ -78,11 +78,11 @@ export default async function AppsCatalogPage({
       ) : null}
 
       <section>
-        <h2 className="mb-3 text-lg font-bold text-[var(--store-ink)]">
+        <h2 className="mb-3 text-lg font-bold text-foreground">
           {params.q || params.category ? "Results" : "All apps"}
         </h2>
         {items.length === 0 ? (
-          <p className="rounded-2xl border border-dashed border-[var(--store-border)] bg-[var(--store-surface)] px-5 py-12 text-center text-sm text-[var(--store-ink-dim)]">
+          <p className="rounded-2xl border border-dashed border-border bg-surface px-5 py-12 text-center text-sm text-muted">
             No published apps match these filters.
           </p>
         ) : (

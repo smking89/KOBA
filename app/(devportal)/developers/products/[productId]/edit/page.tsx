@@ -1,7 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
-import { DeveloperPortalNav } from "@/features/developers/components/developer-portal-nav";
 import { SubmitProductButton } from "@/features/developers/components/submit-product-button";
 import { getOwnedProduct } from "@/features/developers/services/developer.service";
 import { StatusPill } from "@/components/koba/status-pill";
@@ -22,7 +21,6 @@ export default async function EditDeveloperProductPage({
 
   return (
     <div className="space-y-8">
-      <DeveloperPortalNav current="/developers/products" />
       <div>
         <h1 className="text-3xl font-semibold tracking-tight">{product.name}</h1>
         <StatusPill>{devReviewLabel(product.reviewState)}</StatusPill>

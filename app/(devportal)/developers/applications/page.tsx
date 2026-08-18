@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
-import { DeveloperPortalNav } from "@/features/developers/components/developer-portal-nav";
 import { CreateApplicationForm } from "@/features/developers/components/developer-forms";
 import {
   getMyDeveloperProfile,
@@ -20,7 +19,6 @@ export default async function DeveloperApplicationsPage() {
 
   return (
     <div className="space-y-8">
-      <DeveloperPortalNav current="/developers/applications" />
       <div>
         <h1 className="text-3xl font-semibold tracking-tight">Applications</h1>
         <p className="mt-2 text-sm text-muted">

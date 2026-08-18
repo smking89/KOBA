@@ -1661,6 +1661,69 @@ Phase 9  Developer Portal      Phase 10  Influencer System
 
 ---
 
+## Design system — black/white, real dark/light toggle (2026-08-17)
+
+Client: "the app store, koba.games, admin.koba.games, developer.koba.games
+all need to follow the same color scheme...we need the toggle for dark
+mode and light mode, lets forget the gradients, and use black and white
+color scheme theme, icons should not have a border around them...the
+logo needs to use the black and white color scheme same for the
+favicon."
+
+**A real toggle now exists** — `components/koba/theme-script.tsx` (inline,
+blocking, runs before paint to avoid a flash of the wrong theme) +
+`components/koba/theme-toggle.tsx` (the switcher, in `AppHeader`,
+`DevPortalShell`, and the App Store header — one shared preference, not
+per-surface). Persists to `localStorage` + a `koba-theme` cookie so
+`app/layout.tsx` can render the right `data-theme` on the very first
+server response too, not just after client hydration.
+
+**Token-level, not file-by-file**: `app/globals.css`'s `@theme` block
+(dark defaults) + a `:root[data-theme="light"]` override carry the whole
+repaint — every existing `text-neon-lime`/`bg-neon-lime`/etc. class
+across the app keeps its name, only the color VALUES moved to grayscale.
+`bg-brand-gradient`/`text-brand-gradient` are flat `--color-foreground`
+fills now, not gradients. Rarity/tier colors (common→relic) moved from a
+hue ramp to a lightness ramp (common closest to the page background,
+relic at maximum contrast) — same escalating-rarity logic, colorblind-
+safe by construction now instead of by accident.
+
+**Kept real hue on purpose**: destructive/warning/success (red/amber/
+green) — these are functional state colors (a failed payment, a
+dangerous action), not brand decoration; making an error visually
+indistinguishable from a success would be a real usability regression,
+not a style choice. Flag if this reading is wrong and full grayscale
+(including error states) is actually wanted.
+
+**Fixed this pass**: the KOBA wing logo (`components/koba/brand-mark.tsx`)
+now renders via a `currentColor` CSS mask (same technique as
+`koba-plus-mark.tsx`) instead of the raw always-orange PNG, so it
+repaints with the toggle. Every direct `<Image src="/brand/koba-logo.png">`
+usage found this pass was switched to `<BrandMark>` (developer hub,
+App Store header, dev portal shell, marketplace product-card footer).
+Favicon/PWA icons (`scripts/generate-pwa-icons.mjs`) regenerated as
+white-on-black (static icons can't follow a live toggle, so one fixed
+monochrome rendering replaces the old always-orange one — re-run the
+script if the source logo ever changes). `IconRail`'s circular icon-pill
+background was removed — flat icons only, matching the icon-border rule
+already applied elsewhere in the app.
+
+**Known remaining scope** (not touched this pass — flagged, not silently
+skipped): roughly a dozen files still have their own hand-coded inline
+gradients/colors rather than going through the token system —
+`features/achievements/components/badge-frame.tsx` (coin tier gradients),
+`features/marketplace/components/product-card.tsx` and `market-feed-
+slide.tsx` (rarity-tinted card treatments, explicitly pixel-matched to a
+client reference earlier — needs its own careful pass, not a rushed
+one), `features/shops/components/shop-rarity-distribution-card.tsx`,
+`features/social/components/profile-hero.tsx`, `components/koba/app-
+sidebar.tsx`, `components/ui/button.tsx`, and a few more. The
+architecture (toggle + token system) now covers the platform by default;
+these specific files need individual attention in a follow-up pass since
+they don't read from the shared tokens yet.
+
+---
+
 ## Open questions for the client
 
 Flagging rather than guessing on anything with real product/cost/legal consequence:

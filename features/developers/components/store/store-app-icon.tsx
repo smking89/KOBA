@@ -1,23 +1,5 @@
 import { cn } from "@/lib/utils";
 
-// A small fixed palette of gradient pairs, picked deterministically from
-// the app's name so the same app always gets the same fallback tile
-// (no real icon uploaded yet) instead of a random color on every render.
-const GRADIENTS = [
-  ["#6a5cff", "#ff5a8c"],
-  ["#1fbf6c", "#0ea5a4"],
-  ["#ff5a1f", "#ffb627"],
-  ["#3b82f6", "#8b5cf6"],
-  ["#f5576c", "#f093fb"],
-  ["#0ea5a4", "#38bdf8"],
-] as const;
-
-function pickGradient(seed: string): readonly [string, string] {
-  let hash = 0;
-  for (let i = 0; i < seed.length; i++) hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
-  return GRADIENTS[hash % GRADIENTS.length]!;
-}
-
 export function StoreAppIcon({
   name,
   iconUrl,
@@ -45,17 +27,19 @@ export function StoreAppIcon({
     );
   }
 
-  const [from, to] = pickGradient(name);
+  // No uploaded icon yet — a flat monochrome tile with the app's initial
+  // (client, 2026-08-17: "let's forget the gradients, and use black and
+  // white color scheme"; icons stay border-free, same rule already
+  // applied to every other icon treatment across the app). Just a filled
+  // surface tile, no ring around it.
   return (
     <div
       aria-hidden
-      className={cn("flex shrink-0 items-center justify-center rounded-[22%] font-bold text-white", className)}
-      style={{
-        width: size,
-        height: size,
-        background: `linear-gradient(135deg, ${from}, ${to})`,
-        fontSize: size * 0.42,
-      }}
+      className={cn(
+        "flex shrink-0 items-center justify-center rounded-[22%] bg-surface-2 font-bold text-foreground",
+        className,
+      )}
+      style={{ width: size, height: size, fontSize: size * 0.42 }}
     >
       {name.trim().charAt(0).toUpperCase() || "?"}
     </div>

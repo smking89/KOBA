@@ -1,7 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import { Sora, IBM_Plex_Mono } from "next/font/google";
+import { cookies } from "next/headers";
 import { PwaClientLayer } from "@/components/koba/pwa-client-layer";
 import { AuthSessionProvider } from "@/components/koba/session-provider";
+import { ThemeScript } from "@/components/koba/theme-script";
 import { getPublicEnv } from "@/lib/env";
 import { kobaTokens } from "@/lib/design-tokens";
 import "./globals.css";
@@ -47,18 +49,32 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: kobaTokens.themeColor,
-  colorScheme: "dark",
+  colorScheme: "dark light",
   width: "device-width",
   initialScale: 1,
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // Real light/dark toggle (client, 2026-08-17), shared across the whole
+  // site and every subdomain. Reading the cookie server-side means the
+  // very first HTML response already carries the right `data-theme` —
+  // ThemeScript (inline, blocking, in <head>) only has to correct for a
+  // stale/missing cookie (private/incognito, first-ever visit), not do
+  // all the work itself, so there's no flash on normal navigation.
+  const cookieStore = await cookies();
+  const savedTheme = cookieStore.get("koba-theme")?.value;
+  const theme = savedTheme === "light" ? "light" : "dark";
+
   return (
     <html
       lang="en"
-      className={`${sora.variable} ${plexMono.variable} dark`}
+      data-theme={theme}
+      className={`${sora.variable} ${plexMono.variable} ${theme === "dark" ? "dark" : ""}`}
       suppressHydrationWarning
     >
+      <head>
+        <ThemeScript />
+      </head>
       <body className="font-sans">
         <AuthSessionProvider>
           <PwaClientLayer>{children}</PwaClientLayer>

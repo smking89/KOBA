@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
-import { DeveloperPortalNav } from "@/features/developers/components/developer-portal-nav";
 import { API_CATALOG } from "@/features/developers/lib/api-catalog";
 
 export const metadata = { title: "API catalog" };
@@ -9,7 +8,6 @@ export const metadata = { title: "API catalog" };
 export default function ApiCatalogPage() {
   return (
     <div className="space-y-8">
-      <DeveloperPortalNav current="/developers/apis" />
       <div>
         <p className="font-mono text-xs uppercase tracking-[0.2em] text-neon-mint">
           Developer APIs

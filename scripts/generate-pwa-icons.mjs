@@ -7,19 +7,36 @@ const OUT_DIR = path.join(ROOT, "public", "icons");
 const LOGO = path.join(ROOT, "public", "brand", "koba-logo.png");
 
 /**
- * Builds install icons from the official KOBA logo on the product background.
- * Maskable icons keep ~20% safe-zone padding (Android adaptive icons).
+ * Builds install icons from the official KOBA logo on the product
+ * background. Maskable icons keep ~20% safe-zone padding (Android
+ * adaptive icons). Monochrome (client, 2026-08-17: "the logo needs to
+ * use the black and white color scheme, same for the favicon" — part of
+ * the platform-wide gradient/brand-orange → black-and-white pivot): the
+ * logo is tinted pure white via the standard sharp `dest-in` blend
+ * (tint a solid color using the source PNG's own alpha as the mask,
+ * same technique used for koba-plus-mark.png elsewhere) before
+ * compositing onto a black background, rather than kept brand-orange —
+ * static app icons can't follow the live light/dark toggle, so this
+ * picks the one fixed rendering (white-on-black) rather than the
+ * previous always-orange one.
  */
 async function renderIcon({ size, maskable }) {
   const paddingRatio = maskable ? 0.22 : 0.14;
   const padding = Math.round(size * paddingRatio);
   const inner = size - padding * 2;
 
-  const logo = await sharp(LOGO)
+  const resizedMask = await sharp(LOGO)
     .resize(inner, inner, {
       fit: "contain",
       background: { r: 0, g: 0, b: 0, alpha: 0 },
     })
+    .ensureAlpha()
+    .toBuffer();
+
+  const whiteLogo = await sharp({
+    create: { width: inner, height: inner, channels: 4, background: { r: 255, g: 255, b: 255, alpha: 1 } },
+  })
+    .composite([{ input: resizedMask, blend: "dest-in" }])
     .png()
     .toBuffer();
 
@@ -28,10 +45,10 @@ async function renderIcon({ size, maskable }) {
       width: size,
       height: size,
       channels: 4,
-      background: { r: 5, g: 5, b: 5, alpha: 1 },
+      background: { r: 0, g: 0, b: 0, alpha: 1 },
     },
   })
-    .composite([{ input: logo, left: padding, top: padding }])
+    .composite([{ input: whiteLogo, left: padding, top: padding }])
     .png()
     .toBuffer();
 }

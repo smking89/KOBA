@@ -1,29 +1,44 @@
-import Image from "next/image";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
 type BrandMarkProps = {
-  href?: string;
+  /** Omit for the default "/" link, pass `null` to render unlinked. */
+  href?: string | null;
   className?: string;
   showWordmark?: boolean;
+  size?: number;
 };
 
-export function BrandMark({ href = "/", className, showWordmark = true }: BrandMarkProps) {
+/**
+ * The KOBA wing mark, monochrome (client, 2026-08-17: "the logo needs to
+ * use the black and white color scheme, same for the favicon" — part of
+ * the platform-wide gradient/brand-orange → black-and-white pivot). The
+ * source PNG (public/brand/koba-logo.png) is a solid-color glyph on a
+ * transparent background, so it's masked with `currentColor` — the same
+ * technique koba-plus-mark.tsx uses — rather than shown as a raw
+ * `<Image>`, so it inherits `text-foreground` and repaints automatically
+ * with the dark/light toggle instead of staying brand-orange.
+ */
+export function BrandMark({ href = "/", className, showWordmark = true, size = 32 }: BrandMarkProps) {
   const content = (
-    <span className={cn("inline-flex items-center gap-2", className)}>
-      <Image
-        src="/brand/koba-logo.png"
-        alt="KOBA"
-        width={32}
-        height={32}
-        priority
-        className="h-8 w-8 object-contain"
-        // Dark Reader (and similar browser extensions) injects a
-        // --darkreader-inline-color style attribute on this element
-        // before React hydrates, which triggers a false-positive
-        // hydration mismatch warning — not an app bug. This is React's
-        // own documented mitigation for extension-modified DOM nodes.
-        suppressHydrationWarning
+    <span className={cn("inline-flex items-center gap-2 text-foreground", className)}>
+      <span
+        role="img"
+        aria-label="KOBA"
+        style={{
+          width: size,
+          height: size,
+          WebkitMaskImage: "url(/brand/koba-logo.png)",
+          maskImage: "url(/brand/koba-logo.png)",
+          WebkitMaskSize: "contain",
+          maskSize: "contain",
+          WebkitMaskRepeat: "no-repeat",
+          maskRepeat: "no-repeat",
+          WebkitMaskPosition: "center",
+          maskPosition: "center",
+          background: "currentColor",
+          display: "inline-block",
+        }}
       />
       {showWordmark ? (
         <span className="font-sans text-lg font-bold tracking-[0.08em] text-foreground">KOBA</span>

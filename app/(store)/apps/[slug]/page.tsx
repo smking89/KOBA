@@ -50,43 +50,43 @@ export default async function AppDetailPage({ params }: { params: Promise<{ slug
 
   return (
     <div className="space-y-10">
-      <Link href="/apps" className="text-sm text-[var(--store-ink-dim)] hover:text-[var(--store-ink)]">
+      <Link href="/apps" className="text-sm text-muted hover:text-foreground">
         ← App Store
       </Link>
 
-      <div className="flex flex-col gap-6 rounded-3xl border border-[var(--store-border)] bg-[var(--store-surface)] p-6 shadow-[var(--store-shadow)] sm:flex-row sm:items-start">
+      <div className="flex flex-col gap-6 rounded-3xl border border-border bg-surface p-6 shadow-soft sm:flex-row sm:items-start">
         <StoreAppIcon name={product.name} iconUrl={product.iconUrl} size={96} />
         <div className="min-w-0 flex-1 space-y-3">
           <div>
-            <h1 className="text-2xl font-bold text-[var(--store-ink)]">{product.name}</h1>
-            <p className="text-sm text-[var(--store-ink-dim)]">
+            <h1 className="text-2xl font-bold text-foreground">{product.name}</h1>
+            <p className="text-sm text-muted">
               {product.profile?.displayName ?? "Independent publisher"} ·{" "}
               {categoryLabel(product.category)}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <StoreStarRating rating={rating} ratingCount={product.ratingCount} />
-            <span className="flex items-center gap-1 text-xs text-[var(--store-ink-faint)]">
+            <span className="flex items-center gap-1 text-xs text-muted">
               <Download className="h-3.5 w-3.5" aria-hidden />
               {product.downloadCount.toLocaleString()} installs
             </span>
             {product.kobaOfficial ? (
-              <span className="flex items-center gap-1 rounded-full bg-[var(--store-success)]/10 px-2.5 py-0.5 text-xs font-semibold text-[var(--store-success)]">
+              <span className="flex items-center gap-1 rounded-full border border-border px-2.5 py-0.5 text-xs font-semibold text-foreground">
                 <ShieldCheck className="h-3.5 w-3.5" aria-hidden />
                 KOBA official
               </span>
             ) : product.profile?.verified ? (
-              <span className="flex items-center gap-1 text-xs font-semibold text-[#33c1f0]">
-                <BadgeCheck className="h-3.5 w-3.5 fill-[#33c1f0] text-white" aria-hidden />
+              <span className="flex items-center gap-1 text-xs font-semibold text-foreground">
+                <BadgeCheck className="h-3.5 w-3.5" aria-hidden />
                 Verified publisher
               </span>
             ) : (
-              <span className="rounded-full bg-[var(--store-surface-2)] px-2.5 py-0.5 text-xs font-semibold text-[var(--store-ink-dim)]">
+              <span className="rounded-full bg-surface-2 px-2.5 py-0.5 text-xs font-semibold text-muted">
                 Unverified third-party
               </span>
             )}
           </div>
-          <p className="max-w-2xl text-sm text-[var(--store-ink-dim)]">
+          <p className="max-w-2xl text-sm text-muted">
             {product.shortDescription || product.description}
           </p>
           <div className="flex items-center gap-4 pt-1">
@@ -100,19 +100,19 @@ export default async function AppDetailPage({ params }: { params: Promise<{ slug
             ) : (
               <Link
                 href={`/login?callbackUrl=/apps/${product.slug}`}
-                className="rounded-full bg-[var(--store-accent)] px-5 py-2 text-sm font-semibold text-[var(--store-accent-ink)]"
+                className="rounded-full bg-neon-lime px-5 py-2 text-sm font-semibold text-background"
               >
                 Sign in to {product.pricing === "FREE" ? "get" : "buy"}
               </Link>
             )}
             {!owned ? (
-              <span className="text-sm font-semibold text-[var(--store-ink)]">{priceLabel}</span>
+              <span className="text-sm font-semibold text-foreground">{priceLabel}</span>
             ) : null}
           </div>
         </div>
       </div>
 
-      <p className="rounded-2xl border border-[var(--store-border)] bg-[var(--store-surface-2)] px-4 py-3 text-xs text-[var(--store-ink-dim)]">
+      <p className="rounded-2xl border border-border bg-surface-2 px-4 py-3 text-xs text-muted">
         Third-party software is not guaranteed safe. KOBA never executes uploaded plugin code on
         the web server or VPS workers. Price is read from the server at purchase time — KOBA Coins
         only, no fiat conversion.
@@ -120,7 +120,7 @@ export default async function AppDetailPage({ params }: { params: Promise<{ slug
 
       {screenshots.length > 0 ? (
         <section>
-          <h2 className="mb-3 text-lg font-bold text-[var(--store-ink)]">Screenshots</h2>
+          <h2 className="mb-3 text-lg font-bold text-foreground">Screenshots</h2>
           <div className="flex gap-3 overflow-x-auto pb-2">
             {screenshots.map((url) => (
               // eslint-disable-next-line @next/next/no-img-element
@@ -128,7 +128,7 @@ export default async function AppDetailPage({ params }: { params: Promise<{ slug
                 key={url}
                 src={url}
                 alt=""
-                className="h-48 w-auto shrink-0 rounded-xl border border-[var(--store-border)] object-cover"
+                className="h-48 w-auto shrink-0 rounded-xl border border-border object-cover"
               />
             ))}
           </div>
@@ -137,21 +137,21 @@ export default async function AppDetailPage({ params }: { params: Promise<{ slug
 
       <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
         <div className="space-y-6">
-          <section className="rounded-2xl border border-[var(--store-border)] bg-[var(--store-surface)] p-5 shadow-[var(--store-shadow)]">
-            <h2 className="text-lg font-bold text-[var(--store-ink)]">About this app</h2>
-            <p className="mt-2 text-sm whitespace-pre-line text-[var(--store-ink-dim)]">
+          <section className="rounded-2xl border border-border bg-surface p-5 shadow-soft">
+            <h2 className="text-lg font-bold text-foreground">About this app</h2>
+            <p className="mt-2 text-sm whitespace-pre-line text-muted">
               {product.description || product.shortDescription || "No description yet."}
             </p>
           </section>
 
-          <section className="rounded-2xl border border-[var(--store-border)] bg-[var(--store-surface)] p-5 shadow-[var(--store-shadow)]">
-            <h2 className="text-lg font-bold text-[var(--store-ink)]">Versions</h2>
-            <ul className="mt-3 divide-y divide-[var(--store-border)]">
+          <section className="rounded-2xl border border-border bg-surface p-5 shadow-soft">
+            <h2 className="text-lg font-bold text-foreground">Versions</h2>
+            <ul className="mt-3 divide-y divide-border">
               {product.versions.map((version) => (
                 <li key={version.publicRef} className="py-3 first:pt-0 last:pb-0">
-                  <p className="text-sm font-semibold text-[var(--store-ink)]">
+                  <p className="text-sm font-semibold text-foreground">
                     v{version.semver}{" "}
-                    <span className="font-normal text-[var(--store-ink-faint)]">
+                    <span className="font-normal text-muted">
                       · {version.channel} · {version.reviewState}
                     </span>
                     {owned &&
@@ -159,16 +159,16 @@ export default async function AppDetailPage({ params }: { params: Promise<{ slug
                       version.reviewState === "PUBLISHED") ? (
                       <Link
                         href={`/api/apps/versions/${version.publicRef}/download`}
-                        className="ml-2 font-semibold text-[var(--store-accent)]"
+                        className="ml-2 font-semibold text-neon-lime"
                       >
                         Download
                       </Link>
                     ) : null}
                   </p>
-                  <p className="mt-1 text-xs text-[var(--store-ink-dim)]">
+                  <p className="mt-1 text-xs text-muted">
                     {version.changelog || "No changelog."}
                   </p>
-                  <p className="text-xs text-[var(--store-ink-faint)]">
+                  <p className="text-xs text-muted">
                     Requires: {version.requirements || "—"}
                   </p>
                 </li>
@@ -176,19 +176,19 @@ export default async function AppDetailPage({ params }: { params: Promise<{ slug
             </ul>
           </section>
 
-          <section className="rounded-2xl border border-[var(--store-border)] bg-[var(--store-surface)] p-5 shadow-[var(--store-shadow)]">
+          <section className="rounded-2xl border border-border bg-surface p-5 shadow-soft">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold text-[var(--store-ink)]">Ratings and reviews</h2>
+              <h2 className="text-lg font-bold text-foreground">Ratings and reviews</h2>
               <StoreStarRating rating={rating} ratingCount={product.ratingCount} />
             </div>
-            <ul className="mt-3 divide-y divide-[var(--store-border)]">
+            <ul className="mt-3 divide-y divide-border">
               {product.reviews.length === 0 ? (
-                <li className="py-3 text-sm text-[var(--store-ink-dim)]">No reviews yet.</li>
+                <li className="py-3 text-sm text-muted">No reviews yet.</li>
               ) : (
                 product.reviews.map((review) => (
                   <li key={review.id} className="py-3 first:pt-0 last:pb-0">
                     <StoreStarRating rating={review.rating} ratingCount={0} showCount={false} />
-                    <p className="mt-1 text-sm text-[var(--store-ink-dim)]">
+                    <p className="mt-1 text-sm text-muted">
                       {review.body || "No comment."}
                     </p>
                   </li>
@@ -199,36 +199,36 @@ export default async function AppDetailPage({ params }: { params: Promise<{ slug
         </div>
 
         <div className="space-y-6">
-          <section className="rounded-2xl border border-[var(--store-border)] bg-[var(--store-surface)] p-5 shadow-[var(--store-shadow)]">
-            <h2 className="text-sm font-bold text-[var(--store-ink)]">Developer</h2>
+          <section className="rounded-2xl border border-border bg-surface p-5 shadow-soft">
+            <h2 className="text-sm font-bold text-foreground">Developer</h2>
             {product.profile ? (
               <Link
                 href={`/developers/${product.profile.slug}`}
-                className="mt-2 block text-sm font-semibold text-[var(--store-accent)]"
+                className="mt-2 block text-sm font-semibold text-neon-lime"
               >
                 {product.profile.displayName} →
               </Link>
             ) : (
-              <p className="mt-2 text-sm text-[var(--store-ink-dim)]">Independent publisher</p>
+              <p className="mt-2 text-sm text-muted">Independent publisher</p>
             )}
             <ul className="mt-3 space-y-1.5 text-sm">
               {product.docsUrl ? (
                 <li>
-                  <a className="text-[var(--store-accent)]" href={product.docsUrl}>
+                  <a className="text-neon-lime" href={product.docsUrl}>
                     Documentation
                   </a>
                 </li>
               ) : null}
               {product.supportUrl ? (
                 <li>
-                  <a className="text-[var(--store-accent)]" href={product.supportUrl}>
+                  <a className="text-neon-lime" href={product.supportUrl}>
                     Support
                   </a>
                 </li>
               ) : null}
               {product.privacyUrl ? (
                 <li>
-                  <a className="text-[var(--store-accent)]" href={product.privacyUrl}>
+                  <a className="text-neon-lime" href={product.privacyUrl}>
                     Privacy policy
                   </a>
                 </li>
@@ -237,15 +237,15 @@ export default async function AppDetailPage({ params }: { params: Promise<{ slug
           </section>
 
           {similarApps.length > 0 ? (
-            <section className="rounded-2xl border border-[var(--store-border)] bg-[var(--store-surface)] p-5 shadow-[var(--store-shadow)]">
-              <h2 className="text-sm font-bold text-[var(--store-ink)]">Similar apps</h2>
+            <section className="rounded-2xl border border-border bg-surface p-5 shadow-soft">
+              <h2 className="text-sm font-bold text-foreground">Similar apps</h2>
               <ul className="mt-3 space-y-3">
                 {similarApps.map((app) => (
                   <li key={app.publicRef}>
                     <Link href={`/apps/${app.slug}`} className="flex items-center gap-3">
                       <StoreAppIcon name={app.name} iconUrl={app.iconUrl} size={36} />
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-[var(--store-ink)]">
+                        <p className="truncate text-sm font-semibold text-foreground">
                           {app.name}
                         </p>
                         <StoreStarRating

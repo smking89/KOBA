@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
-import { DeveloperPortalNav } from "@/features/developers/components/developer-portal-nav";
 import { CreateWebhookForm } from "@/features/developers/components/webhook-form";
 import { getMyDeveloperProfile } from "@/features/developers/services/portal.service";
 import {
@@ -23,7 +22,6 @@ export default async function DeveloperWebhooksPage() {
 
   return (
     <div className="space-y-8">
-      <DeveloperPortalNav current="/developers/webhooks" />
       <div>
         <h1 className="text-3xl font-semibold tracking-tight">Webhooks</h1>
         <p className="mt-2 text-sm text-muted">

@@ -20,7 +20,7 @@ export function StoreStarRating({
   className?: string;
 }) {
   if (rating == null) {
-    return <span className={cn("text-xs text-[var(--store-ink-faint)]", className)}>No ratings yet</span>;
+    return <span className={cn("text-xs text-muted", className)}>No ratings yet</span>;
   }
 
   const rounded = Math.round(rating);
@@ -33,14 +33,12 @@ export function StoreStarRating({
             key={i}
             width={size}
             height={size}
-            className={i < rounded ? "fill-[var(--store-star)] text-[var(--store-star)]" : "text-[var(--store-border)]"}
+            className={i < rounded ? "fill-foreground text-foreground" : "text-border"}
           />
         ))}
       </span>
       {showCount ? (
-        <span className="text-xs text-[var(--store-ink-faint)] tabular-nums">
-          ({ratingCount.toLocaleString()})
-        </span>
+        <span className="text-xs text-muted tabular-nums">({ratingCount.toLocaleString()})</span>
       ) : null}
     </span>
   );

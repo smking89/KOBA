@@ -26,8 +26,8 @@ export function StoreCategoryTabs({ current }: { current?: string | undefined })
         className={cn(
           "shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition-colors",
           !current
-            ? "bg-[var(--store-ink)] text-white"
-            : "bg-[var(--store-surface-2)] text-[var(--store-ink-dim)] hover:text-[var(--store-ink)]",
+            ? "bg-foreground text-background"
+            : "bg-surface-2 text-muted hover:text-foreground",
         )}
       >
         All
@@ -40,8 +40,8 @@ export function StoreCategoryTabs({ current }: { current?: string | undefined })
           className={cn(
             "shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition-colors",
             current === category
-              ? "bg-[var(--store-ink)] text-white"
-              : "bg-[var(--store-surface-2)] text-[var(--store-ink-dim)] hover:text-[var(--store-ink)]",
+              ? "bg-foreground text-background"
+              : "bg-surface-2 text-muted hover:text-foreground",
           )}
         >
           {categoryLabel(category)}

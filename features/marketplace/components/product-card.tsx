@@ -1,6 +1,6 @@
-import Image from "next/image";
 import Link from "next/link";
 import { BadgeCheck } from "lucide-react";
+import { BrandMark } from "@/components/koba/brand-mark";
 import { ProductActionRail } from "@/features/marketplace/components/product-action-rail";
 import { PlatformIcon } from "@/features/marketplace/components/platform-icon";
 import { StarRating } from "@/features/marketplace/components/star-rating";
@@ -178,13 +178,7 @@ export function ProductCard({
 
           {/* Footer strip */}
           <div className="flex items-center justify-between gap-2 px-4 py-1">
-            <Image
-              src="/brand/koba-logo.png"
-              alt="KOBA"
-              width={18}
-              height={18}
-              className="h-[18px] w-[18px] shrink-0 object-contain"
-            />
+            <BrandMark href={null} showWordmark={false} size={18} className="shrink-0 text-white" />
             <p className="truncate text-center text-[0.65rem] text-white/50">
               © {new Date().getFullYear()} koba.games. All rights reserved.
             </p>

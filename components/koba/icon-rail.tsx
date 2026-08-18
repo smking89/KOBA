@@ -45,10 +45,8 @@ export function IconRail() {
             aria-label={link.label}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "relative flex h-12 w-12 items-center justify-center text-muted transition-[border-radius,background-color,color] duration-150",
-              active
-                ? "rounded-2xl bg-brand-gradient text-background"
-                : "rounded-[24px] bg-surface-3 hover:rounded-2xl hover:bg-neon-lime/20 hover:text-neon-lime",
+              "relative flex h-12 w-12 items-center justify-center transition-colors duration-150",
+              active ? "text-foreground" : "text-muted hover:text-foreground",
             )}
           >
             <span

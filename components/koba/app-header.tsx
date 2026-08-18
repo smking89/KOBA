@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { usePathname } from "next/navigation";
 import { Hash, Menu } from "lucide-react";
 import { BetaBadge } from "@/components/koba/beta-badge";
+import { ThemeToggle } from "@/components/koba/theme-toggle";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { isNavActive, navLabelForPath } from "@/features/navigation/lib/nav";
@@ -32,6 +33,7 @@ export function AppHeader({ onOpenMenu }: { onOpenMenu?: () => void }) {
         <p className="truncate text-base font-semibold">{title}</p>
       </div>
       <div className="flex shrink-0 items-center gap-1">
+        <ThemeToggle />
         {isLoggedIn ? (
           <Link
             href="/orders"

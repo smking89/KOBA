@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
-import { DeveloperPortalNav } from "@/features/developers/components/developer-portal-nav";
 import { CreateApiKeyForm } from "@/features/developers/components/developer-forms";
 import {
   getMyDeveloperProfile,
@@ -23,7 +22,6 @@ export default async function DeveloperApiKeysPage() {
 
   return (
     <div className="space-y-8">
-      <DeveloperPortalNav current="/developers/api-keys" />
       <div>
         <h1 className="text-3xl font-semibold tracking-tight">API keys</h1>
         <p className="mt-2 text-sm text-muted">

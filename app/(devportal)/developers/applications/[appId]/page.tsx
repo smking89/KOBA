@@ -1,7 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
-import { DeveloperPortalNav } from "@/features/developers/components/developer-portal-nav";
 import { getDeveloperApplication } from "@/features/developers/services/portal.service";
 
 export const metadata = { title: "Application" };
@@ -19,7 +18,6 @@ export default async function DeveloperApplicationDetailPage({
 
   return (
     <div className="space-y-8">
-      <DeveloperPortalNav current="/developers/applications" />
       <div>
         <h1 className="text-3xl font-semibold tracking-tight">{app.name}</h1>
         <p className="mt-2 text-sm text-muted">

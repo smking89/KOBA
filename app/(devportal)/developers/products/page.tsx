@@ -4,7 +4,6 @@ import { auth } from "@/lib/auth";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { DeveloperPortalNav } from "@/features/developers/components/developer-portal-nav";
 import { getMyDeveloperProfile } from "@/features/developers/services/portal.service";
 import { listMyProducts } from "@/features/developers/services/developer.service";
 import { StatusPill } from "@/components/koba/status-pill";
@@ -21,7 +20,6 @@ export default async function DeveloperProductsPage() {
 
   return (
     <div className="space-y-8">
-      <DeveloperPortalNav current="/developers/products" />
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight">Products</h1>

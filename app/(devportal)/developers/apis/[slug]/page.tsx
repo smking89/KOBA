@@ -3,7 +3,6 @@ import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
-import { DeveloperPortalNav } from "@/features/developers/components/developer-portal-nav";
 import { API_CATALOG, getApiSurface } from "@/features/developers/lib/api-catalog";
 import { cn } from "@/lib/utils";
 
@@ -24,8 +23,6 @@ export default async function ApiSurfacePage({ params }: { params: Promise<{ slu
 
   return (
     <div className="space-y-8">
-      <DeveloperPortalNav current="/developers/apis" />
-
       <div>
         <Link href="/developers/apis" className="text-xs text-muted hover:text-foreground">
           ← API catalog
