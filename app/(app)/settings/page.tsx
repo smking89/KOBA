@@ -11,6 +11,9 @@ import { AccountModeSwitch } from "@/features/accounts/components/account-mode-s
 import { ACCOUNT_TYPE_LABEL } from "@/features/koba-id/lib/format";
 import { TagPrivacyForm } from "@/features/social/components/tag-privacy-form";
 import { PlusBadge } from "@/features/plus/components/plus-badge";
+import { SocialConnectionsPanel } from "@/features/social-connections/components/social-connections-panel";
+import { socialProviderConfiguredMap } from "@/features/social-connections/lib/providers";
+import { listUserSocialConnections } from "@/features/social-connections/services/social-connection.service";
 
 export const metadata = { title: "Settings" };
 
@@ -25,6 +28,8 @@ export default async function SettingsPage() {
   if (!snapshot) {
     redirect("/login");
   }
+
+  const socialConnections = await listUserSocialConnections(session.user.id);
 
   return (
     <div className="space-y-6">
@@ -77,6 +82,18 @@ export default async function SettingsPage() {
           Mentions respect this setting. Blocked accounts can never tag you.
         </CardDescription>
         <TagPrivacyForm initial={snapshot.tagPrivacy} bio={snapshot.bio ?? ""} />
+      </Card>
+
+      <Card className="border-t-2 border-t-neon-lime">
+        <CardTitle>Connected accounts</CardTitle>
+        <CardDescription className="mb-4">
+          Verify ownership through the platform itself — connecting swaps in your real handle and
+          links out to your real profile, so a badge can&apos;t be faked.
+        </CardDescription>
+        <SocialConnectionsPanel
+          configured={socialProviderConfiguredMap()}
+          connections={socialConnections}
+        />
       </Card>
 
       <Card className="border-t-2 border-t-neon-lime">

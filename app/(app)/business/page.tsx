@@ -11,6 +11,9 @@ import { requireBusinessDashboard } from "@/features/shops/lib/require-business"
 import { getShopAnalytics } from "@/features/shops/services/shop.service";
 import { ShopPromoForm } from "@/features/influencer/components/shop-promo-form";
 import { getShopPromo } from "@/features/influencer/services/influencer.service";
+import { SocialConnectionsPanel } from "@/features/social-connections/components/social-connections-panel";
+import { socialProviderConfiguredMap } from "@/features/social-connections/lib/providers";
+import { listShopSocialConnections } from "@/features/social-connections/services/social-connection.service";
 
 export const metadata = { title: "Business dashboard" };
 
@@ -35,6 +38,7 @@ export default async function BusinessDashboardPage() {
 
   const shop = data.shop;
   const verified = shop.verificationStatus === "VERIFIED";
+  const shopSocialConnections = await listShopSocialConnections(shop.id);
 
   return (
     <div className="space-y-6">
@@ -92,6 +96,18 @@ export default async function BusinessDashboardPage() {
           from this shop, not the influencer.
         </CardDescription>
         {promo ? <ShopPromoForm initial={promo} /> : null}
+      </Card>
+
+      <Card>
+        <CardTitle>Shop socials</CardTitle>
+        <CardDescription className="mb-4">
+          Connected accounts show as verified badges on your shop&apos;s storefront bio.
+        </CardDescription>
+        <SocialConnectionsPanel
+          configured={socialProviderConfiguredMap()}
+          connections={shopSocialConnections}
+          shopId={shop.id}
+        />
       </Card>
 
       <Card>

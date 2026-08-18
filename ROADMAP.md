@@ -1724,6 +1724,62 @@ they don't read from the shared tokens yet.
 
 ---
 
+## Verified social connections — user + shop bios (2026-08-18, status: done)
+
+Client: "for the social media icons in shop bios, and user bios, they
+need auth to connect their accounts, do the research needed to figure
+out how to implement." Research recommendation was confirmed via
+`AskUserQuestion`: build this (bio verification) before login OAuth
+("Both, socials first").
+
+- `UserSocialConnection` / `ShopSocialConnection` — two separate Prisma
+  models (not one polymorphic table; Prisma can't cleanly express
+  "exactly one nullable owner, unique per owner+provider" with Postgres
+  treating multiple NULLs as distinct). `SocialProvider` enum: DISCORD,
+  TWITTER, YOUTUBE, TWITCH.
+- `features/social-connections/lib/providers.ts` — per-provider OAuth2
+  config (authorize/token/userinfo URLs, scope, PKCE flag for Twitter).
+  Discord reuses the same app credentials as the existing developer
+  "Connect Discord" flow (`DISCORD_CLIENT_ID`/`_SECRET`, already set) —
+  one Discord app, two separate connection purposes (bot-owner identity
+  vs. bio badge), deliberately not unified. Twitter/YouTube/Twitch need
+  their own app registrations, unset for now — fail-soft, same
+  convention as Stripe/Aiden/Discord: the Connect button shows but stays
+  disabled until credentials exist.
+- `features/social-connections/lib/oauth.ts` — generic state signing
+  (`jose`, reuses `AUTH_SECRET`, 5min TTL) carrying the owner (user, or
+  shop + acting user) through the redirect round-trip; PKCE pair
+  generation for Twitter; code exchange; provider-user fetch (Twitch's
+  Helix API needs a `client-id` header on every call, not just token
+  exchange — special-cased).
+  `features/social-connections/services/social-connection.service.ts` —
+  connect/disconnect/list for both owners; shop connect requires
+  `requireShopOwnerOrMember` (Shop.ownerUserId or a ShopMember with role
+  OWNER/MODERATOR — the only two `ShopMemberRole` values that exist);
+  cross-account conflict check (same provider account can't connect to
+  two different KOBA users/shops).
+- Three routes: `/api/social-connections/[provider]/connect`
+  (`?owner=user` default or `?owner=shop&shopId=`), `.../callback`,
+  `.../disconnect`.
+- `features/social-connections/components/social-connections-panel.tsx`
+  — reusable connect/disconnect list, wired into `/settings` (user bio,
+  "Connected accounts" card) and `/business` (shop bio, "Shop socials"
+  card).
+- Account-linking policy for the still-unbuilt login-OAuth piece is
+  already decided (confirmed via `AskUserQuestion`): no automatic
+  linking by matching email — a Discord/Steam/Google login attempt on an
+  existing password-based email must be blocked with a "log in with
+  password first" message, never silently merged.
+
+Not built yet: real Discord bot-ownership verification (the App Store
+Discord-bot submission flow still just validates invite-link format —
+`features/developers/lib/discord-invite.ts` — full ownership proof via
+this same OAuth registry is a natural follow-up but wasn't requested).
+Login-page OAuth itself (Discord/Steam/Google sign-in) is the next
+confirmed piece of work, not started.
+
+---
+
 ## Open questions for the client
 
 Flagging rather than guessing on anything with real product/cost/legal consequence:

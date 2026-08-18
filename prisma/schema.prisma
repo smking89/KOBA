@@ -267,6 +267,7 @@ model User {
   promotionCommissionsSold   PromotionCommission[]  @relation("CommissionSeller")
   sponsoredCampaigns      SponsoredCampaign[]
   promotionNotices        PromotionNotice[]
+  socialConnections       UserSocialConnection[]
 }
 
 model Account {
@@ -778,6 +779,7 @@ model Shop {
   referralCodes        ReferralCode[]
   affiliateCampaigns   AffiliateCampaign[]
   promoCodes           PromoCode[]
+  socialConnections    ShopSocialConnection[]
 }
 
 model ShopMember {
@@ -2992,6 +2994,54 @@ model AidenAsset {
 
   @@index([userId, createdAt])
   @@index([moderation])
+}
+
+// Verified social account badges on user and shop bios (2026-08-18:
+// "for the social media icons in shop bios, and user bios, they need
+// auth to connect their accounts"). Two dedicated models rather than one
+// polymorphic table with nullable owner columns — this schema doesn't
+// use polymorphic associations anywhere else, and a single nullable-FK
+// table can't cleanly express "exactly one owner, unique per (owner,
+// provider)" with Prisma's declarative unique constraints. Separate
+// from DeveloperProfile's own discordUserId/discordUsername fields
+// (features/developers/lib/discord-oauth.ts) — that one exists
+// specifically for bot-ownership verification context, not bio display,
+// and isn't being unified into this table.
+enum SocialProvider {
+  DISCORD
+  TWITTER
+  YOUTUBE
+  TWITCH
+}
+
+model UserSocialConnection {
+  id               String         @id @default(cuid())
+  userId           String
+  provider         SocialProvider
+  providerUserId   String
+  providerUsername String
+  profileUrl       String?
+  connectedAt      DateTime       @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, provider])
+  @@index([userId])
+}
+
+model ShopSocialConnection {
+  id               String         @id @default(cuid())
+  shopId           String
+  provider         SocialProvider
+  providerUserId   String
+  providerUsername String
+  profileUrl       String?
+  connectedAt      DateTime       @default(now())
+
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@unique([shopId, provider])
+  @@index([shopId])
 }
 
 model DeveloperProfile {
