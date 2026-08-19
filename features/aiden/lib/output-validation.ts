@@ -6,6 +6,14 @@ export const AIDEN_MAX_DIMENSION = 2048;
 export const AIDEN_MIN_DIMENSION = 1;
 export const AIDEN_FETCH_TIMEOUT_MS = 12_000;
 
+/// A textured, rigged glTF binary can legitimately be much larger than
+/// a flat PNG/JPEG — the existing AIDEN_MAX_OUTPUT_BYTES/AIDEN_ALLOWED_MIME
+/// pair above is image-only and was never meant to bound a mesh
+/// download (features/aiden/lib/blender-assembly.ts uses these instead
+/// when fetching a Tripo mesh, not the image limits).
+export const AIDEN_MAX_MESH_BYTES = 64 * 1024 * 1024;
+export const AIDEN_MESH_ACCEPT = "model/gltf-binary,application/octet-stream";
+
 export function isAllowedAidenMime(value: string): value is AidenAllowedMime {
   return (AIDEN_ALLOWED_MIME as readonly string[]).includes(value);
 }
