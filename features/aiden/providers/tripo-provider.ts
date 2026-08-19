@@ -2,7 +2,17 @@ import { isEnvConfigured } from "@/features/aiden/providers/env-gate";
 import type { AidenGenerationResult } from "@/features/aiden/providers/types";
 
 const ENV_VAR = "TRIPO_API_KEY";
-const API_BASE = "https://api.tripo3d.ai/v2/openapi";
+// Migrated 2026-08-18 from the old v2 host (api.tripo3d.ai/v2/openapi,
+// single generic POST /task + type field) to v3, confirmed against the
+// client-pasted quick-start docs (developers.tripo3d.ai/en/docs/
+// quick-start): a real version bump, not a WebFetch artifact — v3 uses
+// a distinct host and one endpoint path per generation type instead of
+// one generic task endpoint.
+const API_BASE = "https://openapi.tripo3d.ai/v3";
+// Pinned to the exact version string shown in Tripo's quick-start
+// example. Confirmed valid as of 2026-08-18; revisit if Tripo ships a
+// newer default and this one gets deprecated.
+const TRIPO_MODEL_VERSION = "v3.1-20260211";
 
 /** Tripo's own published pricing (developers.tripo3d.ai/en/pricing,
  * verified 2026-08-15): 1 credit = $0.01. actualCostUsd below is
@@ -48,9 +58,13 @@ type TripoTaskResponse = {
   };
 };
 
-async function createTask(body: Record<string, unknown>): Promise<string> {
+// v3 gives each generation type its own path (POST /generation/
+// text-to-model, POST /generation/image-to-model, ...) instead of v2's
+// single POST /task with a "type" field in the body — path is now the
+// caller's responsibility.
+async function createTask(path: string, body: Record<string, unknown>): Promise<string> {
   const token = process.env[ENV_VAR];
-  const response = await fetch(`${API_BASE}/task`, {
+  const response = await fetch(`${API_BASE}${path}`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -78,7 +92,7 @@ async function createTask(body: Record<string, unknown>): Promise<string> {
 async function pollTask(taskId: string): Promise<TripoTaskResponse["data"]> {
   const token = process.env[ENV_VAR];
   for (let attempt = 0; attempt < 50; attempt += 1) {
-    const response = await fetch(`${API_BASE}/task/${taskId}`, {
+    const response = await fetch(`${API_BASE}/tasks/${taskId}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!response.ok) {
@@ -102,17 +116,20 @@ async function pollTask(taskId: string): Promise<TripoTaskResponse["data"]> {
  * auto-rig pass on top — the "fully rigged, animated, game-ready" combo
  * ROADMAP.md originally recommended Tripo for.
  *
- * NOTE on confidence: the create/poll task shape below (POST /v2/openapi/
- * task, GET /v2/openapi/task/{id}, {code, data: {task_id, status,
- * output}}) is confirmed against Tripo's published API examples. The
- * auto-rig chaining call — task type "animate_rig" taking an
- * `original_model_task_id` field — is inferred from Tripo's documented
- * task-type list (their docs site is a JS app this environment couldn't
- * fully render), not confirmed against a live example. Verify that one
- * field name against Tripo's current docs (or a test call) before relying
- * on it in production; if it's wrong, generation will fail loudly (this
- * provider throws TripoGenerationError, it does not silently no-op), not
- * silently misbehave.
+ * NOTE on confidence (updated 2026-08-18, v3 migration): the
+ * text-to-model call (POST /v3/generation/text-to-model, GET /v3/tasks/
+ * {id}, {code, data: {task_id, status, output}}) is confirmed directly
+ * against the client-pasted quick-start docs — real request/response
+ * examples, not inferred. The auto-rig chaining call below is NOT
+ * confirmed the same way: the quick-start page only documents
+ * text-to-model and image-to-model. Its path (`/generation/animate-rig`)
+ * is a pattern-match against the confirmed `/generation/{kebab-type}`
+ * convention (text_to_model → text-to-model, image_to_model →
+ * image-to-model), not a verified example. Verify this path (and the
+ * `original_model_task_id` field name) against Tripo's full API
+ * reference — or a real ANIMATION-type generation — before trusting it
+ * in production; if it's wrong, this fails loudly (TripoGenerationError
+ * on a non-2xx or a missing task_id), not silently.
  */
 export async function generate3D(input: {
   prompt: string;
@@ -127,9 +144,9 @@ export async function generate3D(input: {
   // 20 credits) rather than the cheaper untextured tier ($0.10/10
   // credits); MODEL_COIN_COST.TRIPO_TEXT_TO_3D is priced to match this
   // choice (see that file's comment).
-  const modelTaskId = await createTask({
-    type: "text_to_model",
+  const modelTaskId = await createTask("/generation/text-to-model", {
     prompt: input.prompt,
+    model: TRIPO_MODEL_VERSION,
     texture: true,
   });
   const modelResult = await pollTask(modelTaskId);
@@ -146,8 +163,8 @@ export async function generate3D(input: {
     };
   }
 
-  const rigTaskId = await createTask({
-    type: "animate_rig",
+  const rigTaskId = await createTask("/generation/animate-rig", {
+    model: TRIPO_MODEL_VERSION,
     original_model_task_id: modelTaskId,
   });
   const rigResult = await pollTask(rigTaskId);
