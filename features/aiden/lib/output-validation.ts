@@ -74,7 +74,19 @@ export function readPngSize(bytes: Buffer): { width: number; height: number } | 
 }
 
 export function safeAidenFilename(publicRef: string, mime: string): string {
-  const ext = mime === "image/jpeg" ? "jpg" : mime === "image/webp" ? "webp" : "png";
+  // Was image-only (default "png") until SKIN's .glb mesh output
+  // started flowing through the same storeAidenObject() path — a
+  // model/gltf-binary asset defaulting to a .png extension would be a
+  // real, silent bug, not just a cosmetic mismatch (some tooling
+  // decides how to open a file by its extension).
+  const ext =
+    mime === "image/jpeg"
+      ? "jpg"
+      : mime === "image/webp"
+        ? "webp"
+        : mime === "model/gltf-binary"
+          ? "glb"
+          : "png";
   const slug = publicRef.toLowerCase().replace(/[^a-z0-9-]+/g, "-");
   return `${slug}.${ext}`;
 }

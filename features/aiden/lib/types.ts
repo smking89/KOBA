@@ -10,7 +10,14 @@ export const AIDEN_ASSET_TYPES = [
 
 export type AidenAssetType = (typeof AIDEN_ASSET_TYPES)[number];
 
-export const AIDEN_ACTIVE_GENERATION_TYPES = ["CONCEPT_IMAGE"] as const;
+/// SKIN added 2026-08-18 — real generation (Tripo mesh+rig+diffuse,
+/// Kandinsky PBR maps, Blender assembly) is wired end to end, see
+/// features/aiden/lib/provider.ts#RealAidenProvider and
+/// completeFromProvider's mesh branch in aiden.service.ts. The
+/// remaining types (TEXTURE/PROP/ANIMATION/TERRAIN/MAP) stay inactive
+/// — TERRA (TERRAIN/MAP) has no real provider at all yet
+/// (features/aiden/providers/terra-provider.ts is still a stub).
+export const AIDEN_ACTIVE_GENERATION_TYPES = ["CONCEPT_IMAGE", "SKIN"] as const;
 export type AidenActiveGenerationType = (typeof AIDEN_ACTIVE_GENERATION_TYPES)[number];
 
 export const AIDEN_TECHNICAL_STATUSES = [

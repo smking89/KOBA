@@ -9,6 +9,7 @@ import {
   readPngSize,
   sniffImageMime,
   validateImageLimits,
+  AIDEN_MAX_MESH_BYTES,
 } from "@/features/aiden/lib/output-validation";
 import { scanGeneratedBytes } from "@/features/aiden/lib/malware-scan";
 import {
@@ -182,7 +183,10 @@ export async function createJob(
 ): Promise<AidenJobView> {
   const assetType = input.assetType ?? "CONCEPT_IMAGE";
   if (!isAidenGenerationTypeActive(assetType)) {
-    throw new AidenError("Only concept image generation is available in this phase.", "INVALID");
+    throw new AidenError(
+      `${aidenAssetTypeLabel(assetType)} generation is not available yet.`,
+      "INVALID",
+    );
   }
 
   const moderation = moderateAidenPrompt(input.prompt);
@@ -727,17 +731,34 @@ export async function completeFromProvider(publicRef: string, result: AidenProvi
     return getJob(job.userId, publicRef);
   }
 
-  const sniffed = sniffImageMime(bytes) ?? "";
-  const pngSize = readPngSize(bytes);
-  const limits = validateImageLimits({
-    mime: sniffed,
-    byteSize: bytes.byteLength,
-    width: pngSize?.width ?? result.width,
-    height: pngSize?.height ?? result.height,
-  });
-  if (!limits.ok) {
-    await failOrCancelJob(job, "FAILED", limits.reason, "VALIDATION");
-    return getJob(job.userId, publicRef);
+  // SKIN is the one active generation type that isn't a flat image —
+  // it's an assembled .glb (mesh + rig + PBR material, see
+  // features/aiden/lib/provider.ts#RealAidenProvider). The image-only
+  // validation below (PNG dimension reading, AIDEN_ALLOWED_MIME) was
+  // never meant to bound that, so it gets its own, much simpler check
+  // (size only — a mesh has no "width/height" in the image sense).
+  const isMeshAsset = job.assetType === "SKIN";
+  let sniffed: string;
+  let pngSize: { width: number; height: number } | null = null;
+  if (isMeshAsset) {
+    sniffed = result.mime ?? "model/gltf-binary";
+    if (bytes.byteLength > AIDEN_MAX_MESH_BYTES) {
+      await failOrCancelJob(job, "FAILED", "Generated file exceeds the size limit.", "VALIDATION");
+      return getJob(job.userId, publicRef);
+    }
+  } else {
+    sniffed = sniffImageMime(bytes) ?? "";
+    pngSize = readPngSize(bytes);
+    const limits = validateImageLimits({
+      mime: sniffed,
+      byteSize: bytes.byteLength,
+      width: pngSize?.width ?? result.width,
+      height: pngSize?.height ?? result.height,
+    });
+    if (!limits.ok) {
+      await failOrCancelJob(job, "FAILED", limits.reason, "VALIDATION");
+      return getJob(job.userId, publicRef);
+    }
   }
 
   const scan = await scanGeneratedBytes(bytes, sniffed);
@@ -781,18 +802,26 @@ export async function completeFromProvider(publicRef: string, result: AidenProvi
   const capturedPreview =
     captured <= BigInt(Number.MAX_SAFE_INTEGER) ? Number(captured) : Number.MAX_SAFE_INTEGER;
   const assetPublicRef = generateAidenAssetRef();
+  // A SKIN result is already mesh + rig + PBR material (Tripo +
+  // Kandinsky + Blender assembly) — GAME_READY, not the CONCEPT_ONLY
+  // "flat still, not usable in-engine" status every other active
+  // asset type gets.
+  const assetTitle = isMeshAsset ? `${job.game} skin` : `${job.game} concept`;
+  const assetTechnicalStatus = isMeshAsset ? "GAME_READY" : "CONCEPT_ONLY";
+  const assetPreviewLabel = isMeshAsset ? "Assembled skin (mesh + rig + PBR)" : "Concept still";
+  const assetReadiness = isMeshAsset ? "GAME_READY" : "CONCEPT";
   const asset = await prisma.aidenAsset.upsert({
     where: { jobId: job.id },
     create: {
       publicRef: assetPublicRef,
       userId: job.userId,
       jobId: job.id,
-      title: `${job.game} concept`,
+      title: assetTitle,
       assetType: job.assetType,
-      technicalStatus: "CONCEPT_ONLY",
+      technicalStatus: assetTechnicalStatus,
       moderation: "PRIVATE",
       game: job.game,
-      previewLabel: "Concept still",
+      previewLabel: assetPreviewLabel,
       storageKey: stored.key,
       mimeType: sniffed,
       byteSize: bytes.byteLength,
@@ -808,7 +837,7 @@ export async function completeFromProvider(publicRef: string, result: AidenProvi
         model: result.model,
         modelVersion: result.modelVersion,
         generationType: job.assetType,
-        readiness: "CONCEPT",
+        readiness: assetReadiness,
         createdAt: new Date().toISOString(),
       }),
     },

@@ -11,7 +11,13 @@ import {
 } from "@/features/aiden/lib/output-validation";
 import { assertSafeProviderUrl } from "@/features/aiden/lib/safe-fetch";
 import { malwareScanningActive } from "@/features/aiden/lib/malware-scan";
-import { MockAidenProvider, verifyAidenProviderCallback } from "@/features/aiden/lib/provider";
+import {
+  MockAidenProvider,
+  RealAidenProvider,
+  getAidenProvider,
+  isRealAidenProviderConfigured,
+  verifyAidenProviderCallback,
+} from "@/features/aiden/lib/provider";
 import { isObjectStorageConfigured } from "@/features/media/lib/storage";
 import { isProtectedPath } from "@/lib/auth/protected-routes";
 import { isSensitivePath } from "@/lib/pwa/sensitive-routes";
@@ -54,9 +60,22 @@ describe("Aiden cost estimation", () => {
     expect(large.estimatedCostCoins).toBe(55n);
   });
 
-  it("keeps non-concept types inactive in this phase", () => {
-    expect(isAidenGenerationTypeActive("SKIN")).toBe(false);
-    expect(estimateAidenCost({ assetType: "SKIN" }).active).toBe(false);
+  // Client, 2026-08-18: SKIN generation (Tripo mesh+rig+diffuse,
+  // Kandinsky PBR maps, Blender assembly — features/aiden/lib/
+  // provider.ts#RealAidenProvider) went live end to end, so it moved
+  // from AIDEN_ACTIVE_GENERATION_TYPES's inactive set into the active
+  // one. TERRA's asset types (TERRAIN/MAP) have no real provider at
+  // all yet (features/aiden/providers/terra-provider.ts is still a
+  // stub) and stay inactive, same as the still-unwired Graft types.
+  it("SKIN is active; TERRA/unwired Graft types stay inactive", () => {
+    expect(isAidenGenerationTypeActive("CONCEPT_IMAGE")).toBe(true);
+    expect(isAidenGenerationTypeActive("SKIN")).toBe(true);
+    expect(estimateAidenCost({ assetType: "SKIN" }).active).toBe(true);
+
+    for (const inactive of ["TEXTURE", "PROP", "ANIMATION", "TERRAIN", "MAP"] as const) {
+      expect(isAidenGenerationTypeActive(inactive)).toBe(false);
+      expect(estimateAidenCost({ assetType: inactive }).active).toBe(false);
+    }
   });
 });
 
@@ -147,5 +166,55 @@ describe("Aiden mock provider and storage defaults", () => {
     expect(isProtectedPath("/aiden/jobs/KOBA-ADN-JOBTEST01")).toBe(true);
     expect(isSensitivePath("/api/aiden/jobs")).toBe(true);
     expect(isSensitivePath("/api/aiden/library/x/media")).toBe(true);
+  });
+});
+
+describe("Aiden real provider — turned on 2026-08-18", () => {
+  const envKeys = ["TRIPO_API_KEY", "REPLICATE_API_TOKEN"] as const;
+  const originals = Object.fromEntries(envKeys.map((key) => [key, process.env[key]]));
+
+  afterEach(() => {
+    for (const key of envKeys) {
+      if (originals[key] === undefined) delete process.env[key];
+      else process.env[key] = originals[key];
+    }
+  });
+
+  it("stays unconfigured with no Tripo or Replicate credentials, so getAidenProvider falls back to mock", () => {
+    delete process.env.TRIPO_API_KEY;
+    delete process.env.REPLICATE_API_TOKEN;
+    expect(isRealAidenProviderConfigured()).toBe(false);
+    expect(getAidenProvider()).toBeInstanceOf(MockAidenProvider);
+  });
+
+  it("is configured once either Tripo or Replicate has a real credential, and getAidenProvider switches to real", () => {
+    delete process.env.TRIPO_API_KEY;
+    process.env.REPLICATE_API_TOKEN = "r8_real_token_value";
+    expect(isRealAidenProviderConfigured()).toBe(true);
+    expect(getAidenProvider()).toBeInstanceOf(RealAidenProvider);
+  });
+
+  it("still treats an obvious placeholder credential as unconfigured", () => {
+    process.env.TRIPO_API_KEY = "replace_me";
+    delete process.env.REPLICATE_API_TOKEN;
+    expect(isRealAidenProviderConfigured()).toBe(false);
+  });
+
+  it("throws rather than silently no-op-ing when submit() is given an unknown job", async () => {
+    const provider = new RealAidenProvider();
+    await expect(
+      provider.submit({
+        publicRef: "KOBA-ADN-DOES-NOT-EXIST",
+        prompt: "test",
+        width: 512,
+        height: 512,
+        idempotencyKey: "idem-99999999",
+      }),
+    ).rejects.toThrow(/not found/);
+  });
+
+  it("throws rather than silently no-op-ing when retrieve() is given an unknown request id", async () => {
+    const provider = new RealAidenProvider();
+    await expect(provider.retrieve("real_never_submitted")).rejects.toThrow(/no pending/i);
   });
 });
