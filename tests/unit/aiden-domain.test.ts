@@ -60,19 +60,24 @@ describe("Aiden cost estimation", () => {
     expect(large.estimatedCostCoins).toBe(55n);
   });
 
-  // Client, 2026-08-18: SKIN generation (Tripo mesh+rig+diffuse,
-  // Kandinsky PBR maps, Blender assembly — features/aiden/lib/
-  // provider.ts#RealAidenProvider) went live end to end, so it moved
-  // from AIDEN_ACTIVE_GENERATION_TYPES's inactive set into the active
-  // one. TERRA's asset types (TERRAIN/MAP) have no real provider at
-  // all yet (features/aiden/providers/terra-provider.ts is still a
-  // stub) and stay inactive, same as the still-unwired Graft types.
-  it("SKIN is active; TERRA/unwired Graft types stay inactive", () => {
+  // Client, 2026-08-18: SKIN (Tripo mesh+rig+diffuse, Kandinsky PBR
+  // maps, Blender assembly) and TERRAIN (a real SDXL heightmap
+  // generation, features/aiden/providers/terra-provider.ts) both went
+  // live end to end, moving out of AIDEN_ACTIVE_GENERATION_TYPES's
+  // inactive set. MAP (the full Claude-terrain-logic + multi-image
+  // compiled-map tier) stays inactive — genuinely unbuilt, doesn't fit
+  // this codebase's generate()-returns-one-assetUrl provider contract
+  // the way TERRAIN does (see terra-provider.ts's doc comment).
+  // TEXTURE/PROP/ANIMATION (Graft) are wired but were never activated
+  // even before this pass — unchanged, not this change's scope.
+  it("SKIN and TERRAIN are active; MAP and unwired Graft types stay inactive", () => {
     expect(isAidenGenerationTypeActive("CONCEPT_IMAGE")).toBe(true);
     expect(isAidenGenerationTypeActive("SKIN")).toBe(true);
+    expect(isAidenGenerationTypeActive("TERRAIN")).toBe(true);
     expect(estimateAidenCost({ assetType: "SKIN" }).active).toBe(true);
+    expect(estimateAidenCost({ assetType: "TERRAIN" }).active).toBe(true);
 
-    for (const inactive of ["TEXTURE", "PROP", "ANIMATION", "TERRAIN", "MAP"] as const) {
+    for (const inactive of ["TEXTURE", "PROP", "ANIMATION", "MAP"] as const) {
       expect(isAidenGenerationTypeActive(inactive)).toBe(false);
       expect(estimateAidenCost({ assetType: inactive }).active).toBe(false);
     }
@@ -216,5 +221,38 @@ describe("Aiden real provider — turned on 2026-08-18", () => {
   it("throws rather than silently no-op-ing when retrieve() is given an unknown request id", async () => {
     const provider = new RealAidenProvider();
     await expect(provider.retrieve("real_never_submitted")).rejects.toThrow(/no pending/i);
+  });
+});
+
+describe("terraProvider — TERRAIN wired to real SDXL, MAP explicitly not", () => {
+  const original = process.env.REPLICATE_API_TOKEN;
+
+  afterEach(() => {
+    if (original === undefined) delete process.env.REPLICATE_API_TOKEN;
+    else process.env.REPLICATE_API_TOKEN = original;
+  });
+
+  it("isConfigured() now checks Replicate, not the old dedicated Terra key", async () => {
+    const { terraProvider } = await import("@/features/aiden/providers/terra-provider");
+    delete process.env.REPLICATE_API_TOKEN;
+    expect(terraProvider.isConfigured()).toBe(false);
+    process.env.REPLICATE_API_TOKEN = "r8_real_token_value";
+    expect(terraProvider.isConfigured()).toBe(true);
+  });
+
+  it("MAP throws a clear, explicit error rather than silently falling back to TERRAIN behavior", async () => {
+    const { terraProvider } = await import("@/features/aiden/providers/terra-provider");
+    process.env.REPLICATE_API_TOKEN = "r8_real_token_value";
+    await expect(
+      terraProvider.generate({ prompt: "alpine valley", game: "rust", platform: "PC", assetType: "MAP" }),
+    ).rejects.toThrow(/not implemented/i);
+  });
+
+  it("TERRAIN fails closed with AidenProviderNotConfiguredError when Replicate isn't configured", async () => {
+    const { terraProvider } = await import("@/features/aiden/providers/terra-provider");
+    delete process.env.REPLICATE_API_TOKEN;
+    await expect(
+      terraProvider.generate({ prompt: "alpine valley", game: "rust", platform: "PC", assetType: "TERRAIN" }),
+    ).rejects.toThrow(/REPLICATE_API_TOKEN/);
   });
 });

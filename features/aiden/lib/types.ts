@@ -13,11 +13,17 @@ export type AidenAssetType = (typeof AIDEN_ASSET_TYPES)[number];
 /// SKIN added 2026-08-18 — real generation (Tripo mesh+rig+diffuse,
 /// Kandinsky PBR maps, Blender assembly) is wired end to end, see
 /// features/aiden/lib/provider.ts#RealAidenProvider and
-/// completeFromProvider's mesh branch in aiden.service.ts. The
-/// remaining types (TEXTURE/PROP/ANIMATION/TERRAIN/MAP) stay inactive
-/// — TERRA (TERRAIN/MAP) has no real provider at all yet
-/// (features/aiden/providers/terra-provider.ts is still a stub).
-export const AIDEN_ACTIVE_GENERATION_TYPES = ["CONCEPT_IMAGE", "SKIN"] as const;
+/// completeFromProvider's mesh branch in aiden.service.ts. TERRAIN
+/// added the same day — a real SDXL heightmap-image generation
+/// (features/aiden/providers/terra-provider.ts), same single-call
+/// shape as CONCEPT_IMAGE/TEXTURE. MAP (the full compiled-map +
+/// Claude-terrain-logic tier) stays inactive — genuinely unbuilt, see
+/// terra-provider.ts's doc comment for why it doesn't fit this
+/// codebase's existing generate()-returns-one-assetUrl provider
+/// contract the way TERRAIN does. TEXTURE/PROP/ANIMATION are wired
+/// (graft-provider.ts) but were never activated even before this
+/// pass — left as-is, not this change's scope.
+export const AIDEN_ACTIVE_GENERATION_TYPES = ["CONCEPT_IMAGE", "SKIN", "TERRAIN"] as const;
 export type AidenActiveGenerationType = (typeof AIDEN_ACTIVE_GENERATION_TYPES)[number];
 
 export const AIDEN_TECHNICAL_STATUSES = [
